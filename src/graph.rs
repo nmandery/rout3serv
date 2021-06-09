@@ -16,7 +16,7 @@ pub struct Graph {
     pub cell_nodes: IndexSet<H3Cell>,
 }
 
-pub trait BuildGraph {
+pub trait GraphBuilder {
     fn build_graph(self) -> Result<Graph>;
 }
 

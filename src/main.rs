@@ -1,8 +1,9 @@
 mod graph;
 mod osm;
 
-use crate::graph::BuildGraph;
+use crate::graph::GraphBuilder;
 use osmpbfreader::Tags;
+use std::fs::File;
 use std::path::Path;
 
 const H3_RES: u8 = 10;
@@ -18,7 +19,7 @@ fn way_weight(tags: &Tags) -> Option<usize> {
             "tertiary" | "tertiary_link" => Some(5),
             "unclassified" | "residential" | "living_street" => Some(3),
             "road" => Some(1),
-            "service" | "track" => Some(1),
+            //"service" | "track" => Some(1),
             _ => None,
         }
     } else {
@@ -34,5 +35,6 @@ fn main() -> eyre::Result<()> {
     builder.read_pbf(Path::new(&args[1]))?;
     let graph = builder.build_graph()?;
     graph.ogr_write("FlatGeobuf", "/tmp/graph.fgb", "graph")?;
+    bincode::serialize_into(File::create("/tmp/graph.bincode")?, &graph)?;
     Ok(())
 }

@@ -8,7 +8,7 @@ use h3ron::H3Cell;
 use indexmap::set::IndexSet;
 use osmpbfreader::{OsmPbfReader, Tags};
 
-use crate::graph::{BuildGraph, Graph};
+use crate::graph::{Graph, GraphBuilder};
 
 pub struct OsmPbfGraphBuilder<F: Fn(&Tags) -> Option<usize>> {
     h3_resolution: u8,
@@ -94,7 +94,7 @@ fn ordered_h3index_pair(h3index_1: &u64, h3index_2: &u64) -> Result<(H3Cell, H3C
     Ok((H3Cell::try_from(*a)?, H3Cell::try_from(*b)?))
 }
 
-impl<F> BuildGraph for OsmPbfGraphBuilder<F>
+impl<F> GraphBuilder for OsmPbfGraphBuilder<F>
 where
     F: Fn(&Tags) -> Option<usize>,
 {
