@@ -11,8 +11,6 @@ mod graph;
 mod io;
 mod osm;
 
-const H3_RES: u8 = 10;
-
 fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
     // https://wiki.openstreetmap.org/wiki/Key:highway
     if let Some(highway_value) = tags.get("highway") {
@@ -65,7 +63,6 @@ fn load_graph<R: std::io::Read>(reader: R) -> eyre::Result<Graph> {
 
 fn main() -> eyre::Result<()> {
     env_logger::init();
-    let h3_resolution_default = H3_RES.to_string();
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
@@ -76,17 +73,18 @@ fn main() -> eyre::Result<()> {
                     Arg::with_name("h3_resolution")
                         .short("r")
                         .takes_value(true)
-                        .default_value(&h3_resolution_default),
-                )
-                .arg(
-                    Arg::with_name("OSM-PBF")
-                        .help("input OSM .pbf file")
-                        .required(true),
+                        .default_value("10"),
                 )
                 .arg(
                     Arg::with_name("OUTPUT-GRAPH")
                         .help("output file to write the graph to")
                         .required(true),
+                )
+                .arg(
+                    Arg::with_name("OSM-PBF")
+                        .help("input OSM .pbf file")
+                        .required(true)
+                        .min_values(1),
                 ),
         )
         .subcommand(
@@ -121,11 +119,12 @@ fn main() -> eyre::Result<()> {
     match matches.subcommand() {
         ("build-from-osm-pbf", Some(sc_matches)) => {
             let h3_resolution: u8 = sc_matches.value_of("h3_resolution").unwrap().parse()?;
-            let pbf_input = sc_matches.value_of("OSM-PBF").unwrap().to_string();
             let graph_output = sc_matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
 
             let mut builder = crate::osm::OsmPbfGraphBuilder::new(h3_resolution, way_properties);
-            builder.read_pbf(Path::new(&pbf_input))?;
+            for pbf_input in sc_matches.values_of("OSM-PBF").unwrap() {
+                builder.read_pbf(Path::new(&pbf_input))?;
+            }
             let graph = builder.build_graph()?;
 
             println!("Created graph");
