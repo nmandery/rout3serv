@@ -57,6 +57,7 @@ where
                             h3indexes.dedup();
 
                             for window in h3indexes.windows(2) {
+                                // TODO: bidirectional edges + oneway (https://wiki.openstreetmap.org/wiki/Key:oneway)
                                 let (cell1, cell2) = ordered_h3index_pair(&window[0], &window[1])?;
                                 let (node_cell1, _) = self.cell_nodes.insert_full(cell1);
                                 let (node_cell2, _) = self.cell_nodes.insert_full(cell2);

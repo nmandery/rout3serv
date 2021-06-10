@@ -1,8 +1,5 @@
 use eyre::Result;
-use gdal::vector::{Defn, Feature, FieldDefn, OGRFieldType, OGRwkbGeometryType, ToGdal};
-use gdal::Driver;
-use geo_types::LineString;
-use h3ron::{H3Cell, ToCoordinate};
+use h3ron::H3Cell;
 use indexmap::set::IndexSet;
 use serde::{Deserialize, Serialize};
 
@@ -21,36 +18,26 @@ pub trait GraphBuilder {
 }
 
 impl Graph {
-    fn h3cell_by_nodeid(&self, node_id: usize) -> Result<&H3Cell> {
+    pub fn h3cell_by_nodeid(&self, node_id: usize) -> Result<&H3Cell> {
         Ok(self.cell_nodes.get_index(node_id).unwrap()) // TODO
     }
+}
 
-    pub fn ogr_write<T: AsRef<str>>(
-        &self,
-        driver_name: T,
-        output_name: T,
-        layer_name: T,
-    ) -> Result<()> {
-        let drv = Driver::get(driver_name.as_ref())?;
-        let mut ds = drv.create_vector_only(output_name.as_ref())?;
+#[cfg(test)]
+mod tests {
 
-        let lyr = ds.create_layer(layer_name.as_ref(), None, OGRwkbGeometryType::wkbLineString)?;
+    #[test]
+    /// check if fast_paths routes in both directions or just in one
+    fn fast_paths_bidirectional_routing() {
+        let mut input_graph = fast_paths::InputGraph::new();
+        input_graph.add_edge(1, 2, 10);
+        input_graph.freeze();
 
-        let weight_field_defn = FieldDefn::new("weight", OGRFieldType::OFTInteger64)?;
-        weight_field_defn.add_to_layer(&lyr)?;
+        let graph = fast_paths::prepare(&input_graph);
+        let p1 = fast_paths::calc_path(&graph, 1, 2);
+        assert!(p1.is_some());
 
-        let defn = Defn::from_layer(&lyr);
-
-        for edge in self.input_graph.get_edges() {
-            let mut ft = Feature::new(&defn)?;
-            let coords = vec![
-                self.h3cell_by_nodeid(edge.from)?.to_coordinate(),
-                self.h3cell_by_nodeid(edge.to)?.to_coordinate(),
-            ];
-            ft.set_geometry(LineString::from(coords).to_gdal()?)?;
-            ft.set_field_integer64("weight", edge.weight as i64)?;
-            ft.create(&lyr)?;
-        }
-        Ok(())
+        let p2 = fast_paths::calc_path(&graph, 2, 1);
+        assert!(p2.is_none());
     }
 }

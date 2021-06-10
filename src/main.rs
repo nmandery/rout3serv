@@ -1,7 +1,9 @@
 mod graph;
+mod io;
 mod osm;
 
 use crate::graph::GraphBuilder;
+use crate::io::OgrWrite;
 use osmpbfreader::Tags;
 use std::fs::File;
 use std::path::Path;
