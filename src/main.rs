@@ -28,9 +28,21 @@ fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
             _ => None,
         }
         .map(|weight| {
+            // oneway streets (https://wiki.openstreetmap.org/wiki/Key:oneway)
+            // NOTE: reversed direction "oneway=-1" is not supported
+            let is_bidirectional = tags
+                .get("oneway")
+                .map(|v| {
+                    if v.to_lowercase() == "yes" {
+                        false
+                    } else {
+                        true
+                    }
+                })
+                .unwrap_or(true);
+
             EdgeProperties {
-                // TODO: bidirectional edges + oneway (https://wiki.openstreetmap.org/wiki/Key:oneway)
-                is_bidirectional: true,
+                is_bidirectional,
                 weight,
             }
         })
