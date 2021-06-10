@@ -4,8 +4,8 @@ use std::path::Path;
 use clap::{App, Arg, SubCommand};
 use osmpbfreader::Tags;
 
-use crate::graph::{EdgeProperties, Graph, GraphBuilder};
-use crate::io::{GraphStats, OgrWrite};
+use crate::graph::{EdgeProperties, GraphBuilder};
+use crate::io::{load_graph, print_graph_stats, save_graph_to_file, OgrWrite};
 
 mod graph;
 mod io;
@@ -30,13 +30,7 @@ fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
             // NOTE: reversed direction "oneway=-1" is not supported
             let is_bidirectional = tags
                 .get("oneway")
-                .map(|v| {
-                    if v.to_lowercase() == "yes" {
-                        false
-                    } else {
-                        true
-                    }
-                })
+                .map(|v| v.to_lowercase() != "yes")
                 .unwrap_or(true);
 
             EdgeProperties {
@@ -47,18 +41,6 @@ fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
     } else {
         None
     }
-}
-
-fn print_graph_stats(graph: &Graph) -> eyre::Result<()> {
-    let stats = GraphStats::new(graph);
-    println!("{}", toml::to_string(&stats)?);
-    Ok(())
-}
-
-fn load_graph<R: std::io::Read>(reader: R) -> eyre::Result<Graph> {
-    let graph = bincode::deserialize_from(reader)?;
-    print_graph_stats(&graph)?;
-    Ok(graph)
 }
 
 fn main() -> eyre::Result<()> {
@@ -130,7 +112,8 @@ fn main() -> eyre::Result<()> {
             println!("Created graph");
             print_graph_stats(&graph)?;
 
-            bincode::serialize_into(File::create(graph_output)?, &graph)?;
+            let mut out_file = File::create(graph_output)?;
+            save_graph_to_file(&graph, &mut out_file)?;
         }
         ("graph-stats", Some(sc_matches)) => {
             let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
