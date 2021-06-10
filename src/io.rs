@@ -3,6 +3,7 @@ use gdal::vector::{Defn, Feature, FieldDefn, OGRFieldType, OGRwkbGeometryType, T
 use gdal::Driver;
 use geo_types::LineString;
 use h3ron::ToCoordinate;
+use serde::Serialize;
 
 use crate::graph::Graph;
 
@@ -39,5 +40,42 @@ impl OgrWrite for Graph {
             ft.create(&lyr)?;
         }
         Ok(())
+    }
+}
+
+#[derive(Serialize)]
+pub struct GraphStats {
+    pub h3_resolution: u8,
+    pub input_graph: InputGraphStats,
+    pub prepared_graph: PreparedGraphStats,
+}
+
+#[derive(Serialize)]
+pub struct InputGraphStats {
+    pub nodes: usize,
+    pub edges: usize,
+}
+
+#[derive(Serialize)]
+pub struct PreparedGraphStats {
+    pub nodes: usize,
+    pub in_edges: usize,
+    pub out_edges: usize,
+}
+
+impl GraphStats {
+    pub fn new(graph: &Graph) -> Self {
+        Self {
+            h3_resolution: graph.h3_resolution,
+            input_graph: InputGraphStats {
+                nodes: graph.input_graph.get_num_nodes(),
+                edges: graph.input_graph.get_num_edges(),
+            },
+            prepared_graph: PreparedGraphStats {
+                nodes: graph.graph.get_num_nodes(),
+                in_edges: graph.graph.get_num_in_edges(),
+                out_edges: graph.graph.get_num_out_edges(),
+            },
+        }
     }
 }

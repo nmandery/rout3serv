@@ -16,6 +16,8 @@ pub struct Graph {
     /// lookup to correlate the continuous NodeIds of the FastGraph
     /// to H3Cells
     pub cell_nodes: IndexSet<H3Cell>,
+
+    pub h3_resolution: u8,
 }
 
 pub trait GraphBuilder {

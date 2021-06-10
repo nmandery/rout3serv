@@ -118,6 +118,7 @@ where
             input_graph,
             graph,
             cell_nodes: self.cell_nodes,
+            h3_resolution: self.h3_resolution,
         })
     }
 }
