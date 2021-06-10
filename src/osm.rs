@@ -8,26 +8,38 @@ use h3ron::H3Cell;
 use indexmap::set::IndexSet;
 use osmpbfreader::{OsmPbfReader, Tags};
 
-use crate::graph::{Graph, GraphBuilder};
+use crate::graph::{EdgeProperties, Graph, GraphBuilder};
 
-pub struct OsmPbfGraphBuilder<F: Fn(&Tags) -> Option<usize>> {
+pub struct OsmPbfGraphBuilder<F: Fn(&Tags) -> Option<EdgeProperties>> {
     h3_resolution: u8,
-    weight_determination: F,
+    edge_properties_fn: F,
     edges_weight: HashMap<(usize, usize), usize>,
     cell_nodes: IndexSet<H3Cell>,
 }
 
 impl<F> OsmPbfGraphBuilder<F>
 where
-    F: Fn(&Tags) -> Option<usize>,
+    F: Fn(&Tags) -> Option<EdgeProperties>,
 {
-    pub fn new(h3_resolution: u8, weight_determination: F) -> Self {
+    pub fn new(h3_resolution: u8, edge_properties_fn: F) -> Self {
         Self {
             h3_resolution,
-            weight_determination,
+            edge_properties_fn,
             edges_weight: Default::default(),
             cell_nodes: Default::default(),
         }
+    }
+
+    fn set_edge_weight(&mut self, node_cell1: usize, node_cell2: usize, weight: usize) {
+        self.edges_weight
+            .entry((node_cell1, node_cell2))
+            .and_modify(|v| {
+                if *v < weight {
+                    // TODO: min or max?
+                    *v = weight
+                }
+            })
+            .or_insert(weight);
     }
 
     pub fn read_pbf(&mut self, pbf_path: &Path) -> Result<()> {
@@ -45,7 +57,7 @@ where
                     nodeid_coordinates.insert(node.id, coordinate);
                 }
                 osmpbfreader::OsmObj::Way(way) => {
-                    if let Some(weight) = (self.weight_determination)(&way.tags) {
+                    if let Some(edge_props) = (self.edge_properties_fn)(&way.tags) {
                         let coordinates: Vec<_> = way
                             .nodes
                             .iter()
@@ -57,20 +69,14 @@ where
                             h3indexes.dedup();
 
                             for window in h3indexes.windows(2) {
-                                // TODO: bidirectional edges + oneway (https://wiki.openstreetmap.org/wiki/Key:oneway)
                                 let (cell1, cell2) = ordered_h3index_pair(&window[0], &window[1])?;
                                 let (node_cell1, _) = self.cell_nodes.insert_full(cell1);
                                 let (node_cell2, _) = self.cell_nodes.insert_full(cell2);
 
-                                self.edges_weight
-                                    .entry((node_cell1, node_cell2))
-                                    .and_modify(|v| {
-                                        if *v < weight {
-                                            // TODO: min or max?
-                                            *v = weight
-                                        }
-                                    })
-                                    .or_insert(weight);
+                                if edge_props.is_bidirectional {
+                                    self.set_edge_weight(node_cell2, node_cell1, edge_props.weight);
+                                }
+                                self.set_edge_weight(node_cell1, node_cell2, edge_props.weight);
                             }
                         }
                     }
@@ -97,7 +103,7 @@ fn ordered_h3index_pair(h3index_1: &u64, h3index_2: &u64) -> Result<(H3Cell, H3C
 
 impl<F> GraphBuilder for OsmPbfGraphBuilder<F>
 where
-    F: Fn(&Tags) -> Option<usize>,
+    F: Fn(&Tags) -> Option<EdgeProperties>,
 {
     fn build_graph(mut self) -> Result<Graph> {
         let mut input_graph = fast_paths::InputGraph::new();

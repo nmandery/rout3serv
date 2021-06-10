@@ -3,6 +3,11 @@ use h3ron::H3Cell;
 use indexmap::set::IndexSet;
 use serde::{Deserialize, Serialize};
 
+pub struct EdgeProperties {
+    pub is_bidirectional: bool,
+    pub weight: usize,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Graph {
     pub input_graph: fast_paths::InputGraph,
