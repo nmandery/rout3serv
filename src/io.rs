@@ -1,19 +1,26 @@
+use std::fs::File;
+use std::io::Write;
+
 use eyre::Result;
+#[cfg(feature = "gdal")]
 use gdal::vector::{Defn, Feature, FieldDefn, OGRFieldType, OGRwkbGeometryType, ToGdal};
+#[cfg(feature = "gdal")]
 use gdal::Driver;
+#[cfg(feature = "gdal")]
 use geo_types::LineString;
+#[cfg(feature = "gdal")]
 use h3ron::ToCoordinate;
 use serde::{Deserialize, Serialize};
 
 use crate::graph::Graph;
-use std::fs::File;
-use std::io::Write;
 
+#[cfg(feature = "gdal")]
 pub trait OgrWrite {
     fn ogr_write<T: AsRef<str>>(&self, driver_name: T, output_name: T, layer_name: T)
         -> Result<()>;
 }
 
+#[cfg(feature = "gdal")]
 impl OgrWrite for Graph {
     fn ogr_write<T: AsRef<str>>(
         &self,
@@ -82,13 +89,13 @@ impl GraphStats {
     }
 }
 
-pub fn print_graph_stats(graph: &Graph) -> eyre::Result<()> {
+pub fn print_graph_stats(graph: &Graph) -> Result<()> {
     let stats = GraphStats::new(graph);
     println!("{}", toml::to_string(&stats)?);
     Ok(())
 }
 
-pub fn load_graph<R: std::io::Read>(mut reader: R) -> eyre::Result<Graph> {
+pub fn load_graph<R: std::io::Read>(mut reader: R) -> Result<Graph> {
     let mut raw_data: Vec<u8> = Default::default();
     reader.read_to_end(&mut raw_data)?;
     let fx_reader = flexbuffers::Reader::get_root(raw_data.as_slice())?;
@@ -97,7 +104,7 @@ pub fn load_graph<R: std::io::Read>(mut reader: R) -> eyre::Result<Graph> {
     Ok(graph)
 }
 
-pub fn save_graph_to_file(graph: &Graph, out_file: &mut File) -> eyre::Result<()> {
+pub fn save_graph_to_file(graph: &Graph, out_file: &mut File) -> Result<()> {
     let mut serializer = flexbuffers::FlexbufferSerializer::new();
     graph.serialize(&mut serializer)?;
     out_file.write_all(serializer.view())?;

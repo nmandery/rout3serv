@@ -1,11 +1,14 @@
 use std::fs::File;
 use std::path::Path;
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg, ArgMatches, SubCommand};
+use eyre::Result;
 use osmpbfreader::Tags;
 
 use crate::graph::{EdgeProperties, GraphBuilder};
-use crate::io::{load_graph, print_graph_stats, save_graph_to_file, OgrWrite};
+#[cfg(feature = "gdal")]
+use crate::io::OgrWrite;
+use crate::io::{load_graph, print_graph_stats, save_graph_to_file};
 
 mod graph;
 mod io;
@@ -43,9 +46,9 @@ fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
     }
 }
 
-fn main() -> eyre::Result<()> {
+fn main() -> Result<()> {
     env_logger::init();
-    let matches = App::new(env!("CARGO_PKG_NAME"))
+    let mut app = App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
@@ -73,8 +76,10 @@ fn main() -> eyre::Result<()> {
             SubCommand::with_name("graph-stats")
                 .about("Load a graph and print some basic stats")
                 .arg(Arg::with_name("GRAPH").help("graph").required(true)),
-        )
-        .subcommand(
+        );
+
+    if cfg!(feature = "gdal") {
+        app = app.subcommand(
             SubCommand::with_name("graph-to-ogr")
                 .about("Export the input graph to an OGR vector dataset")
                 .arg(Arg::with_name("GRAPH").help("graph").required(true))
@@ -96,7 +101,9 @@ fn main() -> eyre::Result<()> {
                         .default_value("graph"),
                 ),
         )
-        .get_matches();
+    }
+
+    let matches = app.get_matches();
 
     match matches.subcommand() {
         ("build-from-osm-pbf", Some(sc_matches)) => {
@@ -119,16 +126,25 @@ fn main() -> eyre::Result<()> {
             let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
             let _ = load_graph(File::open(graph_filename)?)?;
         }
-        ("graph-to-ogr", Some(sc_matches)) => {
-            let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-            let graph = load_graph(File::open(graph_filename)?)?;
-            graph.ogr_write(
-                sc_matches.value_of("driver").unwrap(),
-                sc_matches.value_of("OUTPUT").unwrap(),
-                sc_matches.value_of("layer_name").unwrap(),
-            )?;
-        }
+        ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
         _ => unreachable!(),
     }
     Ok(())
+}
+
+#[cfg(feature = "gdal")]
+fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
+    let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
+    let graph = load_graph(File::open(graph_filename)?)?;
+    graph.ogr_write(
+        sc_matches.value_of("driver").unwrap(),
+        sc_matches.value_of("OUTPUT").unwrap(),
+        sc_matches.value_of("layer_name").unwrap(),
+    )?;
+    Ok(())
+}
+
+#[cfg(not(feature = "gdal"))]
+fn subcommand_graph_to_ogr(_sc_matches: &ArgMatches) -> Result<()> {
+    unimplemented!("binary is build without gdal support")
 }
