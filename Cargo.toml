@@ -6,11 +6,11 @@ edition = "2018"
 
 [dependencies]
 osmpbfreader = "0.14.0"
-h3ron = "0.10.0"
+h3ron = "0.11.0"
 fast_paths = "0.2.0"
 log = "0.4"
 env_logger = "0.8"
-geo-types = "0.6"
+geo-types = "0.7"
 eyre = "0.6"
 clap = "^2.33"
 toml = "0.5"
@@ -25,7 +25,7 @@ version = "1"
 features = ["derive"]
 
 [dependencies.gdal]
-version = "0.7.0"
+version = "0.8.0"
 optional = true
 
 [profile.release]
