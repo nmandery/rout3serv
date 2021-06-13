@@ -11,6 +11,7 @@ fast_paths = "0.2.0"
 log = "0.4"
 env_logger = "0.8"
 geo-types = "0.7"
+geo = "0.18"
 eyre = "0.6"
 clap = "^2.33"
 toml = "0.5"
@@ -27,3 +28,7 @@ features = ["derive"]
 [dependencies.gdal]
 version = "0.8.0"
 optional = true
+
+[dependencies.geojson]
+version = "0.22"
+features = ["geo-types"]
