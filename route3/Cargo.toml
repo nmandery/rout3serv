@@ -16,6 +16,14 @@ eyre = "0.6"
 clap = "^2.33"
 toml = "0.5"
 flexbuffers = "2.0"
+tonic = "0.4"
+prost = "0.7"
+
+[dependencies.tokio]
+version = "1.6"
+features = [
+    "full" # TODO: reduce
+]
 
 [dependencies.indexmap]
 version = "^1"
@@ -32,3 +40,6 @@ optional = true
 [dependencies.geojson]
 version = "0.22"
 features = ["geo-types"]
+
+[build-dependencies]
+tonic-build = "0.4"

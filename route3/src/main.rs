@@ -18,6 +18,7 @@ use crate::io::{load_graph, print_graph_stats, save_graph_to_file};
 mod graph;
 mod io;
 mod osm;
+mod server;
 
 fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
     // https://wiki.openstreetmap.org/wiki/Key:highway
@@ -91,7 +92,8 @@ fn main() -> Result<()> {
                         .help("output file to write the geojson geometry to")
                         .required(true),
                 ),
-        );
+        )
+        .subcommand(SubCommand::with_name("server").about("start the GRPC server"));
 
     if cfg!(feature = "gdal") {
         app = app.subcommand(
@@ -143,6 +145,7 @@ fn main() -> Result<()> {
         }
         ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
         ("graph-covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
+        ("server", Some(_)) => crate::server::launch_server()?,
         _ => unreachable!(),
     }
     Ok(())

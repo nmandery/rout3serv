@@ -1,0 +1,15 @@
+
+syntax = "proto3";
+
+package grpc.route3;
+
+message VersionRequest {
+}
+
+message VersionResponse {
+  string version = 1;
+}
+
+service Route3 {
+  rpc Version(VersionRequest) returns (VersionResponse) {}
+}
