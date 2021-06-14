@@ -14,6 +14,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::graph::Graph;
 
+pub mod s3;
+
 #[cfg(feature = "gdal")]
 pub trait OgrWrite {
     fn ogr_write<T: AsRef<str>>(&self, driver_name: T, output_name: T, layer_name: T)

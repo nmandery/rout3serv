@@ -18,6 +18,9 @@ toml = "0.5"
 flexbuffers = "2.0"
 tonic = "0.4"
 prost = "0.7"
+rusoto_s3 = { version = "0.46", default_features = false, features = ["rustls", ] }
+rusoto_core = { version = "0.46", default_features = false, features = ["rustls", ] }
+futures = "0.3"
 
 [dependencies.tokio]
 version = "1.6"

@@ -6,6 +6,8 @@ use tonic::{Request, Response, Status};
 use api::route3_server::{Route3, Route3Server};
 use api::{VersionRequest, VersionResponse};
 
+use crate::io::s3::{S3Client, S3Config};
+
 mod api {
     use tonic::include_proto;
 
@@ -30,6 +32,7 @@ impl Route3 for ServerImpl {
 #[derive(Deserialize)]
 pub struct ServerConfig {
     pub bind_to: String,
+    pub s3: S3Config,
 }
 
 pub fn launch_server(server_config: ServerConfig) -> Result<()> {
@@ -42,6 +45,7 @@ pub fn launch_server(server_config: ServerConfig) -> Result<()> {
 
 async fn run_server(server_config: &ServerConfig) -> Result<()> {
     let addr = server_config.bind_to.parse()?;
+    let s3_client = S3Client::from_config(&server_config.s3)?;
     let server_impl = ServerImpl::default();
 
     println!("Route3 listening on {}", addr);
