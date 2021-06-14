@@ -164,8 +164,9 @@ def cli(aoi_geojson_polygon_geometry_filename, out_dir, h3_res, group_h3_res, fg
                     writer.write_table(table)
 
             if fgb and not group_df.empty:
-                tf_name = tempfile.mktemp(suffix=".fgb")
+                tf_name = None
                 try:
+                    tf_name = tempfile.mktemp(suffix=".fgb")
                     geodf = dataframe_to_geodataframe(group_df, column_name="h3index")
                     geodf.to_file(tf_name, driver="FlatGeobuf", layer="population")
 
@@ -173,7 +174,8 @@ def cli(aoi_geojson_polygon_geometry_filename, out_dir, h3_res, group_h3_res, fg
                         nativefile.write(open(tf_name, mode='rb').read())
                         nativefile.flush()
                 finally:
-                    os.remove(tf_name)
+                    if tf_name is not None:
+                        os.remove(tf_name)
 
 
 if __name__ == '__main__':
