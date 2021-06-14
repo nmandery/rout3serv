@@ -1,4 +1,5 @@
 use eyre::Result;
+use serde::Deserialize;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -26,16 +27,21 @@ impl Route3 for ServerImpl {
     }
 }
 
-pub fn launch_server() -> Result<()> {
+#[derive(Deserialize)]
+pub struct ServerConfig {
+    pub bind_to: String,
+}
+
+pub fn launch_server(server_config: ServerConfig) -> Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
-    runtime.block_on(run_server())?;
+    runtime.block_on(run_server(&server_config))?;
     Ok(())
 }
 
-async fn run_server() -> Result<()> {
-    let addr = "0.0.0.0:7000".parse().unwrap();
+async fn run_server(server_config: &ServerConfig) -> Result<()> {
+    let addr = server_config.bind_to.parse()?;
     let server_impl = ServerImpl::default();
 
     println!("Route3 listening on {}", addr);

@@ -93,7 +93,15 @@ fn main() -> Result<()> {
                         .required(true),
                 ),
         )
-        .subcommand(SubCommand::with_name("server").about("start the GRPC server"));
+        .subcommand(
+            SubCommand::with_name("server")
+                .about("start the GRPC server")
+                .arg(
+                    Arg::with_name("CONFIG-FILE")
+                        .help("server configuration file")
+                        .required(true),
+                ),
+        );
 
     if cfg!(feature = "gdal") {
         app = app.subcommand(
@@ -145,7 +153,7 @@ fn main() -> Result<()> {
         }
         ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
         ("graph-covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
-        ("server", Some(_)) => crate::server::launch_server()?,
+        ("server", Some(sc_matches)) => subcommand_server(sc_matches)?,
         _ => unreachable!(),
     }
     Ok(())
@@ -198,5 +206,12 @@ fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     outfile.write_all(gj_geom.to_string().as_ref())?;
     outfile.flush()?;
 
+    Ok(())
+}
+
+fn subcommand_server(sc_matches: &ArgMatches) -> Result<()> {
+    let config_contents = std::fs::read_to_string(sc_matches.value_of("CONFIG-FILE").unwrap())?;
+    let config = toml::from_str(&config_contents)?;
+    crate::server::launch_server(config)?;
     Ok(())
 }
