@@ -1,4 +1,4 @@
-from route3py import __version__
+from route3_client import __version__
 
 
 def test_version():

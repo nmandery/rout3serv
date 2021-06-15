@@ -1,5 +1,5 @@
 /target
-/Cargo.lock
+Cargo.lock
 .idea
 *.swp
 *.swo
@@ -7,4 +7,4 @@
 __pycache__
 /datasources/venv/
 /data
-/route3py/poetry.lock
+poetry.lock
