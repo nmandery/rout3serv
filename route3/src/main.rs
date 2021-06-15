@@ -53,7 +53,10 @@ fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
 }
 
 fn main() -> Result<()> {
-    env_logger::init();
+    env_logger::init_from_env(
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
+    );
+
     let mut app = App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .about(env!("CARGO_PKG_DESCRIPTION"))

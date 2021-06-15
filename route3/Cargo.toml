@@ -22,6 +22,7 @@ rusoto_s3 = { version = "0.46", default_features = false, features = ["rustls", 
 rusoto_core = { version = "0.46", default_features = false, features = ["rustls", ] }
 futures = "0.3"
 wkb = "0.7.1"
+bytesize = "1"
 
 [dependencies.tokio]
 version = "1.6"
