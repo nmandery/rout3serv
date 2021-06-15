@@ -9,3 +9,8 @@ secret_key = "password"
 [graph]
 bucket = "graph"
 key = "germany_r10.fxb"
+
+[population_dataset]
+bucket = "population"
+key_pattern = "{file_h3_resolution}/{data_h3_resolution}/{h3index}.arrow"
+file_h3_resolution = 5

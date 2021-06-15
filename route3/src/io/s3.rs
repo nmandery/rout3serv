@@ -37,7 +37,7 @@ impl S3Client {
         let region = if let Some(endpoint) = &config.endpoint {
             Region::Custom {
                 name: region_string,
-                endpoint: endpoint.clone(),
+                endpoint: endpoint.trim_end_matches('/').to_owned(),
             }
         } else {
             Region::from_str(&region_string)?
@@ -58,12 +58,8 @@ impl S3Client {
         })
     }
 
-    pub async fn get_object_bytes<S: AsRef<str>>(&self, bucket: S, key: S) -> Result<ObjectBytes> {
-        log::info!(
-            "get_object_bytes: bucket={}, key={}",
-            bucket.as_ref(),
-            key.as_ref()
-        );
+    pub async fn get_object_bytes(&self, bucket: String, key: String) -> Result<ObjectBytes> {
+        log::info!("get_object_bytes: bucket={}, key={}", bucket, key);
         let ob = backoff::future::retry(
             backoff::ExponentialBackoff {
                 max_elapsed_time: Some(self.retry_duration),
@@ -71,8 +67,8 @@ impl S3Client {
             },
             || async {
                 let get_object_req = GetObjectRequest {
-                    bucket: bucket.as_ref().to_owned(),
-                    key: key.as_ref().to_owned(),
+                    bucket: bucket.clone(),
+                    key: key.clone(),
                     ..Default::default()
                 };
                 Ok(match self.s3.get_object(get_object_req).await {
@@ -85,8 +81,8 @@ impl S3Client {
                                 .map_err(Report::from)?;
                             log::info!(
                                 "get_object_bytes: bucket={}, key={} -> received {} bytes ({})",
-                                bucket.as_ref(),
-                                key.as_ref(),
+                                bucket,
+                                key,
                                 byte_content.len(),
                                 ByteSize(byte_content.len() as u64)
                             );
@@ -96,7 +92,14 @@ impl S3Client {
                         }
                     }
                     Err(e) => match e {
-                        RusotoError::Service(_get_object_error) => Ok(ObjectBytes::NotFound),
+                        RusotoError::Service(_get_object_error) => {
+                            log::info!(
+                                "get_object_bytes: bucket={}, key={} -> not found",
+                                bucket,
+                                key
+                            );
+                            Ok(ObjectBytes::NotFound)
+                        }
                         _ => {
                             log::error!("get_object_bytes: {}", e.to_string());
                             Err(Report::from(e))
