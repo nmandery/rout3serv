@@ -10,7 +10,7 @@ use api::route3_server::{Route3, Route3Server};
 use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest, VersionResponse};
 
 use crate::graph::Graph;
-use crate::io::load_graph;
+use crate::io::load_graph_from_byte_slice;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config};
 
 mod api {
@@ -33,10 +33,7 @@ impl ServerImpl {
             .get_object_bytes(&config.graph.bucket, &config.graph.key)
             .await?
         {
-            ObjectBytes::Found(graph_bytes) => {
-                let mut cursor = Cursor::new(&graph_bytes);
-                load_graph(cursor)?
-            }
+            ObjectBytes::Found(graph_bytes) => load_graph_from_byte_slice(&graph_bytes)?,
             ObjectBytes::NotFound => return Err(Report::msg("could not find graph")),
         };
 
@@ -66,9 +63,15 @@ impl Route3 for ServerImpl {
         let inner = request.into_inner();
         let mut cursor = Cursor::new(&inner.wkb_geometry);
         let mut cells = wkb::wkb_to_geom(&mut cursor)
-            .map_err(|e| Status::invalid_argument("could not parse WKB"))?
+            .map_err(|e| {
+                log::error!("could not parse wkb: {:?}", e);
+                Status::invalid_argument("could not parse WKB")
+            })?
             .to_h3_indexes(self.graph.h3_resolution)
-            .map_err(|e| Status::internal("could not convert to h3"))?;
+            .map_err(|e| {
+                log::error!("could not convert to h3: {:?}", e);
+                Status::internal("could not convert to h3")
+            })?;
 
         // remove duplicates in case of multi* geometries
         cells.sort_unstable();

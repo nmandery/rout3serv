@@ -13,7 +13,7 @@ use osmpbfreader::Tags;
 use crate::graph::{EdgeProperties, GraphBuilder};
 #[cfg(feature = "gdal")]
 use crate::io::OgrWrite;
-use crate::io::{load_graph, print_graph_stats, save_graph_to_file};
+use crate::io::{load_graph_from_reader, print_graph_stats, save_graph_to_file};
 
 mod graph;
 mod io;
@@ -144,7 +144,7 @@ fn main() -> Result<()> {
             }
             let graph = builder.build_graph()?;
 
-            println!("Created graph");
+            log::info!("Created graph");
             print_graph_stats(&graph)?;
 
             let mut out_file = File::create(graph_output)?;
@@ -152,7 +152,7 @@ fn main() -> Result<()> {
         }
         ("graph-stats", Some(sc_matches)) => {
             let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-            let _ = load_graph(File::open(graph_filename)?)?;
+            let _ = load_graph_from_reader(File::open(graph_filename)?)?;
         }
         ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
         ("graph-covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
@@ -165,7 +165,7 @@ fn main() -> Result<()> {
 #[cfg(feature = "gdal")]
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph = load_graph(File::open(graph_filename)?)?;
+    let graph = load_graph_from_reader(File::open(graph_filename)?)?;
     graph.ogr_write(
         sc_matches.value_of("driver").unwrap(),
         sc_matches.value_of("OUTPUT").unwrap(),
@@ -181,7 +181,7 @@ fn subcommand_graph_to_ogr(_sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph = load_graph(File::open(graph_filename)?)?;
+    let graph = load_graph_from_reader(File::open(graph_filename)?)?;
 
     let mut outfile = File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?;
     let multi_poly = {

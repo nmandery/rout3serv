@@ -97,13 +97,17 @@ pub fn print_graph_stats(graph: &Graph) -> Result<()> {
     Ok(())
 }
 
-pub fn load_graph<R: std::io::Read>(mut reader: R) -> Result<Graph> {
-    let mut raw_data: Vec<u8> = Default::default();
-    reader.read_to_end(&mut raw_data)?;
-    let fx_reader = flexbuffers::Reader::get_root(raw_data.as_slice())?;
+pub fn load_graph_from_byte_slice(slice: &[u8]) -> Result<Graph> {
+    let fx_reader = flexbuffers::Reader::get_root(slice)?;
     let graph = Graph::deserialize(fx_reader)?;
     print_graph_stats(&graph)?;
     Ok(graph)
+}
+
+pub fn load_graph_from_reader<R: std::io::Read>(mut reader: R) -> Result<Graph> {
+    let mut raw_data: Vec<u8> = Default::default();
+    reader.read_to_end(&mut raw_data)?;
+    load_graph_from_byte_slice(raw_data.as_slice())
 }
 
 pub fn save_graph_to_file(graph: &Graph, out_file: &mut File) -> Result<()> {
