@@ -23,6 +23,7 @@ rusoto_core = { version = "0.46", default_features = false, features = ["rustls"
 futures = "0.3"
 wkb = "0.7.1"
 bytesize = "1"
+backoff = { version = "0.3", features = ["tokio_1", "futures", "tokio"] }
 
 [dependencies.tokio]
 version = "1.6"

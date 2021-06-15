@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::time::Duration;
 
 use bytesize::ByteSize;
 use eyre::{Report, Result};
@@ -14,10 +15,12 @@ pub struct S3Config {
     pub region: Option<String>,
     pub access_key: String,
     pub secret_key: String,
+    pub retry_seconds: Option<u64>,
 }
 
 pub struct S3Client {
     s3: rusoto_s3::S3Client,
+    retry_duration: Duration,
 }
 
 pub enum ObjectBytes {
@@ -51,6 +54,7 @@ impl S3Client {
                 )),
                 region,
             ),
+            retry_duration: Duration::from_secs(config.retry_seconds.unwrap_or(20)),
         })
     }
 
@@ -60,32 +64,48 @@ impl S3Client {
             bucket.as_ref(),
             key.as_ref()
         );
-        let get_object_req = GetObjectRequest {
-            bucket: bucket.as_ref().to_owned(),
-            key: key.as_ref().to_owned(),
-            ..Default::default()
-        };
-        match self.s3.get_object(get_object_req).await {
-            Ok(mut object) => {
-                if let Some(body_stream) = object.body.take() {
-                    let byte_content: Vec<u8> =
-                        body_stream.map_ok(|b| b.to_vec()).try_concat().await?;
-                    log::info!(
-                        "get_object_bytes: bucket={}, key={} -> received {} bytes ({})",
-                        bucket.as_ref(),
-                        key.as_ref(),
-                        byte_content.len(),
-                        ByteSize(byte_content.len() as u64)
-                    );
-                    Ok(ObjectBytes::Found(byte_content))
-                } else {
-                    Ok(ObjectBytes::Found(vec![])) // has no body
-                }
-            }
-            Err(e) => match e {
-                RusotoError::Service(_get_object_error) => Ok(ObjectBytes::NotFound),
-                _ => Err(Report::from(e)),
+        let ob = backoff::future::retry(
+            backoff::ExponentialBackoff {
+                max_elapsed_time: Some(self.retry_duration),
+                ..Default::default()
             },
-        }
+            || async {
+                let get_object_req = GetObjectRequest {
+                    bucket: bucket.as_ref().to_owned(),
+                    key: key.as_ref().to_owned(),
+                    ..Default::default()
+                };
+                Ok(match self.s3.get_object(get_object_req).await {
+                    Ok(mut object) => {
+                        if let Some(body_stream) = object.body.take() {
+                            let byte_content: Vec<u8> = body_stream
+                                .map_ok(|b| b.to_vec())
+                                .try_concat()
+                                .await
+                                .map_err(Report::from)?;
+                            log::info!(
+                                "get_object_bytes: bucket={}, key={} -> received {} bytes ({})",
+                                bucket.as_ref(),
+                                key.as_ref(),
+                                byte_content.len(),
+                                ByteSize(byte_content.len() as u64)
+                            );
+                            Ok(ObjectBytes::Found(byte_content))
+                        } else {
+                            Ok(ObjectBytes::Found(vec![])) // has no body
+                        }
+                    }
+                    Err(e) => match e {
+                        RusotoError::Service(_get_object_error) => Ok(ObjectBytes::NotFound),
+                        _ => {
+                            log::error!("get_object_bytes: {}", e.to_string());
+                            Err(Report::from(e))
+                        }
+                    },
+                }?)
+            },
+        )
+        .await?;
+        Ok(ob)
     }
 }
