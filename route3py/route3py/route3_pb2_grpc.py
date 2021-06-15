@@ -19,12 +19,23 @@ class Route3Stub(object):
                 request_serializer=route3__pb2.VersionRequest.SerializeToString,
                 response_deserializer=route3__pb2.VersionResponse.FromString,
                 )
+        self.AnalyzeDisturbance = channel.unary_unary(
+                '/grpc.route3.Route3/AnalyzeDisturbance',
+                request_serializer=route3__pb2.AnalyzeDisturbanceRequest.SerializeToString,
+                response_deserializer=route3__pb2.AnalyzeDisturbanceResponse.FromString,
+                )
 
 
 class Route3Servicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def Version(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AnalyzeDisturbance(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -37,6 +48,11 @@ def add_Route3Servicer_to_server(servicer, server):
                     servicer.Version,
                     request_deserializer=route3__pb2.VersionRequest.FromString,
                     response_serializer=route3__pb2.VersionResponse.SerializeToString,
+            ),
+            'AnalyzeDisturbance': grpc.unary_unary_rpc_method_handler(
+                    servicer.AnalyzeDisturbance,
+                    request_deserializer=route3__pb2.AnalyzeDisturbanceRequest.FromString,
+                    response_serializer=route3__pb2.AnalyzeDisturbanceResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -62,5 +78,22 @@ class Route3(object):
         return grpc.experimental.unary_unary(request, target, '/grpc.route3.Route3/Version',
             route3__pb2.VersionRequest.SerializeToString,
             route3__pb2.VersionResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def AnalyzeDisturbance(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/grpc.route3.Route3/AnalyzeDisturbance',
+            route3__pb2.AnalyzeDisturbanceRequest.SerializeToString,
+            route3__pb2.AnalyzeDisturbanceResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

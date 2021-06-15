@@ -10,6 +10,15 @@ message VersionResponse {
   string version = 1;
 }
 
+message AnalyzeDisturbanceRequest {
+  bytes wkb_geometry = 1;
+}
+
+message AnalyzeDisturbanceResponse {
+  // TODO
+}
+
 service Route3 {
   rpc Version(VersionRequest) returns (VersionResponse) {}
+  rpc AnalyzeDisturbance(AnalyzeDisturbanceRequest) returns (AnalyzeDisturbanceResponse) {}
 }

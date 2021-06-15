@@ -1,10 +1,13 @@
+use std::io::Cursor;
+
 use eyre::Result;
+use h3ron::ToH3Indexes;
 use serde::Deserialize;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use api::route3_server::{Route3, Route3Server};
-use api::{VersionRequest, VersionResponse};
+use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest, VersionResponse};
 
 use crate::io::s3::{S3Client, S3Config};
 
@@ -26,6 +29,25 @@ impl Route3 for ServerImpl {
         Ok(Response::new(VersionResponse {
             version: env!("CARGO_PKG_VERSION").to_string(),
         }))
+    }
+
+    async fn analyze_disturbance(
+        &self,
+        request: Request<AnalyzeDisturbanceRequest>,
+    ) -> std::result::Result<Response<AnalyzeDisturbanceResponse>, Status> {
+        let inner = request.into_inner();
+        let mut cursor = Cursor::new(&inner.wkb_geometry);
+        let mut cells = wkb::wkb_to_geom(&mut cursor)
+            .map_err(|e| Status::invalid_argument("could not parse WKB"))?
+            .to_h3_indexes(10)
+            .map_err(|e| Status::internal("could not convert to h3"))?;
+
+        // remove duplicates in case of multi* geometries
+        cells.sort_unstable();
+        cells.dedup();
+
+        dbg!(cells.len());
+        Ok(Response::new(AnalyzeDisturbanceResponse {}))
     }
 }
 
