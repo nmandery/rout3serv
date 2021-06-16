@@ -1,16 +1,22 @@
+use std::cmp::Ordering;
 use std::collections::HashSet;
+use std::io::Cursor;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use arrow::ipc::reader::FileReader;
+use arrow::record_batch::RecordBatch;
 use bytesize::ByteSize;
 use eyre::{Report, Result};
 use futures::TryStreamExt;
 use h3ron::{H3Cell, Index};
+use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, S3};
 use serde::Deserialize;
+use tokio::task;
 
 #[derive(Deserialize)]
 pub struct S3Config {
@@ -62,7 +68,7 @@ impl S3Client {
     }
 
     pub async fn get_object_bytes(&self, bucket: String, key: String) -> Result<ObjectBytes> {
-        log::info!("get_object_bytes: bucket={}, key={}", bucket, key);
+        log::debug!("get_object_bytes: bucket={}, key={}", bucket, key);
         let ob = backoff::future::retry(
             backoff::ExponentialBackoff {
                 max_elapsed_time: Some(self.retry_duration),
@@ -104,7 +110,12 @@ impl S3Client {
                             Ok(ObjectBytes::NotFound)
                         }
                         _ => {
-                            log::error!("get_object_bytes: {}", e.to_string());
+                            log::error!(
+                                "get_object_bytes: bucket={}, key={} -> {}",
+                                bucket,
+                                key,
+                                e.to_string()
+                            );
                             Err(Report::from(e))
                         }
                     },
@@ -122,6 +133,14 @@ pub trait S3H3Dataset {
     fn file_h3_resolution(&self) -> u8;
 }
 
+lazy_static! {
+    static ref RE_S3KEY_DATA_H3_RESOLUTION: Regex =
+        Regex::new(r"\{\s*data_h3_resolution\s*\}").unwrap();
+    static ref RE_S3KEY_FILE_H3_RESOLUTION: Regex =
+        Regex::new(r"\{\s*file_h3_resolution\s*\}").unwrap();
+    static ref RE_S3KEY_H3_CELL: Regex = Regex::new(r"\{\s*h3cell\s*\}").unwrap();
+}
+
 pub struct S3RecordBatchLoader {
     s3_client: Arc<S3Client>,
 }
@@ -136,31 +155,57 @@ impl S3RecordBatchLoader {
         dataset: D,
         cells: &[H3Cell],
         data_h3_resolution: u8,
-    ) -> Result<Vec<ObjectBytes>> {
+    ) -> Result<Vec<RecordBatch>> {
         if cells.is_empty() {
             return Ok(Default::default());
         }
-        let file_cells: HashSet<_> = cells
-            .iter()
-            .map(|c| c.get_parent(dataset.file_h3_resolution()))
-            .collect::<std::result::Result<_, _>>()?;
+        let mut file_cells = HashSet::new();
+        for cell in cells.iter() {
+            match cell.resolution().cmp(&dataset.file_h3_resolution()) {
+                Ordering::Less => cell
+                    .get_children(dataset.file_h3_resolution())
+                    .drain(..)
+                    .for_each(|cc| {
+                        file_cells.insert(cc);
+                    }),
+                Ordering::Equal => {
+                    file_cells.insert(cell.clone());
+                }
+                Ordering::Greater => {
+                    file_cells.insert(cell.get_parent(dataset.file_h3_resolution())?);
+                }
+            };
+        }
 
-        let z = futures::future::try_join_all(
-            file_cells
-                .iter()
-                .map(|cell| {
-                    self.s3_client.get_object_bytes(
-                        dataset.bucket_name(),
-                        self.build_h3_key(&dataset, cell, data_h3_resolution),
-                    )
-                })
-                .collect::<Vec<_>>() // force creating all futures before awaiting
-                .drain(..),
-        )
+        let mut task_results = futures::future::try_join_all(file_cells.iter().map(|cell| {
+            let bucket_name = dataset.bucket_name();
+            let key = self.build_h3_key(&dataset, cell, data_h3_resolution);
+            let s3_client = self.s3_client.clone();
+            task::spawn(async move {
+                s3_client
+                    .get_object_bytes(bucket_name, key)
+                    .await
+                    .and_then(|object_bytes| {
+                        let mut record_batches = vec![];
+                        if let ObjectBytes::Found(bytes) = object_bytes {
+                            let cursor = Cursor::new(&bytes);
+                            for record_batch in FileReader::try_new(cursor)? {
+                                record_batches.push(record_batch?);
+                            }
+                        };
+                        Ok(record_batches)
+                    })
+            })
+        }))
         .await?;
-        // TODO: parse arrow
 
-        Ok(Default::default())
+        let mut record_batches = Vec::with_capacity(file_cells.len());
+        for task_result in task_results.drain(..) {
+            for rb in task_result?.drain(..) {
+                record_batches.push(rb);
+            }
+        }
+        Ok(record_batches)
     }
 
     fn build_h3_key<D: S3H3Dataset>(
@@ -169,16 +214,16 @@ impl S3RecordBatchLoader {
         cell: &H3Cell,
         data_h3_resolution: u8,
     ) -> String {
-        dataset
-            .key_pattern()
-            .replace("{h3index}", cell.to_string().as_ref())
-            .replace(
-                "{file_h3_resolution}",
-                dataset.file_h3_resolution().to_string().as_ref(),
-            )
-            .replace(
-                "{data_h3_resolution}",
-                data_h3_resolution.to_string().as_ref(),
+        RE_S3KEY_H3_CELL
+            .replace_all(
+                &RE_S3KEY_FILE_H3_RESOLUTION.replace_all(
+                    &RE_S3KEY_DATA_H3_RESOLUTION.replace_all(
+                        dataset.key_pattern().as_ref(),
+                        data_h3_resolution.to_string(),
+                    ),
+                    dataset.file_h3_resolution().to_string(),
+                ),
+                cell.to_string(),
             )
             .to_string()
     }

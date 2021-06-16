@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 
+use bytesize::ByteSize;
 use eyre::Result;
 #[cfg(feature = "gdal")]
 use gdal::vector::{Defn, Feature, FieldDefn, OGRFieldType, OGRwkbGeometryType, ToGdal};
@@ -98,9 +99,17 @@ pub fn print_graph_stats(graph: &Graph) -> Result<()> {
 }
 
 pub fn load_graph_from_byte_slice(slice: &[u8]) -> Result<Graph> {
+    log::debug!(
+        "Deserializing graph. {} bytes ({})",
+        slice.len(),
+        ByteSize(slice.len() as u64)
+    );
     let fx_reader = flexbuffers::Reader::get_root(slice)?;
     let graph = Graph::deserialize(fx_reader)?;
-    print_graph_stats(&graph)?;
+    log::debug!(
+        "Stats of the deserialized graph: {}",
+        serde_json::to_string(&GraphStats::new(&graph))?
+    );
     Ok(graph)
 }
 

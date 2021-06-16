@@ -95,6 +95,9 @@ impl Route3 for ServerImpl {
             )
             .await
             .map_err(|e| Status::internal("pop"))?;
+        for pop in population.iter() {
+            dbg!(pop.num_columns(), pop.num_rows());
+        }
 
         Ok(Response::new(AnalyzeDisturbanceResponse {}))
     }
