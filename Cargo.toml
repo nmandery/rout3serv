@@ -4,11 +4,11 @@ members = [
 ]
 
 [profile.release]
-opt-level = 3
+#opt-level = 3
 # include full debug info. inceases size of the binary, but that should not matter
 # for this tool
 debug = 2
 # enable lto. increases compilation time
-lto = true
+#lto = true
 # just few codegen units. slower compilation, but faster code
-codegen-units = 1
+#codegen-units = 1

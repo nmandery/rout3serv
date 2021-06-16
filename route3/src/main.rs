@@ -28,13 +28,13 @@ fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
     if let Some(highway_value) = tags.get("highway") {
         match highway_value.to_lowercase().as_str() {
             "motorway" | "motorway_link" | "trunk" | "trunk_link" | "primary" | "primary_link" => {
-                Some(10)
+                Some(3)
             }
-            "secondary" | "secondary_link" => Some(8),
+            "secondary" | "secondary_link" => Some(4),
             "tertiary" | "tertiary_link" => Some(5),
-            "unclassified" | "residential" | "living_street" => Some(3),
-            "road" => Some(1),
-            //"service" | "track" => Some(1),
+            "unclassified" | "residential" | "living_street" => Some(8),
+            "road" => Some(12),
+            //"service" | "track" => Some(20),
             _ => None,
         }
         .map(|weight| {
@@ -210,8 +210,8 @@ fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     };
     let gj_geom = geojson::Geometry::try_from(&multi_poly)?;
     outfile.write_all(gj_geom.to_string().as_ref())?;
-    outfile.flush()?;
 
+    outfile.flush()?;
     Ok(())
 }
 

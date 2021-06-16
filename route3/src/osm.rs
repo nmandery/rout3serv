@@ -13,7 +13,11 @@ use crate::graph::{EdgeProperties, Graph, GraphBuilder};
 pub struct OsmPbfGraphBuilder<F: Fn(&Tags) -> Option<EdgeProperties>> {
     h3_resolution: u8,
     edge_properties_fn: F,
+
+    // hashmaps for deduplicating edges
     edges_weight: HashMap<(usize, usize), usize>,
+    edges_weight_bidir: HashMap<(usize, usize), usize>,
+
     cell_nodes: IndexSet<H3Cell>,
 }
 
@@ -26,20 +30,31 @@ where
             h3_resolution,
             edge_properties_fn,
             edges_weight: Default::default(),
+            edges_weight_bidir: Default::default(),
             cell_nodes: Default::default(),
         }
     }
 
-    fn set_edge_weight(&mut self, node_cell1: usize, node_cell2: usize, weight: usize) {
-        self.edges_weight
-            .entry((node_cell1, node_cell2))
-            .and_modify(|v| {
-                if *v < weight {
-                    // TODO: min or max?
-                    *v = weight
-                }
-            })
-            .or_insert(weight);
+    fn set_edge_weight(
+        &mut self,
+        node_cell1: usize,
+        node_cell2: usize,
+        weight: usize,
+        bidirectional: bool,
+    ) {
+        if bidirectional {
+            &mut self.edges_weight_bidir
+        } else {
+            &mut self.edges_weight
+        }
+        .entry((node_cell1, node_cell2))
+        .and_modify(|v| {
+            // lower weights are preferred
+            if *v > weight {
+                *v = weight
+            }
+        })
+        .or_insert(weight);
     }
 
     pub fn read_pbf(&mut self, pbf_path: &Path) -> Result<()> {
@@ -69,14 +84,17 @@ where
                             h3indexes.dedup();
 
                             for window in h3indexes.windows(2) {
-                                let (cell1, cell2) = ordered_h3index_pair(&window[0], &window[1])?;
-                                let (node_cell1, _) = self.cell_nodes.insert_full(cell1);
-                                let (node_cell2, _) = self.cell_nodes.insert_full(cell2);
+                                let (node_cell1, _) =
+                                    self.cell_nodes.insert_full(H3Cell::try_from(window[0])?);
+                                let (node_cell2, _) =
+                                    self.cell_nodes.insert_full(H3Cell::try_from(window[1])?);
 
-                                if edge_props.is_bidirectional {
-                                    self.set_edge_weight(node_cell2, node_cell1, edge_props.weight);
-                                }
-                                self.set_edge_weight(node_cell1, node_cell2, edge_props.weight);
+                                self.set_edge_weight(
+                                    node_cell1,
+                                    node_cell2,
+                                    edge_props.weight,
+                                    edge_props.is_bidirectional,
+                                );
                             }
                         }
                     }
@@ -88,19 +106,6 @@ where
     }
 }
 
-fn ordered_h3index_pair(h3index_1: &u64, h3index_2: &u64) -> Result<(H3Cell, H3Cell)> {
-    // have the edges in the same direction, independent of the input
-    let (a, b) = if h3index_1 == h3index_2 {
-        return Err(eyre::Report::from(h3ron::Error::LineNotComputable));
-    } else if h3index_1 < h3index_2 {
-        (h3index_1, h3index_2)
-    } else {
-        (h3index_2, h3index_1)
-    };
-
-    Ok((H3Cell::try_from(*a)?, H3Cell::try_from(*b)?))
-}
-
 impl<F> GraphBuilder for OsmPbfGraphBuilder<F>
 where
     F: Fn(&Tags) -> Option<EdgeProperties>,
@@ -108,6 +113,9 @@ where
     fn build_graph(mut self) -> Result<Graph> {
         let mut input_graph = fast_paths::InputGraph::new();
 
+        for ((node_id1, node_id2), weight) in self.edges_weight_bidir.drain() {
+            input_graph.add_edge_bidir(node_id1, node_id2, weight);
+        }
         for ((node_id1, node_id2), weight) in self.edges_weight.drain() {
             input_graph.add_edge(node_id1, node_id2, weight);
         }
