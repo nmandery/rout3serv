@@ -1,9 +1,12 @@
+use std::collections::HashSet;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use bytesize::ByteSize;
 use eyre::{Report, Result};
 use futures::TryStreamExt;
+use h3ron::{H3Cell, Index};
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, S3};
@@ -110,5 +113,73 @@ impl S3Client {
         )
         .await?;
         Ok(ob)
+    }
+}
+
+pub trait S3H3Dataset {
+    fn bucket_name(&self) -> String;
+    fn key_pattern(&self) -> String;
+    fn file_h3_resolution(&self) -> u8;
+}
+
+pub struct S3RecordBatchLoader {
+    s3_client: Arc<S3Client>,
+}
+
+impl S3RecordBatchLoader {
+    pub fn new(s3_client: Arc<S3Client>) -> Self {
+        Self { s3_client }
+    }
+
+    pub async fn load_h3_dataset<D: S3H3Dataset>(
+        &self,
+        dataset: D,
+        cells: &[H3Cell],
+        data_h3_resolution: u8,
+    ) -> Result<Vec<ObjectBytes>> {
+        if cells.is_empty() {
+            return Ok(Default::default());
+        }
+        let file_cells: HashSet<_> = cells
+            .iter()
+            .map(|c| c.get_parent(dataset.file_h3_resolution()))
+            .collect::<std::result::Result<_, _>>()?;
+
+        let z = futures::future::try_join_all(
+            file_cells
+                .iter()
+                .map(|cell| {
+                    self.s3_client.get_object_bytes(
+                        dataset.bucket_name(),
+                        self.build_h3_key(&dataset, cell, data_h3_resolution),
+                    )
+                })
+                .collect::<Vec<_>>() // force creating all futures before awaiting
+                .drain(..),
+        )
+        .await?;
+        // TODO: parse arrow
+
+        Ok(Default::default())
+    }
+
+    fn build_h3_key<D: S3H3Dataset>(
+        &self,
+        dataset: &D,
+        cell: &H3Cell,
+        data_h3_resolution: u8,
+    ) -> String {
+        dataset
+            .key_pattern()
+            .replace("{h3index}", cell.to_string().as_ref())
+            .replace(
+                "{file_h3_resolution}",
+                dataset.file_h3_resolution().to_string().as_ref(),
+            )
+            .replace(
+                "{data_h3_resolution}",
+                data_h3_resolution.to_string().as_ref(),
+            )
+            .to_string()
     }
 }

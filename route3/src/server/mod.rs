@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
 use std::io::Cursor;
+use std::sync::Arc;
 
 use eyre::{Report, Result};
-use h3ron::{H3Cell, Index, ToH3Indexes};
+use h3ron::ToH3Indexes;
 use serde::Deserialize;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
@@ -12,7 +12,7 @@ use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest,
 
 use crate::graph::Graph;
 use crate::io::load_graph_from_byte_slice;
-use crate::io::s3::{ObjectBytes, S3Client, S3Config};
+use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 
 mod api {
     use tonic::include_proto;
@@ -22,13 +22,13 @@ mod api {
 
 struct ServerImpl {
     config: ServerConfig,
-    s3_client: S3Client,
+    s3_client: Arc<S3Client>,
     graph: Graph,
 }
 
 impl ServerImpl {
     pub async fn create(config: ServerConfig) -> Result<Self> {
-        let s3_client = S3Client::from_config(&config.s3)?;
+        let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
 
         let graph = match s3_client
             .get_object_bytes(config.graph.bucket.clone(), config.graph.key.clone())
@@ -49,35 +49,6 @@ impl ServerImpl {
             s3_client,
             graph,
         })
-    }
-
-    async fn load_population(&self, cells: &[H3Cell]) -> Result<HashMap<H3Cell, f32>> {
-        if cells.is_empty() {
-            return Ok(Default::default());
-        }
-        let population_cells: HashSet<_> = cells
-            .iter()
-            .map(|c| c.get_parent(self.config.population_dataset.file_h3_resolution))
-            .collect::<std::result::Result<_, _>>()?;
-
-        let z = futures::future::try_join_all(
-            population_cells
-                .iter()
-                .map(|cell| {
-                    self.s3_client.get_object_bytes(
-                        self.config.population_dataset.bucket.clone(),
-                        self.config
-                            .population_dataset
-                            .build_key(cell, self.graph.h3_resolution),
-                    )
-                })
-                .collect::<Vec<_>>() // force creating all futures before awaiting
-                .drain(..),
-        )
-        .await?;
-        // TODO: parse arrow
-
-        Ok(Default::default())
     }
 }
 
@@ -115,8 +86,13 @@ impl Route3 for ServerImpl {
 
         dbg!(cells.len());
 
-        let population = self
-            .load_population(&cells)
+        let loader = S3RecordBatchLoader::new(self.s3_client.clone());
+        let population = loader
+            .load_h3_dataset(
+                self.config.population_dataset.clone(),
+                &cells,
+                self.graph.h3_resolution,
+            )
             .await
             .map_err(|e| Status::internal("pop"))?;
 
@@ -130,26 +106,24 @@ pub struct GraphConfig {
     bucket: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct PopulationDatasetConfig {
     key_pattern: String,
     bucket: String,
     file_h3_resolution: u8,
 }
 
-impl PopulationDatasetConfig {
-    pub fn build_key(&self, cell: &H3Cell, data_h3_resolution: u8) -> String {
-        self.key_pattern
-            .replace("{h3index}", cell.to_string().as_ref())
-            .replace(
-                "{file_h3_resolution}",
-                self.file_h3_resolution.to_string().as_ref(),
-            )
-            .replace(
-                "{data_h3_resolution}",
-                data_h3_resolution.to_string().as_ref(),
-            )
-            .to_string()
+impl S3H3Dataset for PopulationDatasetConfig {
+    fn bucket_name(&self) -> String {
+        self.bucket.clone()
+    }
+
+    fn key_pattern(&self) -> String {
+        self.key_pattern.clone()
+    }
+
+    fn file_h3_resolution(&self) -> u8 {
+        self.file_h3_resolution
     }
 }
 
