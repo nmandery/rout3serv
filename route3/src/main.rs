@@ -15,7 +15,7 @@ use osmpbfreader::Tags;
 
 use crate::graph::{EdgeProperties, GraphBuilder};
 #[cfg(feature = "gdal")]
-use crate::io::OgrWrite;
+use crate::io::gdal::OgrWrite;
 use crate::io::{load_graph_from_reader, print_graph_stats, save_graph_to_file};
 
 mod graph;
