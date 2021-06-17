@@ -1,4 +1,6 @@
-use eyre::Result;
+use std::collections::HashSet;
+
+use eyre::{Report, Result};
 use h3ron::H3Cell;
 use indexmap::set::IndexSet;
 use serde::{Deserialize, Serialize};
@@ -17,6 +19,37 @@ pub struct Graph {
     /// to H3Cells
     pub cell_nodes: IndexSet<H3Cell>,
     pub h3_resolution: u8,
+}
+
+impl Graph {
+    pub fn build_graph_without_cells(&self, cells: &[H3Cell]) -> Result<fast_paths::FastGraph> {
+        let mut modified_input_graph = fast_paths::InputGraph::new();
+
+        let cell_nodes_to_exclude: HashSet<_> = cells
+            .iter()
+            .filter_map(|cell| self.cell_nodes.get_full(cell).map(|(node, _)| node))
+            .collect();
+
+        for edge in self.input_graph.get_edges() {
+            modified_input_graph.add_edge(
+                edge.from,
+                edge.to,
+                if cell_nodes_to_exclude.contains(&edge.from)
+                    || cell_nodes_to_exclude.contains(&edge.to)
+                {
+                    fast_paths::WEIGHT_MAX
+                } else {
+                    edge.weight
+                },
+            );
+        }
+        modified_input_graph.freeze();
+        let modified_graph =
+            fast_paths::prepare_with_order(&modified_input_graph, &self.graph.get_node_ordering())
+                .map_err(Report::msg)?;
+
+        Ok(modified_graph)
+    }
 }
 
 pub trait GraphBuilder {

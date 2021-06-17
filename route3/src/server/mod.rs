@@ -86,6 +86,13 @@ impl Route3 for ServerImpl {
 
         dbg!(cells.len());
 
+        dbg!(self.graph.graph.get_num_nodes());
+        let ng = self
+            .graph
+            .build_graph_without_cells(&cells)
+            .map_err(|_| Status::internal("graph"))?;
+        dbg!(ng.get_num_nodes());
+
         let loader = S3RecordBatchLoader::new(self.s3_client.clone());
         let population = loader
             .load_h3_dataset(
