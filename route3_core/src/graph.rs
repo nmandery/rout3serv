@@ -33,8 +33,21 @@ impl Graph {
 mod tests {
 
     #[test]
-    /// check if fast_paths routes in both directions or just in one
     fn fast_paths_bidirectional_routing() {
+        let mut input_graph = fast_paths::InputGraph::new();
+        input_graph.add_edge_bidir(1, 2, 10);
+        input_graph.freeze();
+
+        let graph = fast_paths::prepare(&input_graph);
+        let p1 = fast_paths::calc_path(&graph, 1, 2);
+        assert!(p1.is_some());
+
+        let p2 = fast_paths::calc_path(&graph, 2, 1);
+        assert!(p2.is_some());
+    }
+
+    #[test]
+    fn fast_paths_unidirectional_routing() {
         let mut input_graph = fast_paths::InputGraph::new();
         input_graph.add_edge(1, 2, 10);
         input_graph.freeze();

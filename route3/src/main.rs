@@ -4,56 +4,19 @@ extern crate lazy_static;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
 use geo::algorithm::simplify::Simplify;
-use geo_types::{MultiPolygon, Polygon};
-use h3ron::{Index, ToLinkedPolygons};
-use osmpbfreader::Tags;
 
-use crate::graph::{EdgeProperties, GraphBuilder};
+use route3_core::geo_types::{MultiPolygon, Polygon};
+use route3_core::h3ron::{Index, ToLinkedPolygons};
 #[cfg(feature = "gdal")]
-use crate::io::gdal::OgrWrite;
-use crate::io::{load_graph_from_reader, print_graph_stats, save_graph_to_file};
+use route3_core::io::gdal::OgrWrite;
+use route3_core::io::load_graph_from_reader;
 
-mod graph;
 mod io;
-mod osm;
 mod server;
-
-fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
-    // https://wiki.openstreetmap.org/wiki/Key:highway
-    if let Some(highway_value) = tags.get("highway") {
-        match highway_value.to_lowercase().as_str() {
-            "motorway" | "motorway_link" | "trunk" | "trunk_link" | "primary" | "primary_link" => {
-                Some(3)
-            }
-            "secondary" | "secondary_link" => Some(4),
-            "tertiary" | "tertiary_link" => Some(5),
-            "unclassified" | "residential" | "living_street" => Some(8),
-            "road" => Some(12),
-            //"service" | "track" => Some(20),
-            _ => None,
-        }
-        .map(|weight| {
-            // oneway streets (https://wiki.openstreetmap.org/wiki/Key:oneway)
-            // NOTE: reversed direction "oneway=-1" is not supported
-            let is_bidirectional = tags
-                .get("oneway")
-                .map(|v| v.to_lowercase() != "yes")
-                .unwrap_or(true);
-
-            EdgeProperties {
-                is_bidirectional,
-                weight,
-            }
-        })
-    } else {
-        None
-    }
-}
 
 fn main() -> Result<()> {
     env_logger::init_from_env(
@@ -63,27 +26,6 @@ fn main() -> Result<()> {
     let mut app = App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
-        .subcommand(
-            SubCommand::with_name("build-from-osm-pbf")
-                .about("Build a routing graph from an OSM PBF file")
-                .arg(
-                    Arg::with_name("h3_resolution")
-                        .short("r")
-                        .takes_value(true)
-                        .default_value("10"),
-                )
-                .arg(
-                    Arg::with_name("OUTPUT-GRAPH")
-                        .help("output file to write the graph to")
-                        .required(true),
-                )
-                .arg(
-                    Arg::with_name("OSM-PBF")
-                        .help("input OSM .pbf file")
-                        .required(true)
-                        .min_values(1),
-                ),
-        )
         .subcommand(
             SubCommand::with_name("graph-stats")
                 .about("Load a graph and print some basic stats")
@@ -101,7 +43,7 @@ fn main() -> Result<()> {
         )
         .subcommand(
             SubCommand::with_name("server")
-                .about("start the GRPC server")
+                .about("Start the GRPC server")
                 .arg(
                     Arg::with_name("CONFIG-FILE")
                         .help("server configuration file")
@@ -137,22 +79,6 @@ fn main() -> Result<()> {
     let matches = app.get_matches();
 
     match matches.subcommand() {
-        ("build-from-osm-pbf", Some(sc_matches)) => {
-            let h3_resolution: u8 = sc_matches.value_of("h3_resolution").unwrap().parse()?;
-            let graph_output = sc_matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
-
-            let mut builder = crate::osm::OsmPbfGraphBuilder::new(h3_resolution, way_properties);
-            for pbf_input in sc_matches.values_of("OSM-PBF").unwrap() {
-                builder.read_pbf(Path::new(&pbf_input))?;
-            }
-            let graph = builder.build_graph()?;
-
-            log::info!("Created graph");
-            print_graph_stats(&graph)?;
-
-            let mut out_file = File::create(graph_output)?;
-            save_graph_to_file(&graph, &mut out_file)?;
-        }
         ("graph-stats", Some(sc_matches)) => {
             let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
             let _ = load_graph_from_reader(File::open(graph_filename)?)?;
@@ -160,7 +86,9 @@ fn main() -> Result<()> {
         ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
         ("graph-covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
         ("server", Some(sc_matches)) => subcommand_server(sc_matches)?,
-        _ => unreachable!(),
+        _ => {
+            println!("unknown command");
+        }
     }
     Ok(())
 }
@@ -194,7 +122,7 @@ fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
             .cell_nodes
             .iter()
             .map(|cell| cell.get_parent(t_res))
-            .collect::<Result<_, h3ron::Error>>()?;
+            .collect::<Result<_, route3_core::h3ron::Error>>()?;
         cells.sort_unstable();
         cells.dedup();
 

@@ -1,0 +1,29 @@
+[package]
+name = "route3_core"
+version = "0.1.0"
+authors = ["Nico Mandery <nico@nmandery.net>"]
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+fast_paths = "0.2.0"
+h3ron = "0.11.0"
+eyre = "0.6"
+geo-types = "0.7"
+flexbuffers = "2.0"
+bytesize = "1"
+serde_json = "1"
+toml = "0.5"
+
+[dependencies.indexmap]
+version = "^1"
+features = ["serde-1"]
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.gdal]
+version = "0.8.0"
+optional = true
+

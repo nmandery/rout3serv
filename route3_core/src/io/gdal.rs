@@ -6,13 +6,11 @@ use h3ron::ToCoordinate;
 
 use crate::graph::Graph;
 
-#[cfg(feature = "gdal")]
 pub trait OgrWrite {
     fn ogr_write<T: AsRef<str>>(&self, driver_name: T, output_name: T, layer_name: T)
         -> Result<()>;
 }
 
-#[cfg(feature = "gdal")]
 impl OgrWrite for Graph {
     fn ogr_write<T: AsRef<str>>(
         &self,

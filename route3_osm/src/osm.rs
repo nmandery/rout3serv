@@ -3,12 +3,13 @@ use std::convert::TryFrom;
 use std::path::Path;
 
 use eyre::Result;
-use geo_types::{Coordinate, LineString};
-use h3ron::H3Cell;
-use indexmap::set::IndexSet;
 use osmpbfreader::{OsmPbfReader, Tags};
 
-use crate::graph::{EdgeProperties, Graph, GraphBuilder};
+use route3_core::geo_types::{Coordinate, LineString};
+use route3_core::graph::{EdgeProperties, Graph, GraphBuilder};
+use route3_core::h3ron::H3Cell;
+use route3_core::indexmap::set::IndexSet;
+use route3_core::{fast_paths, h3ron};
 
 pub struct OsmPbfGraphBuilder<F: Fn(&Tags) -> Option<EdgeProperties>> {
     h3_resolution: u8,
