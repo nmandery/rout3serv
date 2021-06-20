@@ -8,7 +8,7 @@ use tonic::{Request, Response, Status};
 
 use api::route3_server::{Route3, Route3Server};
 use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest, VersionResponse};
-use route3_core::graph::Graph;
+use route3_core::graph::H3Graph;
 use route3_core::h3ron::ToH3Indexes;
 use route3_core::io::load_graph_from_byte_slice;
 
@@ -23,7 +23,7 @@ mod api {
 struct ServerImpl {
     config: ServerConfig,
     s3_client: Arc<S3Client>,
-    graph: Graph,
+    graph: H3Graph,
 }
 
 impl ServerImpl {

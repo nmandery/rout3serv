@@ -6,7 +6,7 @@ use eyre::Result;
 use osmpbfreader::{OsmPbfReader, Tags};
 
 use route3_core::geo_types::{Coordinate, LineString};
-use route3_core::graph::{EdgeProperties, Graph, GraphBuilder};
+use route3_core::graph::{EdgeProperties, GraphBuilder, H3Graph};
 use route3_core::h3ron::H3Cell;
 use route3_core::indexmap::set::IndexSet;
 use route3_core::{fast_paths, h3ron};
@@ -111,7 +111,7 @@ impl<F> GraphBuilder for OsmPbfGraphBuilder<F>
 where
     F: Fn(&Tags) -> Option<EdgeProperties>,
 {
-    fn build_graph(mut self) -> Result<Graph> {
+    fn build_graph(mut self) -> Result<H3Graph> {
         let mut input_graph = fast_paths::InputGraph::new();
 
         for ((node_id1, node_id2), weight) in self.edges_weight_bidir.drain() {
@@ -123,7 +123,7 @@ where
         input_graph.freeze();
         let graph = fast_paths::prepare(&input_graph);
 
-        Ok(Graph {
+        Ok(H3Graph {
             input_graph,
             graph,
             cell_nodes: self.cell_nodes,

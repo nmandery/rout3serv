@@ -1,8 +1,8 @@
-use std::collections::HashSet;
+use std::ops::Add;
 
 use eyre::{Report, Result};
-use h3ron::H3Cell;
-use indexmap::set::IndexSet;
+use h3ron::{H3Cell, H3Edge};
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 pub struct EdgeProperties {
@@ -10,86 +10,124 @@ pub struct EdgeProperties {
     pub weight: usize,
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Graph {
-    pub input_graph: fast_paths::InputGraph,
-    pub graph: fast_paths::FastGraph,
+#[derive(Serialize)]
+pub struct GraphStats {
+    pub h3_resolution: u8,
+    pub num_nodes: usize,
+    pub num_edges: usize,
+}
 
-    /// lookup to correlate the continuous NodeIds of the FastGraph
-    /// to H3Cells
-    pub cell_nodes: IndexSet<H3Cell>,
+#[derive(Serialize, Deserialize)]
+pub struct H3Graph<T: PartialOrd + PartialOrd + Add + Copy> {
+    pub edges: FxHashMap<H3Edge, T>,
     pub h3_resolution: u8,
 }
 
-impl Graph {
-    pub fn build_graph_without_cells(&self, cells: &[H3Cell]) -> Result<fast_paths::FastGraph> {
-        let mut modified_input_graph = fast_paths::InputGraph::new();
-
-        let cell_nodes_to_exclude: HashSet<_> = cells
-            .iter()
-            .filter_map(|cell| self.cell_nodes.get_full(cell).map(|(node, _)| node))
-            .collect();
-
-        for edge in self.input_graph.get_edges() {
-            modified_input_graph.add_edge(
-                edge.from,
-                edge.to,
-                if cell_nodes_to_exclude.contains(&edge.from)
-                    || cell_nodes_to_exclude.contains(&edge.to)
-                {
-                    fast_paths::WEIGHT_MAX
-                } else {
-                    edge.weight
-                },
-            );
+impl<T> H3Graph<T>
+where
+    T: PartialOrd + PartialEq + Add + Copy,
+{
+    pub fn num_nodes(&self) -> usize {
+        let mut node_set = FxHashSet::default();
+        for (edge, _) in self.edges.iter() {
+            node_set.insert(edge.destination_index_unchecked());
+            node_set.insert(edge.origin_index_unchecked());
         }
-        modified_input_graph.freeze();
-        let modified_graph =
-            fast_paths::prepare_with_order(&modified_input_graph, &self.graph.get_node_ordering())
-                .map_err(Report::msg)?;
+        node_set.len()
+    }
 
-        Ok(modified_graph)
+    pub fn num_edges(&self) -> usize {
+        self.edges.len()
+    }
+
+    pub fn edge_weight(&self, edge: &H3Edge) -> Option<&T> {
+        self.edges.get(edge)
+    }
+
+    /// get all edges in the graph leading from this edge to neighbors
+    pub fn edges_from_cell(&self, cell: &H3Cell) -> Vec<(&H3Edge, &T)> {
+        cell.unidirectional_edges()
+            .iter()
+            .filter_map(|edge| self.edges.get_key_value(edge))
+            .collect()
+    }
+
+    /// get all edges in the graph leading to this cell to neighbors
+    pub fn edges_to_cell(&self, cell: &H3Cell) -> Vec<(&H3Edge, &T)> {
+        cell.k_ring(1)
+            .drain(..)
+            .filter(|ring_cell| ring_cell != cell)
+            .flat_map(|ring_cell| {
+                ring_cell
+                    .unidirectional_edges()
+                    .drain(..)
+                    .filter_map(|edge| self.edges.get_key_value(&edge))
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    pub fn add_edge_using_cells(
+        &mut self,
+        cell_from: H3Cell,
+        cell_to: H3Cell,
+        weight: T,
+    ) -> Result<()> {
+        let edge = cell_from.unidirectional_edge_to(&cell_to)?;
+        self.add_edge(edge, weight);
+        Ok(())
+    }
+
+    pub fn add_edge_using_cells_bidirectional(
+        &mut self,
+        cell_from: H3Cell,
+        cell_to: H3Cell,
+        weight: T,
+    ) -> Result<()> {
+        self.add_edge_using_cells(cell_from, cell_to, weight)?;
+        self.add_edge_using_cells(cell_to, cell_from, weight)
+    }
+
+    pub fn add_edge(&mut self, edge: H3Edge, weight: T) {
+        self.edges
+            .entry(edge)
+            .and_modify(|self_weight| {
+                // lower weight takes precedence
+                if weight < *self_weight {
+                    *self_weight = weight
+                }
+            })
+            .or_insert(weight);
+    }
+
+    pub fn try_add(&mut self, mut other: H3Graph<T>) -> Result<()> {
+        if self.h3_resolution != other.h3_resolution {
+            return Err(Report::from(h3ron::error::Error::MixedResolutions(
+                self.h3_resolution,
+                other.h3_resolution,
+            )));
+        }
+        for (edge, weight) in other.edges.drain() {
+            self.add_edge(edge, weight);
+        }
+        Ok(())
+    }
+
+    pub fn stats(&self) -> GraphStats {
+        GraphStats {
+            h3_resolution: self.h3_resolution,
+            num_nodes: self.num_nodes(),
+            num_edges: self.num_edges(),
+        }
     }
 }
 
-pub trait GraphBuilder {
-    fn build_graph(self) -> Result<Graph>;
-}
-
-impl Graph {
-    pub fn h3cell_by_nodeid(&self, node_id: usize) -> Result<&H3Cell> {
-        Ok(self.cell_nodes.get_index(node_id).unwrap()) // TODO
-    }
+pub trait GraphBuilder<T>
+where
+    T: PartialOrd + PartialEq + Add + Copy,
+{
+    fn build_graph(self) -> Result<H3Graph<T>>;
 }
 
 #[cfg(test)]
-mod tests {
-
-    #[test]
-    fn fast_paths_bidirectional_routing() {
-        let mut input_graph = fast_paths::InputGraph::new();
-        input_graph.add_edge_bidir(1, 2, 10);
-        input_graph.freeze();
-
-        let graph = fast_paths::prepare(&input_graph);
-        let p1 = fast_paths::calc_path(&graph, 1, 2);
-        assert!(p1.is_some());
-
-        let p2 = fast_paths::calc_path(&graph, 2, 1);
-        assert!(p2.is_some());
-    }
-
-    #[test]
-    fn fast_paths_unidirectional_routing() {
-        let mut input_graph = fast_paths::InputGraph::new();
-        input_graph.add_edge(1, 2, 10);
-        input_graph.freeze();
-
-        let graph = fast_paths::prepare(&input_graph);
-        let p1 = fast_paths::calc_path(&graph, 1, 2);
-        assert!(p1.is_some());
-
-        let p2 = fast_paths::calc_path(&graph, 2, 1);
-        assert!(p2.is_none());
-    }
-}
+mod tests {}
