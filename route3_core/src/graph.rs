@@ -5,11 +5,6 @@ use h3ron::{H3Cell, H3Edge};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
-pub struct EdgeProperties {
-    pub is_bidirectional: bool,
-    pub weight: usize,
-}
-
 #[derive(Serialize)]
 pub struct GraphStats {
     pub h3_resolution: u8,
@@ -18,7 +13,10 @@ pub struct GraphStats {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct H3Graph<T: PartialOrd + PartialOrd + Add + Copy> {
+#[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
+pub struct H3Graph<T> {
+    // flexbuffers can only handle maps with string keys
+    #[serde(with = "serde_with::rust::map_as_tuple_list")]
     pub edges: FxHashMap<H3Edge, T>,
     pub h3_resolution: u8,
 }
@@ -27,6 +25,13 @@ impl<T> H3Graph<T>
 where
     T: PartialOrd + PartialEq + Add + Copy,
 {
+    pub fn new(h3_resolution: u8) -> Self {
+        Self {
+            h3_resolution,
+            edges: Default::default(),
+        }
+    }
+
     pub fn num_nodes(&self) -> usize {
         let mut node_set = FxHashSet::default();
         for (edge, _) in self.edges.iter() {

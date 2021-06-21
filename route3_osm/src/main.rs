@@ -5,14 +5,14 @@ use clap::{App, Arg, SubCommand};
 use eyre::Result;
 use osmpbfreader::Tags;
 
-use route3_core::graph::{EdgeProperties, GraphBuilder};
-use route3_core::io::{print_graph_stats, save_graph_to_file};
+use route3_core::graph::GraphBuilder;
+use route3_core::io::save_graph_to_file;
 
-use crate::osm::OsmPbfGraphBuilder;
+use crate::osm::{EdgeProperties, OsmPbfGraphBuilder};
 
 mod osm;
 
-fn way_properties(tags: &Tags) -> Option<EdgeProperties> {
+fn way_properties(tags: &Tags) -> Option<EdgeProperties<u64>> {
     // https://wiki.openstreetmap.org/wiki/Key:highway
     if let Some(highway_value) = tags.get("highway") {
         match highway_value.to_lowercase().as_str() {
@@ -86,8 +86,11 @@ fn main() -> Result<()> {
             }
             let graph = builder.build_graph()?;
 
-            log::info!("Created graph");
-            print_graph_stats(&graph)?;
+            log::info!(
+                "Created graph ({} nodes, {} edges)",
+                graph.num_nodes(),
+                graph.num_edges()
+            );
 
             let mut out_file = File::create(graph_output)?;
             save_graph_to_file(&graph, &mut out_file)?;

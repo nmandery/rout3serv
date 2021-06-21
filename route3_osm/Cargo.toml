@@ -4,12 +4,11 @@ version = "0.1.0"
 authors = ["Nico Mandery <nico@nmandery.net>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-osmpbfreader = "0.14.0"
-route3_core = { path = "../route3_core"}
-eyre = "0.6"
 clap = "^2.33"
 env_logger = "0.8"
+eyre = "0.6"
 log = "0.4"
+osmpbfreader = "0.14.0"
+route3_core = { path = "../route3_core" }
+rustc-hash = "1.1"

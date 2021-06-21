@@ -14,7 +14,7 @@ pub mod gdal;
 
 pub fn load_graph_from_byte_slice<'de, T>(slice: &'de [u8]) -> Result<H3Graph<T>>
 where
-    T: Copy + Add + PartialOrd + PartialEq + Deserialize<'de>,
+    T: PartialOrd + PartialEq + Add + Copy + Deserialize<'de>,
 {
     log::debug!(
         "Deserializing graph. {} bytes ({})",
@@ -32,16 +32,16 @@ where
 
 pub fn load_graph<R: std::io::Read, T>(mut reader: R) -> Result<H3Graph<T>>
 where
-    T: Copy + Add + PartialOrd + PartialEq + DeserializeOwned,
+    T: PartialOrd + PartialEq + Add + Copy + DeserializeOwned,
 {
     let mut raw_data: Vec<u8> = Default::default();
     reader.read_to_end(&mut raw_data)?;
     load_graph_from_byte_slice(raw_data.as_slice())
 }
 
-pub fn save_graph_to_file<T: Serialize>(graph: &H3Graph<T>, out_file: &mut File) -> Result<()>
+pub fn save_graph_to_file<T>(graph: &H3Graph<T>, out_file: &mut File) -> Result<()>
 where
-    T: Copy + Add + PartialOrd + PartialEq,
+    T: PartialOrd + PartialEq + Add + Copy + Serialize,
 {
     let mut serializer = flexbuffers::FlexbufferSerializer::new();
     graph.serialize(&mut serializer)?;
