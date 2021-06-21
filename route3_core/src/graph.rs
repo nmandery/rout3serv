@@ -1,9 +1,14 @@
 use std::ops::Add;
 
 use eyre::{Report, Result};
+use geo_types::MultiPolygon;
 use h3ron::{H3Cell, H3Edge};
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
+
+use crate::geo_types::Polygon;
+use crate::h3ron::{Index, ToLinkedPolygons};
+use geo::algorithm::simplify::Simplify;
 
 #[derive(Serialize)]
 pub struct GraphStats {
@@ -124,6 +129,26 @@ where
             num_nodes: self.num_nodes(),
             num_edges: self.num_edges(),
         }
+    }
+
+    pub fn covered_area(&self) -> Result<MultiPolygon<f64>> {
+        let t_res = self.h3_resolution.saturating_sub(3);
+        let mut cells = FxHashSet::default();
+        for (edge, _) in self.edges.iter() {
+            cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
+            cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
+        }
+        let cell_vec: Vec<_> = cells.drain().collect();
+        let mp = MultiPolygon::from(
+            cell_vec
+                // remove the number of vertices by smoothing
+                .to_linked_polygons(true)
+                .drain(..)
+                // reduce the number of vertices again and discard all holes
+                .map(|p| Polygon::new(p.exterior().simplify(&0.000001), vec![]))
+                .collect::<Vec<_>>(),
+        );
+        Ok(mp)
     }
 }
 

@@ -7,14 +7,14 @@ use std::io::Write;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
-use geo::algorithm::simplify::Simplify;
 
-use route3_core::geo_types::{MultiPolygon, Polygon};
-use route3_core::h3ron::{Index, ToLinkedPolygons};
 #[cfg(feature = "gdal")]
 use route3_core::io::gdal::OgrWrite;
-use route3_core::io::load_graph_from_reader;
+use route3_core::io::load_graph;
 
+use crate::constants::GraphType;
+
+mod constants;
 mod io;
 mod server;
 
@@ -81,7 +81,7 @@ fn main() -> Result<()> {
     match matches.subcommand() {
         ("graph-stats", Some(sc_matches)) => {
             let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-            let _ = load_graph_from_reader(File::open(graph_filename)?)?;
+            let _: GraphType = load_graph(File::open(graph_filename)?)?;
         }
         ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
         ("graph-covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
@@ -96,7 +96,7 @@ fn main() -> Result<()> {
 #[cfg(feature = "gdal")]
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph = load_graph_from_reader(File::open(graph_filename)?)?;
+    let graph: GraphType = load_graph(File::open(graph_filename)?)?;
     graph.ogr_write(
         sc_matches.value_of("driver").unwrap(),
         sc_matches.value_of("OUTPUT").unwrap(),
@@ -112,30 +112,10 @@ fn subcommand_graph_to_ogr(_sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph = load_graph_from_reader(File::open(graph_filename)?)?;
+    let graph: GraphType = load_graph(File::open(graph_filename)?)?;
 
     let mut outfile = File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?;
-    let multi_poly = {
-        // using a lower resolution, to have less cells to merge
-        let t_res = graph.h3_resolution.saturating_sub(3);
-        let mut cells: Vec<_> = graph
-            .cell_nodes
-            .iter()
-            .map(|cell| cell.get_parent(t_res))
-            .collect::<Result<_, route3_core::h3ron::Error>>()?;
-        cells.sort_unstable();
-        cells.dedup();
-
-        MultiPolygon::from(
-            cells
-                // remove the number of vertices by smoothing
-                .to_linked_polygons(true)
-                .drain(..)
-                // reduce the number of vertices again and discard all holes
-                .map(|p| Polygon::new(p.exterior().simplify(&0.000001), vec![]))
-                .collect::<Vec<_>>(),
-        )
-    };
+    let multi_poly = graph.covered_area()?;
     let gj_geom = geojson::Geometry::try_from(&multi_poly)?;
     outfile.write_all(gj_geom.to_string().as_ref())?;
 

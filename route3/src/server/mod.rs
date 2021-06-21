@@ -8,10 +8,10 @@ use tonic::{Request, Response, Status};
 
 use api::route3_server::{Route3, Route3Server};
 use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest, VersionResponse};
-use route3_core::graph::H3Graph;
 use route3_core::h3ron::ToH3Indexes;
 use route3_core::io::load_graph_from_byte_slice;
 
+use crate::constants::GraphType;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 
 mod api {
@@ -23,7 +23,7 @@ mod api {
 struct ServerImpl {
     config: ServerConfig,
     s3_client: Arc<S3Client>,
-    graph: H3Graph,
+    graph: GraphType,
 }
 
 impl ServerImpl {
@@ -86,12 +86,7 @@ impl Route3 for ServerImpl {
 
         dbg!(cells.len());
 
-        dbg!(self.graph.graph.get_num_nodes());
-        let ng = self
-            .graph
-            .build_graph_without_cells(&cells)
-            .map_err(|_| Status::internal("graph"))?;
-        dbg!(ng.get_num_nodes());
+        dbg!(self.graph.num_nodes());
 
         let loader = S3RecordBatchLoader::new(self.s3_client.clone());
         let population = loader
