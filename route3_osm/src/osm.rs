@@ -1,10 +1,10 @@
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::Add;
 use std::path::Path;
 
 use eyre::Result;
 use osmpbfreader::{OsmPbfReader, Tags};
-use rustc_hash::FxHashMap;
 
 use route3_core::geo_types::{Coordinate, LineString};
 use route3_core::graph::{GraphBuilder, H3Graph};
@@ -41,7 +41,7 @@ where
     pub fn read_pbf(&mut self, pbf_path: &Path) -> Result<()> {
         let pbf_file = std::fs::File::open(pbf_path)?;
         let mut pbf = OsmPbfReader::new(pbf_file);
-        let mut nodeid_coordinates: FxHashMap<_, _> = Default::default();
+        let mut nodeid_coordinates: HashMap<_, _> = Default::default();
         for obj_result in pbf.par_iter() {
             let obj = obj_result?;
             match obj {

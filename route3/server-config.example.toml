@@ -8,7 +8,7 @@ secret_key = "password"
 
 [graph]
 bucket = "graph"
-key = "germany_r10.fxb"
+key = "germany_r10.bc"
 
 [population_dataset]
 bucket = "population"

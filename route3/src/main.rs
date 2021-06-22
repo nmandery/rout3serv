@@ -81,7 +81,8 @@ fn main() -> Result<()> {
     match matches.subcommand() {
         ("graph-stats", Some(sc_matches)) => {
             let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-            let _: GraphType = load_graph(File::open(graph_filename)?)?;
+            let graph: GraphType = load_graph(File::open(graph_filename)?)?;
+            println!("{}", toml::to_string(&graph.stats())?);
         }
         ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
         ("graph-covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,

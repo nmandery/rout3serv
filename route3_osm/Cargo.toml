@@ -11,4 +11,3 @@ eyre = "0.6"
 log = "0.4"
 osmpbfreader = "0.14.0"
 route3_core = { path = "../route3_core" }
-rustc-hash = "1.1"

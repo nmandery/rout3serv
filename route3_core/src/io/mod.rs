@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::Write;
 use std::ops::Add;
 
 use bytesize::ByteSize;
@@ -21,8 +20,7 @@ where
         slice.len(),
         ByteSize(slice.len() as u64)
     );
-    let fx_reader = flexbuffers::Reader::get_root(slice)?;
-    let graph = H3Graph::deserialize(fx_reader)?;
+    let graph: H3Graph<T> = bincode::deserialize(slice)?;
     log::debug!(
         "Stats of the deserialized graph: {}",
         serde_json::to_string(&graph.stats())?
@@ -37,15 +35,18 @@ where
     let mut raw_data: Vec<u8> = Default::default();
     reader.read_to_end(&mut raw_data)?;
     load_graph_from_byte_slice(raw_data.as_slice())
+
+    /*
+    let br = BufReader::new(reader);
+    let graph: H3Graph<T> = bincode::deserialize_from(br)?;
+    Ok(graph)
+     */
 }
 
 pub fn save_graph_to_file<T>(graph: &H3Graph<T>, out_file: &mut File) -> Result<()>
 where
     T: PartialOrd + PartialEq + Add + Copy + Serialize,
 {
-    let mut serializer = flexbuffers::FlexbufferSerializer::new();
-    graph.serialize(&mut serializer)?;
-    out_file.write_all(serializer.view())?;
-    out_file.flush()?;
+    bincode::serialize_into(out_file, graph)?;
     Ok(())
 }

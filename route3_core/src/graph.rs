@@ -1,14 +1,16 @@
+use std::collections::HashSet;
 use std::ops::Add;
 
 use eyre::{Report, Result};
+use geo::algorithm::simplify::Simplify;
 use geo_types::MultiPolygon;
 use h3ron::{H3Cell, H3Edge};
-use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
 
 use crate::geo_types::Polygon;
 use crate::h3ron::{Index, ToLinkedPolygons};
-use geo::algorithm::simplify::Simplify;
+use crate::serde::h3edgemap as h3m_serde;
+use crate::H3EdgeMap;
 
 #[derive(Serialize)]
 pub struct GraphStats {
@@ -21,8 +23,11 @@ pub struct GraphStats {
 #[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
 pub struct H3Graph<T> {
     // flexbuffers can only handle maps with string keys
-    #[serde(with = "serde_with::rust::map_as_tuple_list")]
-    pub edges: FxHashMap<H3Edge, T>,
+    #[serde(
+        deserialize_with = "h3m_serde::deserialize",
+        serialize_with = "h3m_serde::serialize"
+    )]
+    pub edges: H3EdgeMap<T>,
     pub h3_resolution: u8,
 }
 
@@ -38,7 +43,7 @@ where
     }
 
     pub fn num_nodes(&self) -> usize {
-        let mut node_set = FxHashSet::default();
+        let mut node_set = HashSet::new();
         for (edge, _) in self.edges.iter() {
             node_set.insert(edge.destination_index_unchecked());
             node_set.insert(edge.origin_index_unchecked());
@@ -131,9 +136,11 @@ where
         }
     }
 
+    /// generate a - simplified and overestimating - multipolygon of the area
+    /// covered by the graph.
     pub fn covered_area(&self) -> Result<MultiPolygon<f64>> {
         let t_res = self.h3_resolution.saturating_sub(3);
-        let mut cells = FxHashSet::default();
+        let mut cells = HashSet::new();
         for (edge, _) in self.edges.iter() {
             cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
             cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
