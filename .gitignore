@@ -8,3 +8,5 @@ __pycache__
 /datasources/venv/
 /data
 poetry.lock
+perf.data*
+flamegraph*.svg
