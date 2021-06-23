@@ -1,4 +1,3 @@
-use std::io::Cursor;
 use std::sync::Arc;
 
 use eyre::{Report, Result};
@@ -8,12 +7,14 @@ use tonic::{Request, Response, Status};
 
 use api::route3_server::{Route3, Route3Server};
 use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest, VersionResponse};
-use route3_core::h3ron::ToH3Indexes;
+use route3_core::algo::gdal::buffer_meters;
 use route3_core::io::load_graph_from_byte_slice;
 
 use crate::constants::GraphType;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
+use crate::server::util::{gdal_geom_to_h3, read_wkb_to_gdal};
 
+mod util;
 mod api {
     use tonic::include_proto;
 
@@ -68,31 +69,27 @@ impl Route3 for ServerImpl {
         request: Request<AnalyzeDisturbanceRequest>,
     ) -> std::result::Result<Response<AnalyzeDisturbanceResponse>, Status> {
         let inner = request.into_inner();
-        let mut cursor = Cursor::new(&inner.wkb_geometry);
-        let mut cells = wkb::wkb_to_geom(&mut cursor)
-            .map_err(|e| {
-                log::error!("could not parse wkb: {:?}", e);
-                Status::invalid_argument("could not parse WKB")
-            })?
-            .to_h3_indexes(self.graph.h3_resolution)
-            .map_err(|e| {
-                log::error!("could not convert to h3: {:?}", e);
-                Status::internal("could not convert to h3")
-            })?;
+        let (disturbed_cells, buffered_cells) = {
+            let disturbance_geom = read_wkb_to_gdal(&inner.wkb_geometry)?;
+            let disturbed_cells = gdal_geom_to_h3(&disturbance_geom, self.graph.h3_resolution)?;
+            dbg!(disturbed_cells.len());
 
-        // remove duplicates in case of multi* geometries
-        cells.sort_unstable();
-        cells.dedup();
-
-        dbg!(cells.len());
-
-        dbg!(self.graph.num_nodes());
+            let buffered_cells = gdal_geom_to_h3(
+                &buffer_meters(&disturbance_geom, 5_000.0).map_err(|e| {
+                    log::error!("Buffering failed: {:?}", e);
+                    Status::internal("buffer failed")
+                })?,
+                self.graph.h3_resolution,
+            )?;
+            dbg!(buffered_cells.len());
+            (disturbed_cells, buffered_cells)
+        };
 
         let loader = S3RecordBatchLoader::new(self.s3_client.clone());
         let population = loader
             .load_h3_dataset(
                 self.config.population_dataset.clone(),
-                &cells,
+                &disturbed_cells,
                 self.graph.h3_resolution,
             )
             .await

@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Nico Mandery <nico@nmandery.net>"]
 edition = "2018"
 
+[features]
+with-gdal = ["gdal"]
+
 [dependencies]
 bincode = "1.3"
 bytesize = "1"
@@ -12,15 +15,19 @@ geo = "0.18"
 geo-types = "0.7"
 h3ron = "0.11"
 log = "0.4"
-pathfinding = "2.1"
+pathfinding = "=2.1.3" # last version without rustc_hash
 serde_json = "1"
 toml = "0.5"
+num-traits = "0.2"
+#lazy_static = "1.4"
 
 [dependencies.serde]
 version = "1"
 features = ["derive"]
 
 [dependencies.gdal]
-version = "0.8.0"
+#version = "0.8.0"
+git = "https://github.com/nmandery/gdal.git"
+rev = "167b925"
 optional = true
 

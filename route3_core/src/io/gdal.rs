@@ -1,6 +1,7 @@
 use gdal::errors::Result;
+use gdal::spatial_ref::SpatialRef;
 use gdal::vector::{Defn, Feature, FieldDefn, Layer, OGRFieldType, OGRwkbGeometryType, ToGdal};
-use gdal::Driver;
+use gdal::{Driver, LayerOptions};
 use geo_types::LineString;
 use h3ron::ToCoordinate;
 
@@ -97,7 +98,12 @@ where
         let drv = Driver::get(driver_name.as_ref())?;
         let mut ds = drv.create_vector_only(output_name.as_ref())?;
 
-        let lyr = ds.create_layer(layer_name.as_ref(), None, OGRwkbGeometryType::wkbLineString)?;
+        let lyr = ds.create_layer(LayerOptions {
+            name: layer_name.as_ref(),
+            srs: Some(&SpatialRef::from_epsg(4326)?),
+            ty: OGRwkbGeometryType::wkbLineString,
+            options: None,
+        })?;
         T::register_weight_fields(&lyr)?;
 
         let defn = Defn::from_layer(&lyr);

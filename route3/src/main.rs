@@ -8,7 +8,6 @@ use std::io::Write;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
 
-#[cfg(feature = "gdal")]
 use route3_core::io::gdal::OgrWrite;
 use route3_core::io::load_graph;
 
@@ -23,7 +22,7 @@ fn main() -> Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
 
-    let mut app = App::new(env!("CARGO_PKG_NAME"))
+    let app = App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
@@ -48,33 +47,30 @@ fn main() -> Result<()> {
                     Arg::with_name("CONFIG-FILE")
                         .help("server configuration file")
                         .required(true),
+                )
+                .subcommand(
+                    SubCommand::with_name("graph-to-ogr")
+                        .about("Export the input graph to an OGR vector dataset")
+                        .arg(Arg::with_name("GRAPH").help("graph").required(true))
+                        .arg(
+                            Arg::with_name("OUTPUT")
+                                .help("output file to write the vector data to")
+                                .required(true),
+                        )
+                        .arg(
+                            Arg::with_name("driver")
+                                .help("OGR driver to use")
+                                .short("d")
+                                .default_value("FlatGeobuf"),
+                        )
+                        .arg(
+                            Arg::with_name("layer_name")
+                                .help("layer name")
+                                .short("l")
+                                .default_value("graph"),
+                        ),
                 ),
         );
-
-    if cfg!(feature = "gdal") {
-        app = app.subcommand(
-            SubCommand::with_name("graph-to-ogr")
-                .about("Export the input graph to an OGR vector dataset")
-                .arg(Arg::with_name("GRAPH").help("graph").required(true))
-                .arg(
-                    Arg::with_name("OUTPUT")
-                        .help("output file to write the vector data to")
-                        .required(true),
-                )
-                .arg(
-                    Arg::with_name("driver")
-                        .help("OGR driver to use")
-                        .short("d")
-                        .default_value("FlatGeobuf"),
-                )
-                .arg(
-                    Arg::with_name("layer_name")
-                        .help("layer name")
-                        .short("l")
-                        .default_value("graph"),
-                ),
-        )
-    }
 
     let matches = app.get_matches();
 
@@ -94,7 +90,6 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[cfg(feature = "gdal")]
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
     let graph: GraphType = load_graph(File::open(graph_filename)?)?;
@@ -104,11 +99,6 @@ fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
         sc_matches.value_of("layer_name").unwrap(),
     )?;
     Ok(())
-}
-
-#[cfg(not(feature = "gdal"))]
-fn subcommand_graph_to_ogr(_sc_matches: &ArgMatches) -> Result<()> {
-    unimplemented!("binary is build without gdal support")
 }
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
