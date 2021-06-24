@@ -30,10 +30,10 @@ from shapely.geometry import shape
 DATASETS = (
     # list of datasets can be obtained by
     # aws s3 ls s3://dataforgood-fb-data/hrsl-cogs/ --no-sign-request
-    ('hrsl_children_under_five', 'population_children_under_five'),
-    ('hrsl_elderly_60_plus', 'population_elderly_60_plus'),
-    ('hrsl_general', 'population'),
-    ('hrsl_youth_15_24', 'population_youth_15_24'),
+    # ('hrsl_children_under_five', 'population_children_under_five', np.float32),
+    # ('hrsl_elderly_60_plus', 'population_elderly_60_plus', np.float32),
+    ('hrsl_general', 'population', np.float32),
+    # ('hrsl_youth_15_24', 'population_youth_15_24', np.float32),
 )
 
 
@@ -59,24 +59,29 @@ def fetch_dataset(dataset_name: str, bounds: List[float], conversion_h3_res: Opt
         return df, conversion_h3_res
 
 
+def downsample_h3(h3index_series: pd.Series, h3_resolution: int) -> pd.Series:
+    return h3index_series.map(lambda i: h3.h3_to_parent(i, h3_resolution)).astype(np.uint64)
+
+
 def assemble_dataframe(bounds: List[float], target_h3_res: int) -> pd.DataFrame:
     df = pd.DataFrame({"h3index": []})
     with rasterio.Env(AWS_NO_SIGN_REQUEST="YES"):
         conversion_h3_res = None
-        for dataset_name, column_name in DATASETS:
+        for dataset_name, column_name, np_dtype in DATASETS:
             col_df, conversion_h3_res = fetch_dataset(dataset_name, bounds, conversion_h3_res=conversion_h3_res)
             if col_df.empty:
                 print(f"Dataset {dataset_name} was empty")
                 col_df = pd.DataFrame(
-                    {"h3index": np.array([], dtype=np.uint64), column_name: np.array([], dtype=np.float16)})
+                    {"h3index": np.array([], dtype=np.uint64), column_name: np.array([], dtype=np_dtype)})
             else:
+                col_df.value = col_df.value.astype(np_dtype)
                 col_df.rename(columns={"value": column_name}, inplace=True)
 
             if target_h3_res > conversion_h3_res:
                 raise ValueError(f"only h3 resolutions up to {conversion_h3_res}. up-scaling is not implemented")
             elif target_h3_res < conversion_h3_res:
                 # scale down
-                col_df["h3index"] = col_df["h3index"].apply(lambda i: h3.h3_to_parent(i, target_h3_res))
+                col_df["h3index"] = downsample_h3(col_df["h3index"], target_h3_res)
                 col_df = col_df.groupby(by=["h3index"]).sum().reset_index()
 
             if df.empty:
@@ -143,14 +148,12 @@ def cli(aoi_geojson_polygon_geometry_filename, out_dir, h3_res, group_h3_res, fg
         df = assemble_dataframe(row["geometry"].bounds, h3_res)
 
         # remove over-fetched indexes
-        df["fetch_h3index"] = df["h3index"] \
-            .apply(lambda i: h3.h3_to_parent(i, fetch_h3_res))
+        df["fetch_h3index"] = downsample_h3(df["h3index"], fetch_h3_res)
         filtered_df = df[df["fetch_h3index"] == row["h3index"]] \
             .drop(["fetch_h3index"], axis=1)
 
         # create the groups
-        filtered_df["group_h3index"] = filtered_df["h3index"] \
-            .apply(lambda i: h3.h3_to_parent(i, group_h3_res))
+        filtered_df["group_h3index"] = downsample_h3(filtered_df["h3index"], group_h3_res)
 
         for group_h3index in h3.h3_to_children(row["h3index"], group_h3_res):
             out_name = f"{out_path}/{h3.h3_to_string(group_h3index)}"
@@ -158,7 +161,7 @@ def cli(aoi_geojson_polygon_geometry_filename, out_dir, h3_res, group_h3_res, fg
             group_df = filtered_df[filtered_df["group_h3index"] == group_h3index] \
                 .drop(["group_h3index"], axis=1)
 
-            table = pa.Table.from_pandas(group_df)
+            table = pa.Table.from_pandas(group_df, preserve_index=False)
             with fs.open_output_stream(f"{out_name}.arrow") as nativefile:
                 with pa.RecordBatchFileWriter(nativefile, table.schema) as writer:
                     writer.write_table(table)
