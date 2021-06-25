@@ -10,21 +10,15 @@ use tonic::{Request, Response, Status};
 
 use api::route3_server::{Route3, Route3Server};
 use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest, VersionResponse};
-use route3_core::algo::gdal::buffer_meters;
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
 
 use crate::constants::GraphType;
 use crate::io::recordbatch_array;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
-use crate::server::util::{gdal_geom_to_h3, read_wkb_to_gdal};
 
+mod api;
 mod util;
-mod api {
-    use tonic::include_proto;
-
-    include_proto!("grpc.route3");
-}
 
 struct ServerImpl {
     config: ServerConfig,
@@ -46,7 +40,7 @@ impl ServerImpl {
 
         if config.population_dataset.file_h3_resolution > graph.h3_resolution {
             return Err(Report::msg(
-                "file_h3resolution of the population must be lower than the graph h3 resolution",
+                "file_h3_resolution of the population must be lower than the graph h3 resolution",
             ));
         }
 
@@ -57,9 +51,6 @@ impl ServerImpl {
         })
     }
 
-    ///
-    /// TODO: returns more cells than requested, depending of the extend of the
-    ///       requested files
     async fn load_population(
         &self,
         cells: &[H3Cell],
@@ -82,7 +73,6 @@ impl ServerImpl {
                 log::error!("loading population from s3 failed: {:?}", e);
                 Status::internal("population data inaccessible")
             })?;
-        let cells_to_use: HashSet<_> = cells.iter().collect();
         let mut population_cells = HashMap::new();
         for pop in population.iter() {
             let h3index_array = recordbatch_array::<UInt64Array>(pop, &h3index_column_name)
@@ -96,6 +86,7 @@ impl ServerImpl {
                 Status::internal("population h3index is inaccessible")
             })?;
 
+            let cells_to_use: HashSet<_> = cells.iter().collect();
             for (h3index_o, pop_o) in h3index_array.iter().zip(pop_array.iter()) {
                 if let (Some(h3index), Some(population_count)) = (h3index_o, pop_o) {
                     if let Ok(cell) = H3Cell::try_from(h3index) {
@@ -131,31 +122,30 @@ impl Route3 for ServerImpl {
         request: Request<AnalyzeDisturbanceRequest>,
     ) -> std::result::Result<Response<AnalyzeDisturbanceResponse>, Status> {
         let inner = request.into_inner();
-        let (disturbed_cells, buffered_cells) = {
-            let disturbance_geom = read_wkb_to_gdal(&inner.wkb_geometry)?;
-            let disturbed_cells =
-                gdal_geom_to_h3(&disturbance_geom, self.graph.h3_resolution, true)?;
 
-            let buffered_cells = gdal_geom_to_h3(
-                &buffer_meters(&disturbance_geom, 10_000.0).map_err(|e| {
-                    log::error!("Buffering failed: {:?}", e);
-                    Status::internal("buffer failed")
-                })?,
-                self.graph.h3_resolution,
-                true,
-            )?;
-            (disturbed_cells, buffered_cells)
-        };
-        dbg!(buffered_cells.len());
-        dbg!(disturbed_cells.len());
+        let routing_target_cells = inner.target_cells(self.graph.h3_resolution)?;
+        let (disturbed_cells, buffered_cells) = inner.requested_cells(self.graph.h3_resolution)?;
+
+        //dbg!(buffered_cells.len());
+        //dbg!(disturbed_cells.len());
 
         let population = self
-            .load_population(&disturbed_cells)
+            .load_population(&buffered_cells)
             .await
             .map_err(|report| Status::internal(report.to_string()))?;
-        dbg!(population);
+        //dbg!(&population);
 
-        Ok(Response::new(AnalyzeDisturbanceResponse {}))
+        let routing_start_cells: Vec<_> = buffered_cells
+            .iter()
+            .filter(|cell| !disturbed_cells.contains(cell))
+            .collect();
+
+        Ok(Response::new(AnalyzeDisturbanceResponse {
+            population_within_disturbance: disturbed_cells
+                .iter()
+                .filter_map(|cell| population.get(cell))
+                .sum::<f32>() as f64,
+        }))
     }
 }
 

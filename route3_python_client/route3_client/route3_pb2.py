@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0croute3.proto\x12\x0bgrpc.route3\"\x10\n\x0eVersionRequest\"\"\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\"1\n\x19\x41nalyzeDisturbanceRequest\x12\x14\n\x0cwkb_geometry\x18\x01 \x01(\x0c\"\x1c\n\x1a\x41nalyzeDisturbanceResponse2\xb9\x01\n\x06Route3\x12\x46\n\x07Version\x12\x1b.grpc.route3.VersionRequest\x1a\x1c.grpc.route3.VersionResponse\"\x00\x12g\n\x12\x41nalyzeDisturbance\x12&.grpc.route3.AnalyzeDisturbanceRequest\x1a\'.grpc.route3.AnalyzeDisturbanceResponse\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x0croute3.proto\x12\x0bgrpc.route3\"\x10\n\x0eVersionRequest\"\"\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"s\n\x19\x41nalyzeDisturbanceRequest\x12\x14\n\x0cwkb_geometry\x18\x01 \x01(\x0c\x12\x15\n\rradius_meters\x18\x02 \x01(\x01\x12)\n\rtarget_points\x18\x03 \x03(\x0b\x32\x12.grpc.route3.Point\"C\n\x1a\x41nalyzeDisturbanceResponse\x12%\n\x1dpopulation_within_disturbance\x18\x01 \x01(\x01\x32\xb9\x01\n\x06Route3\x12\x46\n\x07Version\x12\x1b.grpc.route3.VersionRequest\x1a\x1c.grpc.route3.VersionResponse\"\x00\x12g\n\x12\x41nalyzeDisturbance\x12&.grpc.route3.AnalyzeDisturbanceRequest\x1a\'.grpc.route3.AnalyzeDisturbanceResponse\"\x00\x62\x06proto3'
 )
 
 
@@ -82,18 +82,25 @@ _VERSIONRESPONSE = _descriptor.Descriptor(
 )
 
 
-_ANALYZEDISTURBANCEREQUEST = _descriptor.Descriptor(
-  name='AnalyzeDisturbanceRequest',
-  full_name='grpc.route3.AnalyzeDisturbanceRequest',
+_POINT = _descriptor.Descriptor(
+  name='Point',
+  full_name='grpc.route3.Point',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='wkb_geometry', full_name='grpc.route3.AnalyzeDisturbanceRequest.wkb_geometry', index=0,
-      number=1, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"",
+      name='x', full_name='grpc.route3.Point.x', index=0,
+      number=1, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='y', full_name='grpc.route3.Point.y', index=1,
+      number=2, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
@@ -110,18 +117,39 @@ _ANALYZEDISTURBANCEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=83,
-  serialized_end=132,
+  serialized_end=112,
 )
 
 
-_ANALYZEDISTURBANCERESPONSE = _descriptor.Descriptor(
-  name='AnalyzeDisturbanceResponse',
-  full_name='grpc.route3.AnalyzeDisturbanceResponse',
+_ANALYZEDISTURBANCEREQUEST = _descriptor.Descriptor(
+  name='AnalyzeDisturbanceRequest',
+  full_name='grpc.route3.AnalyzeDisturbanceRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
+    _descriptor.FieldDescriptor(
+      name='wkb_geometry', full_name='grpc.route3.AnalyzeDisturbanceRequest.wkb_geometry', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='radius_meters', full_name='grpc.route3.AnalyzeDisturbanceRequest.radius_meters', index=1,
+      number=2, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='target_points', full_name='grpc.route3.AnalyzeDisturbanceRequest.target_points', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -134,12 +162,46 @@ _ANALYZEDISTURBANCERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=134,
-  serialized_end=162,
+  serialized_start=114,
+  serialized_end=229,
 )
 
+
+_ANALYZEDISTURBANCERESPONSE = _descriptor.Descriptor(
+  name='AnalyzeDisturbanceResponse',
+  full_name='grpc.route3.AnalyzeDisturbanceResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='population_within_disturbance', full_name='grpc.route3.AnalyzeDisturbanceResponse.population_within_disturbance', index=0,
+      number=1, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=231,
+  serialized_end=298,
+)
+
+_ANALYZEDISTURBANCEREQUEST.fields_by_name['target_points'].message_type = _POINT
 DESCRIPTOR.message_types_by_name['VersionRequest'] = _VERSIONREQUEST
 DESCRIPTOR.message_types_by_name['VersionResponse'] = _VERSIONRESPONSE
+DESCRIPTOR.message_types_by_name['Point'] = _POINT
 DESCRIPTOR.message_types_by_name['AnalyzeDisturbanceRequest'] = _ANALYZEDISTURBANCEREQUEST
 DESCRIPTOR.message_types_by_name['AnalyzeDisturbanceResponse'] = _ANALYZEDISTURBANCERESPONSE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -157,6 +219,13 @@ VersionResponse = _reflection.GeneratedProtocolMessageType('VersionResponse', (_
   # @@protoc_insertion_point(class_scope:grpc.route3.VersionResponse)
   })
 _sym_db.RegisterMessage(VersionResponse)
+
+Point = _reflection.GeneratedProtocolMessageType('Point', (_message.Message,), {
+  'DESCRIPTOR' : _POINT,
+  '__module__' : 'route3_pb2'
+  # @@protoc_insertion_point(class_scope:grpc.route3.Point)
+  })
+_sym_db.RegisterMessage(Point)
 
 AnalyzeDisturbanceRequest = _reflection.GeneratedProtocolMessageType('AnalyzeDisturbanceRequest', (_message.Message,), {
   'DESCRIPTOR' : _ANALYZEDISTURBANCEREQUEST,
@@ -181,8 +250,8 @@ _ROUTE3 = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=165,
-  serialized_end=350,
+  serialized_start=301,
+  serialized_end=486,
   methods=[
   _descriptor.MethodDescriptor(
     name='Version',

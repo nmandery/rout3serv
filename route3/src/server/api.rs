@@ -1,0 +1,49 @@
+use std::collections::HashSet;
+
+use tonic::{include_proto, Status};
+
+use route3_core::algo::gdal::buffer_meters;
+use route3_core::geo_types::Coordinate;
+use route3_core::h3ron::H3Cell;
+
+use crate::server::util::{gdal_geom_to_h3, read_wkb_to_gdal};
+
+include_proto!("grpc.route3");
+
+impl AnalyzeDisturbanceRequest {
+    pub fn requested_cells(
+        &self,
+        h3_resolution: u8,
+    ) -> std::result::Result<(HashSet<H3Cell>, Vec<H3Cell>), Status> {
+        let disturbance_geom = read_wkb_to_gdal(&self.wkb_geometry)?;
+        let disturbed_cells: HashSet<_> = gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
+            .drain(..)
+            .collect();
+
+        let buffered_cells: Vec<_> = gdal_geom_to_h3(
+            &buffer_meters(&disturbance_geom, self.radius_meters).map_err(|e| {
+                log::error!("Buffering disturbance geom failed: {:?}", e);
+                Status::internal("buffer failed")
+            })?,
+            h3_resolution,
+            true,
+        )?;
+        Ok((disturbed_cells, buffered_cells))
+    }
+
+    /// cells to route to
+    pub fn target_cells(&self, h3_resolution: u8) -> std::result::Result<Vec<H3Cell>, Status> {
+        let mut target_cells = self
+            .target_points
+            .iter()
+            .map(|pt| H3Cell::from_coordinate(&Coordinate::from((pt.x, pt.y)), h3_resolution))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| {
+                log::error!("can not convert the target_points to h3: {}", e);
+                Status::internal("can not convert the target_points to h3")
+            })?;
+        target_cells.sort_unstable();
+        target_cells.dedup();
+        Ok(target_cells)
+    }
+}

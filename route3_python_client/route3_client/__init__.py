@@ -1,9 +1,10 @@
 __version__ = '0.1.0'
 
-from typing import Optional
+from typing import Optional, Iterable
 
 import grpc
 from shapely.geometry.base import BaseGeometry
+from shapely.geometry import Point
 import shapely.wkb
 
 from . import route3_pb2
@@ -27,7 +28,14 @@ class Server:
     def server_version(self) -> str:
         return self.stub.Version(route3_pb2.VersionRequest()).version
 
-    def analyze_disturbance(self, geom: BaseGeometry):
+    def analyze_disturbance(self, geom: BaseGeometry, radius_meters: float, target_points: Iterable[Point]):
         req = route3_pb2.AnalyzeDisturbanceRequest()
         req.wkb_geometry = shapely.wkb.dumps(geom)
-        self.stub.AnalyzeDisturbance(req)
+        req.radius_meters = radius_meters
+
+        for target_point in target_points:
+            pt = req.target_points.add()
+            pt.x = target_point.x
+            pt.y = target_point.y
+
+        return self.stub.AnalyzeDisturbance(req)

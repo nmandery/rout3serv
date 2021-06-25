@@ -10,12 +10,24 @@ message VersionResponse {
   string version = 1;
 }
 
+message Point {
+  double x = 1;
+  double y = 2;
+}
+
 message AnalyzeDisturbanceRequest {
   bytes wkb_geometry = 1;
+
+  /* The radius around the wkb_geometry to be analyzed.
+      units are meters. */
+  double radius_meters = 2;
+
+  /* targets to route to */
+  repeated Point target_points = 3;
 }
 
 message AnalyzeDisturbanceResponse {
-  // TODO
+  double population_within_disturbance = 1;
 }
 
 service Route3 {
