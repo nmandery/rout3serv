@@ -122,26 +122,19 @@ impl Route3 for ServerImpl {
         request: Request<AnalyzeDisturbanceRequest>,
     ) -> std::result::Result<Response<AnalyzeDisturbanceResponse>, Status> {
         let inner = request.into_inner();
+        let radius_cells = inner.requested_cells(self.graph.h3_resolution)?;
 
-        let routing_target_cells = inner.target_cells(self.graph.h3_resolution)?;
-        let (disturbed_cells, buffered_cells) = inner.requested_cells(self.graph.h3_resolution)?;
+        let population = self.load_population(&radius_cells.within_buffer).await?;
 
-        //dbg!(buffered_cells.len());
-        //dbg!(disturbed_cells.len());
-
-        let population = self
-            .load_population(&buffered_cells)
-            .await
-            .map_err(|report| Status::internal(report.to_string()))?;
-        //dbg!(&population);
-
-        let routing_start_cells: Vec<_> = buffered_cells
+        let routing_start_cells: Vec<_> = radius_cells
+            .within_buffer
             .iter()
-            .filter(|cell| !disturbed_cells.contains(cell))
+            .filter(|cell| !radius_cells.disturbance.contains(cell))
             .collect();
 
         Ok(Response::new(AnalyzeDisturbanceResponse {
-            population_within_disturbance: disturbed_cells
+            population_within_disturbance: radius_cells
+                .disturbance
                 .iter()
                 .filter_map(|cell| population.get(cell))
                 .sum::<f32>() as f64,
