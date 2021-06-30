@@ -89,8 +89,7 @@ where
         weight: T,
     ) -> Result<()> {
         let edge = cell_from.unidirectional_edge_to(&cell_to)?;
-        self.add_edge(edge, weight);
-        Ok(())
+        self.add_edge(edge, weight)
     }
 
     pub fn add_edge_using_cells_bidirectional(
@@ -103,7 +102,7 @@ where
         self.add_edge_using_cells(cell_to, cell_from, weight)
     }
 
-    pub fn add_edge(&mut self, edge: H3Edge, weight: T) {
+    pub fn add_edge(&mut self, edge: H3Edge, weight: T) -> Result<()> {
         self.edges
             .entry(edge)
             .and_modify(|self_weight| {
@@ -113,6 +112,7 @@ where
                 }
             })
             .or_insert(weight);
+        Ok(())
     }
 
     pub fn try_add(&mut self, mut other: H3Graph<T>) -> Result<()> {
@@ -123,7 +123,7 @@ where
             )));
         }
         for (edge, weight) in other.edges.drain() {
-            self.add_edge(edge, weight);
+            self.add_edge(edge, weight)?;
         }
         Ok(())
     }

@@ -10,6 +10,7 @@ pub use h3ron;
 pub mod algo;
 pub mod graph;
 pub mod io;
+pub mod routing;
 pub mod serde;
 
 pub type H3EdgeMap<V> = HashMap<H3Edge, V>;

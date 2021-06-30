@@ -1,9 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
 use arrow::array::{Float32Array, UInt64Array};
 use eyre::{Report, Result};
+use rayon::prelude::*;
 use serde::Deserialize;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
@@ -13,9 +14,11 @@ use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest,
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
 
-use crate::constants::GraphType;
+use crate::constants::WeightType;
 use crate::io::recordbatch_array;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
+use route3_core::graph::H3Graph;
+use route3_core::routing::RoutingGraph;
 
 mod api;
 mod util;
@@ -23,14 +26,14 @@ mod util;
 struct ServerImpl {
     config: ServerConfig,
     s3_client: Arc<S3Client>,
-    graph: GraphType,
+    routing_graph: Arc<RoutingGraph<WeightType>>,
 }
 
 impl ServerImpl {
     pub async fn create(config: ServerConfig) -> Result<Self> {
         let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
 
-        let graph = match s3_client
+        let graph: H3Graph<WeightType> = match s3_client
             .get_object_bytes(config.graph.bucket.clone(), config.graph.key.clone())
             .await?
         {
@@ -47,7 +50,7 @@ impl ServerImpl {
         Ok(Self {
             config,
             s3_client,
-            graph,
+            routing_graph: Arc::new(graph.try_into()?),
         })
     }
 
@@ -66,7 +69,7 @@ impl ServerImpl {
             .load_h3_dataset(
                 self.config.population_dataset.clone(),
                 cells,
-                self.graph.h3_resolution,
+                self.routing_graph.graph.h3_resolution,
             )
             .await
             .map_err(|e| {
@@ -122,15 +125,28 @@ impl Route3 for ServerImpl {
         request: Request<AnalyzeDisturbanceRequest>,
     ) -> std::result::Result<Response<AnalyzeDisturbanceResponse>, Status> {
         let inner = request.into_inner();
-        let radius_cells = inner.requested_cells(self.graph.h3_resolution)?;
+        let radius_cells = inner.requested_cells(self.routing_graph.graph.h3_resolution)?;
 
         let population = self.load_population(&radius_cells.within_buffer).await?;
 
-        let routing_start_cells: Vec<_> = radius_cells
+        let routing_start_cells: Vec<H3Cell> = radius_cells
             .within_buffer
             .iter()
             .filter(|cell| !radius_cells.disturbance.contains(cell))
+            .cloned()
             .collect();
+
+        let routing_graph = self.routing_graph.clone();
+        tokio::task::spawn_blocking(move || {
+            routing_start_cells.par_iter().for_each(|cell| {
+                println!("{} {}", cell.to_string(), routing_graph.graph.num_edges());
+            });
+        })
+        .await
+        .map_err(|e| {
+            log::error!("joining blocking task failed: {:?}", e);
+            Status::internal("join error")
+        })?;
 
         Ok(Response::new(AnalyzeDisturbanceResponse {
             population_within_disturbance: radius_cells
