@@ -2,6 +2,7 @@ use std::fs::File;
 use std::ops::Add;
 
 use bytesize::ByteSize;
+
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +11,7 @@ use crate::graph::H3Graph;
 
 #[cfg(feature = "with-gdal")]
 pub mod gdal;
+pub mod serde_support;
 
 pub fn load_graph_from_byte_slice<'de, T>(slice: &'de [u8]) -> Result<H3Graph<T>, Error>
 where

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 use crate::geo_types::Polygon;
 use crate::h3ron::{Index, ToLinkedPolygons};
-use crate::serde::h3edgemap as h3m_serde;
+use crate::io::serde_support::h3edgemap as h3m_serde;
 use crate::{H3CellMap, H3CellSet, H3EdgeMap};
 
 #[derive(Serialize)]
@@ -61,7 +61,7 @@ where
             .collect()
     }
 
-    /// get all edges in the graph leading to this cell to neighbors
+    /// get all edges in the graph leading to this cell from its neighbors
     pub fn edges_to_cell(&self, cell: &H3Cell) -> Vec<(&H3Edge, &T)> {
         cell.k_ring(1)
             .drain(..)
