@@ -1,17 +1,32 @@
-use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::ops::Add;
 
 use crate::error::Error;
-use crate::graph::H3Graph;
-use crate::h3ron::H3Cell;
+use crate::graph::{H3Graph, NodeType};
+use crate::h3ron::{H3Cell, Index};
+use crate::{H3CellMap, H3CellSet};
+
+struct SearchSpace {
+    /// h3 resolution used for the cells of the search space
+    h3_resolution: u8,
+
+    cells: H3CellSet,
+}
+
+impl SearchSpace {
+    /// should only be called with cells with a resolution >= self.h3_resolution
+    pub fn contains(&self, cell: &H3Cell) -> Result<bool, Error> {
+        let parent_cell = cell.get_parent(self.h3_resolution)?;
+        Ok(self.cells.contains(&parent_cell))
+    }
+}
 
 pub struct RoutingGraph<T> {
     pub graph: H3Graph<T>,
-    pub downsampled_graph: H3Graph<T>,
+    graph_nodes: H3CellMap<NodeType>,
 
-    pub valid_target_cells: HashSet<H3Cell>,
-    pub downsampled_valid_target_cells: HashSet<H3Cell>,
+    downsampled_graph: H3Graph<T>,
+    downsampled_graph_nodes: H3CellMap<NodeType>,
 }
 
 impl<T> RoutingGraph<T> where T: PartialOrd + PartialEq + Add + Copy {}
@@ -25,13 +40,13 @@ where
     fn try_from(graph: H3Graph<T>) -> std::result::Result<Self, Self::Error> {
         let downsampled_graph = graph.downsample(graph.h3_resolution.saturating_sub(3))?;
 
-        let valid_target_cells = graph.valid_target_cells()?;
-        let downsampled_valid_target_cells = downsampled_graph.valid_target_cells()?;
+        let graph_nodes = graph.nodes()?;
+        let downsampled_graph_nodes = downsampled_graph.nodes()?;
         Ok(Self {
             graph,
             downsampled_graph,
-            valid_target_cells,
-            downsampled_valid_target_cells,
+            graph_nodes,
+            downsampled_graph_nodes,
         })
     }
 }

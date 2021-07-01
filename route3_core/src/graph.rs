@@ -1,5 +1,4 @@
-use std::collections::HashSet;
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 use geo::algorithm::simplify::Simplify;
 use geo_types::MultiPolygon;
@@ -10,7 +9,7 @@ use crate::error::Error;
 use crate::geo_types::Polygon;
 use crate::h3ron::{Index, ToLinkedPolygons};
 use crate::serde::h3edgemap as h3m_serde;
-use crate::H3EdgeMap;
+use crate::{H3CellMap, H3CellSet, H3EdgeMap};
 
 #[derive(Serialize)]
 pub struct GraphStats {
@@ -42,13 +41,8 @@ where
         }
     }
 
-    pub fn num_nodes(&self) -> usize {
-        let mut node_set = HashSet::new();
-        for (edge, _) in self.edges.iter() {
-            node_set.insert(edge.destination_index_unchecked());
-            node_set.insert(edge.origin_index_unchecked());
-        }
-        node_set.len()
+    pub fn num_nodes(&self) -> Result<usize, Error> {
+        Ok(self.nodes()?.len())
     }
 
     pub fn num_edges(&self) -> usize {
@@ -138,19 +132,19 @@ where
         })
     }
 
-    pub fn stats(&self) -> GraphStats {
-        GraphStats {
+    pub fn stats(&self) -> Result<GraphStats, Error> {
+        Ok(GraphStats {
             h3_resolution: self.h3_resolution,
-            num_nodes: self.num_nodes(),
+            num_nodes: self.num_nodes()?,
             num_edges: self.num_edges(),
-        }
+        })
     }
 
     /// generate a - simplified and overestimating - multipolygon of the area
     /// covered by the graph.
     pub fn covered_area(&self) -> Result<MultiPolygon<f64>, Error> {
         let t_res = self.h3_resolution.saturating_sub(3);
-        let mut cells = HashSet::new();
+        let mut cells = H3CellSet::new();
         for (edge, _) in self.edges.iter() {
             cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
             cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
@@ -169,13 +163,67 @@ where
     }
 
     /// cells which are valid targets to route to
-    pub fn valid_target_cells(&self) -> Result<HashSet<H3Cell>, Error> {
-        let cells = self
-            .edges
-            .keys()
-            .map(|edge| edge.destination_index())
-            .collect::<Result<HashSet<_>, _>>()?;
-        Ok(cells)
+    pub fn nodes(&self) -> Result<H3CellMap<NodeType>, Error> {
+        let mut graph_nodes: H3CellMap<NodeType> = Default::default();
+        for edge in self.edges.keys() {
+            let cell_from = edge.origin_index()?;
+            graph_nodes
+                .entry(cell_from)
+                .and_modify(|node_type| *node_type += NodeType::Origin)
+                .or_insert(NodeType::Origin);
+
+            let cell_to = edge.destination_index()?;
+            graph_nodes
+                .entry(cell_to)
+                .and_modify(|node_type| *node_type += NodeType::Destination)
+                .or_insert(NodeType::Destination);
+        }
+        Ok(graph_nodes)
+    }
+}
+
+#[derive(PartialEq)]
+pub enum NodeType {
+    Origin,
+    Destination,
+    OriginAndDestination,
+}
+
+impl NodeType {
+    pub fn is_origin(&self) -> bool {
+        match self {
+            NodeType::Origin => true,
+            NodeType::Destination => false,
+            NodeType::OriginAndDestination => true,
+        }
+    }
+
+    pub fn is_destination(&self) -> bool {
+        match self {
+            NodeType::Origin => false,
+            NodeType::Destination => true,
+            NodeType::OriginAndDestination => true,
+        }
+    }
+}
+
+impl Add<NodeType> for NodeType {
+    type Output = NodeType;
+
+    fn add(self, rhs: NodeType) -> Self::Output {
+        if rhs == self {
+            self
+        } else {
+            Self::OriginAndDestination
+        }
+    }
+}
+
+impl AddAssign<NodeType> for NodeType {
+    fn add_assign(&mut self, rhs: NodeType) {
+        if self != &rhs {
+            *self = Self::OriginAndDestination
+        }
     }
 }
 

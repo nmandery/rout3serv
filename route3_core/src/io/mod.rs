@@ -23,7 +23,7 @@ where
     let graph: H3Graph<T> = bincode::deserialize(slice)?;
     log::debug!(
         "Stats of the deserialized graph: {}",
-        serde_json::to_string(&graph.stats())?
+        serde_json::to_string(&graph.stats()?)?
     );
     Ok(graph)
 }

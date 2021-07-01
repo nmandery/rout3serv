@@ -88,7 +88,7 @@ fn main() -> Result<()> {
 
             log::info!(
                 "Created graph ({} nodes, {} edges)",
-                graph.num_nodes(),
+                graph.num_nodes()?,
                 graph.num_edges()
             );
 

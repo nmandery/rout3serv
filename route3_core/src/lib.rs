@@ -1,5 +1,5 @@
-use crate::h3ron::H3Edge;
-use std::collections::HashMap;
+use crate::h3ron::{H3Cell, H3Edge};
+use std::collections::{HashMap, HashSet};
 
 // re-export core libraries for easier dependency management
 #[cfg(feature = "with-gdal")]
@@ -15,6 +15,8 @@ pub mod routing;
 pub mod serde;
 
 pub type H3EdgeMap<V> = HashMap<H3Edge, V>;
+pub type H3CellMap<V> = HashMap<H3Cell, V>;
+pub type H3CellSet = HashSet<H3Cell>;
 
 /*
 Notes:
