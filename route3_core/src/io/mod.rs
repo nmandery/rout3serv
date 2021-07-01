@@ -2,16 +2,16 @@ use std::fs::File;
 use std::ops::Add;
 
 use bytesize::ByteSize;
-use eyre::Result;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use crate::error::Error;
 use crate::graph::H3Graph;
 
 #[cfg(feature = "with-gdal")]
 pub mod gdal;
 
-pub fn load_graph_from_byte_slice<'de, T>(slice: &'de [u8]) -> Result<H3Graph<T>>
+pub fn load_graph_from_byte_slice<'de, T>(slice: &'de [u8]) -> Result<H3Graph<T>, Error>
 where
     T: PartialOrd + PartialEq + Add + Copy + Deserialize<'de>,
 {
@@ -28,7 +28,7 @@ where
     Ok(graph)
 }
 
-pub fn load_graph<R: std::io::Read, T>(mut reader: R) -> Result<H3Graph<T>>
+pub fn load_graph<R: std::io::Read, T>(mut reader: R) -> Result<H3Graph<T>, Error>
 where
     T: PartialOrd + PartialEq + Add + Copy + DeserializeOwned,
 {
@@ -43,7 +43,7 @@ where
      */
 }
 
-pub fn save_graph_to_file<T>(graph: &H3Graph<T>, out_file: &mut File) -> Result<()>
+pub fn save_graph_to_file<T>(graph: &H3Graph<T>, out_file: &mut File) -> Result<(), Error>
 where
     T: PartialOrd + PartialEq + Add + Copy + Serialize,
 {

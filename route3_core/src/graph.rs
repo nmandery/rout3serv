@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 use std::ops::Add;
 
-use eyre::{Report, Result};
 use geo::algorithm::simplify::Simplify;
 use geo_types::MultiPolygon;
 use h3ron::{H3Cell, H3Edge};
 use serde::{Deserialize, Serialize};
 
+use crate::error::Error;
 use crate::geo_types::Polygon;
 use crate::h3ron::{Index, ToLinkedPolygons};
 use crate::serde::h3edgemap as h3m_serde;
@@ -87,7 +87,7 @@ where
         cell_from: H3Cell,
         cell_to: H3Cell,
         weight: T,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         let edge = cell_from.unidirectional_edge_to(&cell_to)?;
         self.add_edge(edge, weight)
     }
@@ -97,12 +97,12 @@ where
         cell_from: H3Cell,
         cell_to: H3Cell,
         weight: T,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         self.add_edge_using_cells(cell_from, cell_to, weight)?;
         self.add_edge_using_cells(cell_to, cell_from, weight)
     }
 
-    pub fn add_edge(&mut self, edge: H3Edge, weight: T) -> Result<()> {
+    pub fn add_edge(&mut self, edge: H3Edge, weight: T) -> Result<(), Error> {
         self.edges
             .entry(edge)
             .and_modify(|self_weight| {
@@ -115,12 +115,13 @@ where
         Ok(())
     }
 
-    pub fn try_add(&mut self, mut other: H3Graph<T>) -> Result<()> {
+    pub fn try_add(&mut self, mut other: H3Graph<T>) -> Result<(), Error> {
         if self.h3_resolution != other.h3_resolution {
-            return Err(Report::from(h3ron::error::Error::MixedResolutions(
+            return Err(h3ron::error::Error::MixedResolutions(
                 self.h3_resolution,
                 other.h3_resolution,
-            )));
+            )
+            .into());
         }
         for (edge, weight) in other.edges.drain() {
             self.add_edge(edge, weight)?;
@@ -138,7 +139,7 @@ where
 
     /// generate a - simplified and overestimating - multipolygon of the area
     /// covered by the graph.
-    pub fn covered_area(&self) -> Result<MultiPolygon<f64>> {
+    pub fn covered_area(&self) -> Result<MultiPolygon<f64>, Error> {
         let t_res = self.h3_resolution.saturating_sub(3);
         let mut cells = HashSet::new();
         for (edge, _) in self.edges.iter() {
@@ -163,7 +164,7 @@ pub trait GraphBuilder<T>
 where
     T: PartialOrd + PartialEq + Add + Copy,
 {
-    fn build_graph(self) -> Result<H3Graph<T>>;
+    fn build_graph(self) -> Result<H3Graph<T>, Error>;
 }
 
 #[cfg(test)]

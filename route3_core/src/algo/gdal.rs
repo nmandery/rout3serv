@@ -1,4 +1,4 @@
-use eyre::Result;
+use crate::error::Error;
 use gdal::spatial_ref::SpatialRef;
 use gdal::vector::Geometry;
 
@@ -6,7 +6,7 @@ use gdal::vector::Geometry;
 ///
 /// This function creates some distortion as the geometry is transformed
 /// between WGS84 and Spherical Mercator
-pub fn buffer_meters(geom: &Geometry, meters: f64) -> Result<Geometry> {
+pub fn buffer_meters(geom: &Geometry, meters: f64) -> Result<Geometry, Error> {
     let srs_wgs84 = SpatialRef::from_epsg(4326)?;
     let srs_spherical_mercator = SpatialRef::from_epsg(3857)?;
     let mut geom_sm_buffered = {

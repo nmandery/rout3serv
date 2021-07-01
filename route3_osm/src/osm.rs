@@ -6,6 +6,7 @@ use std::path::Path;
 use eyre::Result;
 use osmpbfreader::{OsmPbfReader, Tags};
 
+use route3_core::error::Error;
 use route3_core::geo_types::{Coordinate, LineString};
 use route3_core::graph::{GraphBuilder, H3Graph};
 use route3_core::h3ron;
@@ -97,7 +98,7 @@ where
     T: PartialOrd + PartialEq + Add + Copy,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
 {
-    fn build_graph(self) -> Result<H3Graph<T>> {
+    fn build_graph(self) -> std::result::Result<H3Graph<T>, Error> {
         Ok(self.graph)
     }
 }

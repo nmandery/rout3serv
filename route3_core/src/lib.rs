@@ -8,6 +8,7 @@ pub use geo_types;
 pub use h3ron;
 
 pub mod algo;
+pub mod error;
 pub mod graph;
 pub mod io;
 pub mod routing;
