@@ -185,7 +185,7 @@ where
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum NodeType {
     Origin,
     Destination,
@@ -257,9 +257,8 @@ mod tests {
     use geo_types::{Coordinate, LineString};
     use h3ron::H3Cell;
 
-    use crate::graph::H3Graph;
+    use crate::graph::{H3Graph, NodeType};
     use crate::h3ron::Index;
-    use crate::H3EdgeMap;
 
     #[test]
     fn test_downsample() {
@@ -284,5 +283,45 @@ mod tests {
         let downsampled_graph = graph.downsample(full_h3_res.saturating_sub(3)).unwrap();
         assert!(downsampled_graph.num_edges() > 0);
         assert!(downsampled_graph.num_edges() < 20);
+    }
+
+    #[test]
+    fn test_nodetype_add() {
+        assert_eq!(NodeType::Origin, NodeType::Origin + NodeType::Origin);
+        assert_eq!(
+            NodeType::Destination,
+            NodeType::Destination + NodeType::Destination
+        );
+        assert_eq!(
+            NodeType::OriginAndDestination,
+            NodeType::Origin + NodeType::Destination
+        );
+        assert_eq!(
+            NodeType::OriginAndDestination,
+            NodeType::OriginAndDestination + NodeType::Destination
+        );
+        assert_eq!(
+            NodeType::OriginAndDestination,
+            NodeType::Destination + NodeType::Origin
+        );
+    }
+
+    #[test]
+    fn test_nodetype_addassign() {
+        let mut n1 = NodeType::Origin;
+        n1 += NodeType::Origin;
+        assert_eq!(n1, NodeType::Origin);
+
+        let mut n2 = NodeType::Origin;
+        n2 += NodeType::OriginAndDestination;
+        assert_eq!(n2, NodeType::OriginAndDestination);
+
+        let mut n3 = NodeType::Destination;
+        n3 += NodeType::OriginAndDestination;
+        assert_eq!(n3, NodeType::OriginAndDestination);
+
+        let mut n4 = NodeType::Destination;
+        n4 += NodeType::Origin;
+        assert_eq!(n4, NodeType::OriginAndDestination);
     }
 }
