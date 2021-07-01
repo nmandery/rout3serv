@@ -103,7 +103,10 @@ where
 
     pub fn try_add(&mut self, mut other: H3Graph<T>) -> Result<(), Error> {
         if self.h3_resolution != other.h3_resolution {
-            return Err(Error::MixedH3Resolutions(self.h3_resolution, other.h3_resolution).into());
+            return Err(Error::MixedH3Resolutions(
+                self.h3_resolution,
+                other.h3_resolution,
+            ));
         }
         for (edge, weight) in other.edges.drain() {
             self.add_edge(edge, weight)?;

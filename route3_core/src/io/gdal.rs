@@ -21,7 +21,7 @@ pub trait WeightFeatureField {
     fn fill_weight_feature_fields<'a>(&self, feature: &'a mut Feature) -> Result<(), Error>;
 }
 
-pub const WEIGHT_FIELD_NAME: &'static str = "weight";
+pub const WEIGHT_FIELD_NAME: &str = "weight";
 
 impl WeightFeatureField for u64 {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {

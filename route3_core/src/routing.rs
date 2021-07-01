@@ -44,8 +44,8 @@ where
         let downsampled_graph_nodes = downsampled_graph.nodes()?;
         Ok(Self {
             graph,
-            downsampled_graph,
             graph_nodes,
+            downsampled_graph,
             downsampled_graph_nodes,
         })
     }

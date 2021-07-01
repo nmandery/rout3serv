@@ -169,7 +169,7 @@ impl S3RecordBatchLoader {
                         file_cells.insert(cc);
                     }),
                 Ordering::Equal => {
-                    file_cells.insert(cell.clone());
+                    file_cells.insert(*cell);
                 }
                 Ordering::Greater => {
                     file_cells.insert(cell.get_parent(dataset.file_h3_resolution())?);
