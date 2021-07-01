@@ -103,30 +103,39 @@ where
     }
 
     pub fn add_edge(&mut self, edge: H3Edge, weight: T) -> Result<(), Error> {
-        self.edges
-            .entry(edge)
-            .and_modify(|self_weight| {
-                // lower weight takes precedence
-                if weight < *self_weight {
-                    *self_weight = weight
-                }
-            })
-            .or_insert(weight);
+        edgemap_add_edge(&mut self.edges, edge, weight);
         Ok(())
     }
 
     pub fn try_add(&mut self, mut other: H3Graph<T>) -> Result<(), Error> {
         if self.h3_resolution != other.h3_resolution {
-            return Err(h3ron::error::Error::MixedResolutions(
-                self.h3_resolution,
-                other.h3_resolution,
-            )
-            .into());
+            return Err(Error::MixedH3Resolutions(self.h3_resolution, other.h3_resolution).into());
         }
         for (edge, weight) in other.edges.drain() {
             self.add_edge(edge, weight)?;
         }
         Ok(())
+    }
+
+    pub fn downsample(&self, target_h3_resolution: u8) -> Result<Self, Error> {
+        if target_h3_resolution >= self.h3_resolution {
+            return Err(Error::TooHighH3Resolution(target_h3_resolution));
+        }
+        let mut downsampled_edges = Default::default();
+        for (edge, weight) in self.edges.iter() {
+            let cell_from = edge.origin_index()?.get_parent(target_h3_resolution)?;
+            let cell_to = edge.destination_index()?.get_parent(target_h3_resolution)?;
+            if cell_from == cell_to {
+                // no need to add self-edges
+                continue;
+            }
+            let downsampled_edge = cell_from.unidirectional_edge_to(&cell_to)?;
+            edgemap_add_edge(&mut downsampled_edges, downsampled_edge, *weight)
+        }
+        Ok(Self {
+            edges: downsampled_edges,
+            h3_resolution: target_h3_resolution,
+        })
     }
 
     pub fn stats(&self) -> GraphStats {
@@ -158,6 +167,31 @@ where
         );
         Ok(mp)
     }
+
+    /// cells which are valid targets to route to
+    pub fn valid_target_cells(&self) -> Result<HashSet<H3Cell>, Error> {
+        let cells = self
+            .edges
+            .keys()
+            .map(|edge| edge.destination_index())
+            .collect::<Result<HashSet<_>, _>>()?;
+        Ok(cells)
+    }
+}
+
+fn edgemap_add_edge<T>(edgemap: &mut H3EdgeMap<T>, edge: H3Edge, weight: T)
+where
+    T: Copy + PartialOrd,
+{
+    edgemap
+        .entry(edge)
+        .and_modify(|self_weight| {
+            // lower weight takes precedence
+            if weight < *self_weight {
+                *self_weight = weight
+            }
+        })
+        .or_insert(weight);
 }
 
 pub trait GraphBuilder<T>
@@ -168,4 +202,36 @@ where
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use geo_types::{Coordinate, LineString};
+    use h3ron::H3Cell;
+
+    use crate::graph::H3Graph;
+    use crate::h3ron::Index;
+    use crate::H3EdgeMap;
+
+    #[test]
+    fn test_downsample() {
+        let full_h3_res = 8;
+        let cells = h3ron::line(
+            &LineString::from(vec![
+                Coordinate::from((23.3, 12.3)),
+                Coordinate::from((24.2, 12.2)),
+            ]),
+            full_h3_res,
+        )
+        .unwrap();
+        assert!(cells.len() > 100);
+
+        let mut graph = H3Graph::new(full_h3_res);
+        for w in cells.windows(2) {
+            graph
+                .add_edge_using_cells(H3Cell::new(w[0]), H3Cell::new(w[1]), 20)
+                .unwrap();
+        }
+        assert!(graph.num_edges() > 50);
+        let downsampled_graph = graph.downsample(full_h3_res.saturating_sub(3)).unwrap();
+        assert!(downsampled_graph.num_edges() > 0);
+        assert!(downsampled_graph.num_edges() < 20);
+    }
+}

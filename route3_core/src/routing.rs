@@ -8,8 +8,10 @@ use crate::h3ron::H3Cell;
 
 pub struct RoutingGraph<T> {
     pub graph: H3Graph<T>,
+    pub downsampled_graph: H3Graph<T>,
 
-    pub known_target_cells: HashSet<H3Cell>,
+    pub valid_target_cells: HashSet<H3Cell>,
+    pub downsampled_valid_target_cells: HashSet<H3Cell>,
 }
 
 impl<T> RoutingGraph<T> where T: PartialOrd + PartialEq + Add + Copy {}
@@ -21,14 +23,15 @@ where
     type Error = Error;
 
     fn try_from(graph: H3Graph<T>) -> std::result::Result<Self, Self::Error> {
-        let mut known_target_cells = HashSet::new();
-        for edge in graph.edges.keys() {
-            known_target_cells.insert(edge.destination_index()?);
-        }
+        let downsampled_graph = graph.downsample(graph.h3_resolution.saturating_sub(3))?;
 
+        let valid_target_cells = graph.valid_target_cells()?;
+        let downsampled_valid_target_cells = downsampled_graph.valid_target_cells()?;
         Ok(Self {
             graph,
-            known_target_cells,
+            downsampled_graph,
+            valid_target_cells,
+            downsampled_valid_target_cells,
         })
     }
 }

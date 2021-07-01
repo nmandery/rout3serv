@@ -17,4 +17,10 @@ pub enum Error {
 
     #[error("json error: {0}")]
     JSONError(#[from] serde_json::Error),
+
+    #[error("mixed h3 resolutions: {0} <> {1}")]
+    MixedH3Resolutions(u8, u8),
+
+    #[error("too high h3 resolution: {0}")]
+    TooHighH3Resolution(u8),
 }
