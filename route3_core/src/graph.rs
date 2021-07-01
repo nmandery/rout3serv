@@ -185,7 +185,7 @@ where
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub enum NodeType {
     Origin,
     Destination,

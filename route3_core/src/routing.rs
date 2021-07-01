@@ -13,11 +13,12 @@ struct SearchSpace {
     cells: H3CellSet,
 }
 
+/// searchspace to constrain the area dijkstra is working on
 impl SearchSpace {
     /// should only be called with cells with a resolution >= self.h3_resolution
-    pub fn contains(&self, cell: &H3Cell) -> Result<bool, Error> {
-        let parent_cell = cell.get_parent(self.h3_resolution)?;
-        Ok(self.cells.contains(&parent_cell))
+    pub fn contains(&self, cell: &H3Cell) -> bool {
+        self.cells
+            .contains(&cell.get_parent_unchecked(self.h3_resolution))
     }
 }
 
