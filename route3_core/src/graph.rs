@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+use std::net::Shutdown::Read;
 use std::ops::{Add, AddAssign};
 
 use geo::algorithm::simplify::Simplify;
 use geo_types::MultiPolygon;
 use h3ron::{H3Cell, H3Edge};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
@@ -18,7 +21,7 @@ pub struct GraphStats {
     pub num_edges: usize,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
 pub struct H3Graph<T> {
     // flexbuffers can only handle maps with string keys
@@ -32,7 +35,7 @@ pub struct H3Graph<T> {
 
 impl<T> H3Graph<T>
 where
-    T: PartialOrd + PartialEq + Add + Copy,
+    T: PartialOrd + PartialEq + Add + Copy + Send,
 {
     pub fn new(h3_resolution: u8) -> Self {
         Self {
@@ -119,6 +122,7 @@ where
             return Err(Error::TooHighH3Resolution(target_h3_resolution));
         }
         let mut downsampled_edges = Default::default();
+        /*
         for (edge, weight) in self.edges.iter() {
             let cell_from = edge.origin_index()?.get_parent(target_h3_resolution)?;
             let cell_to = edge.destination_index()?.get_parent(target_h3_resolution)?;
@@ -129,6 +133,13 @@ where
             let downsampled_edge = cell_from.unidirectional_edge_to(&cell_to)?;
             edgemap_add_edge(&mut downsampled_edges, downsampled_edge, *weight)
         }
+
+         */
+        let e = self.edges.clone();
+        let e2: HashMap<_, _> = (0..10).map(|x| (H3Edge::new(x as u64), x)).collect();
+        //let x: Vec<_> = e.into_iter().par_bridge().collect();
+        //let x: Vec<_> = self.edges.into_iter().par_bridge().collect();
+
         Ok(Self {
             edges: downsampled_edges,
             h3_resolution: target_h3_resolution,
@@ -243,6 +254,42 @@ where
             }
         })
         .or_insert(weight);
+}
+
+pub fn downsample_graph<T>(graph: H3Graph<T>, target_h3_resolution: u8) -> Result<H3Graph<T>, Error>
+where
+    T: Send + Copy,
+{
+    if target_h3_resolution >= graph.h3_resolution {
+        return Err(Error::TooHighH3Resolution(target_h3_resolution));
+    }
+    let downsampled_edges = graph
+        .edges
+        .into_iter()
+        .par_bridge()
+        .filter_map(|(edge, weight)| {
+            let cell_from = edge
+                .origin_index_unchecked()
+                .get_parent_unchecked(target_h3_resolution);
+            let cell_to = edge
+                .destination_index_unchecked()
+                .get_parent_unchecked(target_h3_resolution);
+            if cell_from == cell_to {
+                None
+            } else {
+                Some(
+                    cell_from
+                        .unidirectional_edge_to(&cell_to)
+                        .map(|downsamled_edge| (downsamled_edge, weight)),
+                )
+            }
+        })
+        .collect::<Result<H3EdgeMap<_>, _>>()?;
+
+    Ok(H3Graph {
+        edges: downsampled_edges,
+        h3_resolution: target_h3_resolution,
+    })
 }
 
 pub trait GraphBuilder<T>
