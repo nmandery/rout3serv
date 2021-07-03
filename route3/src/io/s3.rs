@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::io::Cursor;
 use std::str::FromStr;
@@ -11,12 +10,14 @@ use bytesize::ByteSize;
 use eyre::{Report, Result};
 use futures::TryStreamExt;
 use regex::Regex;
-use route3_core::h3ron::{H3Cell, Index};
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
+
+use route3_core::algo::iter::change_h3_resolution;
+use route3_core::h3ron::H3Cell;
 
 #[derive(Deserialize)]
 pub struct S3Config {
@@ -159,23 +160,8 @@ impl S3RecordBatchLoader {
         if cells.is_empty() {
             return Ok(Default::default());
         }
-        let mut file_cells = HashSet::new();
-        for cell in cells.iter() {
-            match cell.resolution().cmp(&dataset.file_h3_resolution()) {
-                Ordering::Less => cell
-                    .get_children(dataset.file_h3_resolution())
-                    .drain(..)
-                    .for_each(|cc| {
-                        file_cells.insert(cc);
-                    }),
-                Ordering::Equal => {
-                    file_cells.insert(*cell);
-                }
-                Ordering::Greater => {
-                    file_cells.insert(cell.get_parent(dataset.file_h3_resolution())?);
-                }
-            };
-        }
+        let file_cells = change_h3_resolution(cells.iter(), dataset.file_h3_resolution())
+            .collect::<Result<HashSet<_>, _>>()?;
 
         let mut task_results = futures::future::try_join_all(file_cells.iter().map(|cell| {
             let bucket_name = dataset.bucket_name();

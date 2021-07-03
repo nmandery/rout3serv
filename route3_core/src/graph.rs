@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-use std::net::Shutdown::Read;
 use std::ops::{Add, AddAssign};
 
 use geo::algorithm::simplify::Simplify;
@@ -115,35 +113,6 @@ where
             self.add_edge(edge, weight)?;
         }
         Ok(())
-    }
-
-    pub fn downsample(&self, target_h3_resolution: u8) -> Result<Self, Error> {
-        if target_h3_resolution >= self.h3_resolution {
-            return Err(Error::TooHighH3Resolution(target_h3_resolution));
-        }
-        let mut downsampled_edges = Default::default();
-        /*
-        for (edge, weight) in self.edges.iter() {
-            let cell_from = edge.origin_index()?.get_parent(target_h3_resolution)?;
-            let cell_to = edge.destination_index()?.get_parent(target_h3_resolution)?;
-            if cell_from == cell_to {
-                // no need to add self-edges
-                continue;
-            }
-            let downsampled_edge = cell_from.unidirectional_edge_to(&cell_to)?;
-            edgemap_add_edge(&mut downsampled_edges, downsampled_edge, *weight)
-        }
-
-         */
-        let e = self.edges.clone();
-        let e2: HashMap<_, _> = (0..10).map(|x| (H3Edge::new(x as u64), x)).collect();
-        //let x: Vec<_> = e.into_iter().par_bridge().collect();
-        //let x: Vec<_> = self.edges.into_iter().par_bridge().collect();
-
-        Ok(Self {
-            edges: downsampled_edges,
-            h3_resolution: target_h3_resolution,
-        })
     }
 
     pub fn stats(&self) -> Result<GraphStats, Error> {
@@ -304,7 +273,7 @@ mod tests {
     use geo_types::{Coordinate, LineString};
     use h3ron::H3Cell;
 
-    use crate::graph::{H3Graph, NodeType};
+    use crate::graph::{downsample_graph, H3Graph, NodeType};
     use crate::h3ron::Index;
 
     #[test]
@@ -327,7 +296,7 @@ mod tests {
                 .unwrap();
         }
         assert!(graph.num_edges() > 50);
-        let downsampled_graph = graph.downsample(full_h3_res.saturating_sub(3)).unwrap();
+        let downsampled_graph = downsample_graph(graph, full_h3_res.saturating_sub(3)).unwrap();
         assert!(downsampled_graph.num_edges() > 0);
         assert!(downsampled_graph.num_edges() < 20);
     }
