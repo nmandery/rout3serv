@@ -1,4 +1,5 @@
-use std::collections::{HashMap, HashSet};
+//use std::collections::{HashMap, HashSet};
+use hashbrown::{HashMap, HashSet};
 
 // re-export core libraries for easier dependency management
 #[cfg(feature = "with-gdal")]
