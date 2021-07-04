@@ -10,8 +10,10 @@ use rayon::prelude::*;
 use crate::algo::iter::change_h3_resolution;
 use crate::error::Error;
 use crate::graph::{downsample_graph, H3Graph, NodeType};
-use crate::h3ron::{H3Cell, Index};
+use crate::h3ron::{H3Cell, H3Edge, Index, ToCoordinate};
 use crate::{H3CellMap, H3CellSet, WithH3Resolution};
+use geo_types::LineString;
+use std::cmp::Ordering;
 
 pub struct SearchSpace {
     /// h3 resolution used for the cells of the search space
@@ -70,6 +72,32 @@ where
     }
     pub fn destination_cell(&self) -> Result<H3Cell, Error> {
         self.cells.last().cloned().ok_or(Error::EmptyRoute)
+    }
+    pub fn to_linestring(&self) -> LineString<f64> {
+        LineString::from(
+            self.cells
+                .iter()
+                .map(|cell| cell.to_coordinate())
+                .collect::<Vec<_>>(),
+        )
+    }
+
+    pub fn to_h3_edges(&self) -> Result<Vec<H3Edge>, Error> {
+        self.cells
+            .windows(2)
+            .map(|wdow| wdow[0].unidirectional_edge_to(&wdow[1]))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.into())
+    }
+}
+
+/// order simply by cost
+impl<T> PartialOrd for Route<T>
+where
+    T: PartialOrd,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.cost.partial_cmp(&other.cost)
     }
 }
 
