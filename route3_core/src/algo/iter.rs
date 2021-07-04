@@ -33,22 +33,21 @@ where
     I: Iterator,
     I::Item: Borrow<H3Cell>,
 {
-    type Item = Result<H3Cell, Error>;
+    type Item = H3Cell;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(cell) = self.current_batch.pop() {
-            Some(Ok(cell))
+            Some(cell)
         } else if let Some(cell) = self.inner.next() {
             match cell.borrow().resolution().cmp(&self.target_h3_resolution) {
                 Ordering::Less => {
                     self.current_batch = cell.borrow().get_children(self.target_h3_resolution);
-                    self.current_batch.pop().map(Ok)
+                    self.current_batch.pop()
                 }
-                Ordering::Equal => Some(Ok(*cell.borrow())),
+                Ordering::Equal => Some(*cell.borrow()),
                 Ordering::Greater => Some(
                     cell.borrow()
-                        .get_parent(self.target_h3_resolution)
-                        .map_err(|e| e.into()),
+                        .get_parent_unchecked(self.target_h3_resolution),
                 ),
             }
         } else {
@@ -68,9 +67,7 @@ mod tests {
     #[test]
     fn test_change_h3_resolution_same_res() {
         let cell = H3Cell::from_coordinate(&Coordinate::from((12.3, 45.4)), 6).unwrap();
-        let changed = change_h3_resolution(once(cell), 6)
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+        let changed = change_h3_resolution(once(cell), 6).collect::<Vec<_>>();
         assert_eq!(changed.len(), 1);
         assert_eq!(changed[0], cell);
     }
@@ -78,9 +75,7 @@ mod tests {
     #[test]
     fn test_change_h3_resolution_lower_res() {
         let cell = H3Cell::from_coordinate(&Coordinate::from((12.3, 45.4)), 6).unwrap();
-        let changed = change_h3_resolution(once(cell), 5)
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+        let changed = change_h3_resolution(once(cell), 5).collect::<Vec<_>>();
         assert_eq!(changed.len(), 1);
         assert_eq!(changed[0].resolution(), 5);
     }
@@ -88,9 +83,7 @@ mod tests {
     #[test]
     fn test_change_h3_resolution_higher_res() {
         let cell = H3Cell::from_coordinate(&Coordinate::from((12.3, 45.4)), 6).unwrap();
-        let changed = change_h3_resolution(once(cell), 7)
-            .collect::<Result<Vec<_>, _>>()
-            .unwrap();
+        let changed = change_h3_resolution(once(cell), 7).collect::<Vec<_>>();
         assert_eq!(changed.len(), 7);
         assert_eq!(changed[0].resolution(), 7);
     }

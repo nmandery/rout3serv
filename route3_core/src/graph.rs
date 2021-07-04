@@ -10,7 +10,7 @@ use crate::error::Error;
 use crate::geo_types::Polygon;
 use crate::h3ron::{Index, ToLinkedPolygons};
 use crate::io::serde_support::h3edgemap as h3m_serde;
-use crate::{H3CellMap, H3CellSet, H3EdgeMap};
+use crate::{H3CellMap, H3CellSet, H3EdgeMap, WithH3Resolution};
 
 #[derive(Serialize)]
 pub struct GraphStats {
@@ -162,6 +162,12 @@ where
                 .or_insert(NodeType::Destination);
         }
         Ok(graph_nodes)
+    }
+}
+
+impl<T> WithH3Resolution for H3Graph<T> {
+    fn h3_resolution(&self) -> u8 {
+        self.h3_resolution
     }
 }
 

@@ -23,4 +23,10 @@ pub enum Error {
 
     #[error("too high h3 resolution: {0}")]
     TooHighH3Resolution(u8),
+
+    #[error("empty route")]
+    EmptyRoute,
+
+    #[error("none of the routing destinatons is part of the routing graph")]
+    DestinationsNotInGraph,
 }

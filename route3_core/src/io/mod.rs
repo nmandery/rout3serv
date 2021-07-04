@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
 use crate::graph::H3Graph;
+use num_traits::Zero;
 
 #[cfg(feature = "with-gdal")]
 pub mod gdal;

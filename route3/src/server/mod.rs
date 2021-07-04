@@ -18,7 +18,8 @@ use crate::constants::WeightType;
 use crate::io::recordbatch_array;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use route3_core::graph::H3Graph;
-use route3_core::routing::RoutingGraph;
+use route3_core::routing::RoutingContext;
+use route3_core::WithH3Resolution;
 
 mod api;
 mod util;
@@ -26,7 +27,7 @@ mod util;
 struct ServerImpl {
     config: ServerConfig,
     s3_client: Arc<S3Client>,
-    routing_graph: Arc<RoutingGraph<WeightType>>,
+    routing_context: Arc<RoutingContext<WeightType>>,
 }
 
 impl ServerImpl {
@@ -50,7 +51,7 @@ impl ServerImpl {
         Ok(Self {
             config,
             s3_client,
-            routing_graph: Arc::new(graph.try_into()?),
+            routing_context: Arc::new(graph.try_into()?),
         })
     }
 
@@ -69,7 +70,7 @@ impl ServerImpl {
             .load_h3_dataset(
                 self.config.population_dataset.clone(),
                 cells,
-                self.routing_graph.graph.h3_resolution,
+                self.routing_context.h3_resolution(),
             )
             .await
             .map_err(|e| {
@@ -125,7 +126,7 @@ impl Route3 for ServerImpl {
         request: Request<AnalyzeDisturbanceRequest>,
     ) -> std::result::Result<Response<AnalyzeDisturbanceResponse>, Status> {
         let inner = request.into_inner();
-        let radius_cells = inner.requested_cells(self.routing_graph.graph.h3_resolution)?;
+        let radius_cells = inner.requested_cells(self.routing_context.h3_resolution())?;
 
         let population = self.load_population(&radius_cells.within_buffer).await?;
 
@@ -136,10 +137,10 @@ impl Route3 for ServerImpl {
             .cloned()
             .collect();
 
-        let routing_graph = self.routing_graph.clone();
+        let routing_context = self.routing_context.clone();
         tokio::task::spawn_blocking(move || {
             routing_start_cells.par_iter().for_each(|cell| {
-                println!("{} {}", cell.to_string(), routing_graph.graph.num_edges());
+                println!("{} {}", cell.to_string(), routing_context.h3_resolution());
             });
         })
         .await

@@ -161,7 +161,7 @@ impl S3RecordBatchLoader {
             return Ok(Default::default());
         }
         let file_cells = change_h3_resolution(cells.iter(), dataset.file_h3_resolution())
-            .collect::<Result<HashSet<_>, _>>()?;
+            .collect::<HashSet<_>>();
 
         let mut task_results = futures::future::try_join_all(file_cells.iter().map(|cell| {
             let bucket_name = dataset.bucket_name();

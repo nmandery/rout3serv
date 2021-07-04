@@ -25,3 +25,7 @@ Notes:
   performs far better. Mostly noticed during deserialization of Graphs. Related: https://github.com/rust-lang/rustc-hash/issues/14
 
 */
+
+pub trait WithH3Resolution {
+    fn h3_resolution(&self) -> u8;
+}
