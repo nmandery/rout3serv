@@ -1,10 +1,10 @@
 from shapely.geometry import Point
 from route3_client import Server
 
-disturbance = Point(8.9, 49.43).buffer(0.015)
+disturbance = Point(10.86, 48.38).buffer(0.015)
 target_points = [
-    Point(8.92, 49.412),
-    Point(8.88, 49.2),
+    Point(10.903, 48.348263),
+    Point( 10.86698055267334, 48.465011068126444),
 ]
 
 server = Server()

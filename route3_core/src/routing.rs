@@ -1,16 +1,13 @@
 use std::borrow::Borrow;
-use std::collections::HashSet;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use std::io::empty;
-use std::iter::Filter;
 use std::ops::Add;
 
 use num_traits::Zero;
 use pathfinding::directed::dijkstra::dijkstra_partial;
 use rayon::prelude::*;
 
-use crate::algo::iter::{change_h3_resolution, ChangeH3ResolutionIterator};
+use crate::algo::iter::change_h3_resolution;
 use crate::error::Error;
 use crate::graph::{downsample_graph, H3Graph, NodeType};
 use crate::h3ron::{H3Cell, Index};
@@ -37,20 +34,18 @@ pub struct ManyToManyOptions {
     /// number of destinations to reach.
     /// Routing for the origin cell will stop when this number of targets are reached. When not set,
     /// routing will continue until all destinations are reached
-    num_destinations_to_reach: Option<usize>,
-    //// search space to limit the nodes to be visited during routing
-    //search_space: Option<SearchSpace>,
+    pub num_destinations_to_reach: Option<usize>,
 }
 
 impl Default for ManyToManyOptions {
     fn default() -> Self {
         Self {
             num_destinations_to_reach: None,
-            //search_space: None,
         }
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Route<T> {
     /// cells of the route in the order origin -> destination
     pub cells: Vec<H3Cell>,
@@ -60,7 +55,10 @@ pub struct Route<T> {
     pub cost: T,
 }
 
-impl<T> Route<T> {
+impl<T> Route<T>
+where
+    T: Debug,
+{
     pub fn is_empty(&self) -> bool {
         self.cells.is_empty()
     }
@@ -98,7 +96,7 @@ where
         &self,
         origin_cells: I,
         destination_cells: I,
-        options: ManyToManyOptions,
+        options: &ManyToManyOptions,
         search_space: Option<SearchSpace>,
     ) -> Result<Vec<Route<T>>, Error>
     where
@@ -237,7 +235,39 @@ where
     downsampled_routing_graph: RoutingGraph<T>,
 }
 
-impl<T> RoutingContext<T> where T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero {}
+impl<T> RoutingContext<T>
+where
+    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
+{
+    pub fn route_many_to_many(
+        &self,
+        origin_cells: &[H3Cell],
+        destination_cells: &[H3Cell],
+        options: &ManyToManyOptions,
+    ) -> Result<Vec<Route<T>>, Error> {
+        let search_space = {
+            let mut cells = H3CellSet::new();
+            for route in self.downsampled_routing_graph.route_many_to_many(
+                origin_cells,
+                destination_cells,
+                options,
+                None,
+            )? {
+                cells.extend(route.cells)
+            }
+            SearchSpace {
+                h3_resolution: self.downsampled_routing_graph.h3_resolution(),
+                cells,
+            }
+        };
+        self.routing_graph.route_many_to_many(
+            origin_cells,
+            destination_cells,
+            options,
+            Some(search_space),
+        )
+    }
+}
 
 impl<T> WithH3Resolution for RoutingContext<T>
 where

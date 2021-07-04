@@ -18,7 +18,7 @@ pub struct RadiusDisturbanceCells {
     pub within_buffer: Vec<H3Cell>,
 
     /// the target cells to route to
-    pub targets: HashSet<H3Cell>,
+    pub targets: Vec<H3Cell>,
 }
 
 impl AnalyzeDisturbanceRequest {
@@ -55,12 +55,12 @@ impl AnalyzeDisturbanceRequest {
     }
 
     /// cells to route to
-    fn target_cells(&self, h3_resolution: u8) -> std::result::Result<HashSet<H3Cell>, Status> {
+    fn target_cells(&self, h3_resolution: u8) -> std::result::Result<Vec<H3Cell>, Status> {
         let target_cells = self
             .target_points
             .iter()
             .map(|pt| H3Cell::from_coordinate(&Coordinate::from((pt.x, pt.y)), h3_resolution))
-            .collect::<Result<HashSet<_>, _>>()
+            .collect::<Result<Vec<_>, _>>()
             .map_err(|e| {
                 log::error!("can not convert the target_points to h3: {}", e);
                 Status::internal("can not convert the target_points to h3")

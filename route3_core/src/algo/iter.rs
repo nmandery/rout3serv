@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 
-use crate::error::Error;
 use crate::h3ron::{H3Cell, Index};
 
 // how th write a function which accepts an iterator: https://stackoverflow.com/questions/57543399/how-to-a-pass-iterators-to-a-function-in-rust

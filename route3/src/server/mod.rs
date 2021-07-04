@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use arrow::array::{Float32Array, UInt64Array};
 use eyre::{Report, Result};
-use rayon::prelude::*;
 use serde::Deserialize;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
@@ -18,7 +17,7 @@ use crate::constants::WeightType;
 use crate::io::recordbatch_array;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use route3_core::graph::H3Graph;
-use route3_core::routing::RoutingContext;
+use route3_core::routing::{ManyToManyOptions, RoutingContext};
 use route3_core::WithH3Resolution;
 
 mod api;
@@ -139,9 +138,12 @@ impl Route3 for ServerImpl {
 
         let routing_context = self.routing_context.clone();
         tokio::task::spawn_blocking(move || {
-            routing_start_cells.par_iter().for_each(|cell| {
-                println!("{} {}", cell.to_string(), routing_context.h3_resolution());
-            });
+            let options = ManyToManyOptions {
+                num_destinations_to_reach: Some(2),
+            };
+            routing_context
+                .route_many_to_many(&routing_start_cells, &radius_cells.targets, &options)
+                .unwrap() // TODO: no unwrap
         })
         .await
         .map_err(|e| {
@@ -150,11 +152,11 @@ impl Route3 for ServerImpl {
         })?;
 
         Ok(Response::new(AnalyzeDisturbanceResponse {
-            population_within_disturbance: radius_cells
-                .disturbance
-                .iter()
-                .filter_map(|cell| population.get(cell))
-                .sum::<f32>() as f64,
+            population_within_disturbance: 0.0, /* radius_cells
+                                                .disturbance
+                                                .iter()
+                                                .filter_map(|cell| population.get(cell))
+                                                .sum::<f32>() as f64*/
         }))
     }
 }
