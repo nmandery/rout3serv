@@ -1,4 +1,5 @@
 from shapely.geometry import Point
+from datetime import datetime
 
 from route3_client import Server
 
@@ -9,5 +10,7 @@ target_points = [
 ]
 
 server = Server()
+t_start = datetime.now()
 resp = server.analyze_disturbance(disturbance, 5000.0, target_points, num_destinations_to_reach=3)
+print(f"took {datetime.now() - t_start}")
 print(resp.population_within_disturbance)
