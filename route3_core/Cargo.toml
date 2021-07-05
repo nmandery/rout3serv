@@ -21,6 +21,10 @@ toml = "0.5"
 num-traits = "0.2"
 rayon = "1.5"
 
+[dependencies.hashbrown]
+version = "0.11"
+features = ["rayon"]
+
 [dependencies.serde]
 version = "1"
 features = ["derive"]

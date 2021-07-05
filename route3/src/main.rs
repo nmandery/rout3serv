@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate lazy_static;
+extern crate jemallocator;
 
 use std::convert::TryFrom;
 use std::fs::File;
@@ -16,6 +17,9 @@ use route3_core::io::load_graph;
 mod constants;
 mod io;
 mod server;
+
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 fn main() -> Result<()> {
     env_logger::init_from_env(

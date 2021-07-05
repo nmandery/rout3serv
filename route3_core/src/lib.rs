@@ -1,4 +1,5 @@
-use std::collections::{HashMap, HashSet};
+//use std::collections::{HashMap, HashSet};
+use hashbrown::{HashMap, HashSet};
 
 pub use geo_types;
 pub use h3ron;
