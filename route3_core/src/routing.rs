@@ -120,6 +120,8 @@ impl<T> RoutingGraph<T>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
 {
+    ///
+    /// `search_space` limits the routing to child nodes contained in the search space.
     pub fn route_many_to_many<I>(
         &self,
         origin_cells: I,
@@ -273,6 +275,9 @@ where
         destination_cells: &[H3Cell],
         options: &ManyToManyOptions,
     ) -> Result<Vec<Route<T>>, Error> {
+        // create a constrained search space first to limit the spread of the dijkstra routing
+        // by prerouting on a lower resolutions (-> less nodes to visit)
+        // https://i11www.iti.kit.edu/_media/teaching/theses/files/studienarbeit-schuetz-05.pdf
         let search_space = {
             let mut cells = H3CellSet::new();
             for route in self.downsampled_routing_graph.route_many_to_many(
