@@ -16,9 +16,14 @@ use route3_core::io::load_graph_from_byte_slice;
 use crate::constants::WeightType;
 use crate::io::recordbatch_array;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
+use geojson::FeatureCollection;
+use route3_core::geo_types::GeometryCollection;
 use route3_core::graph::H3Graph;
 use route3_core::routing::{ManyToManyOptions, RoutingContext};
 use route3_core::WithH3Resolution;
+use std::fs::File;
+use std::io::Write;
+use std::iter::FromIterator;
 
 mod api;
 mod util;
@@ -124,32 +129,43 @@ impl Route3 for ServerImpl {
         &self,
         request: Request<AnalyzeDisturbanceRequest>,
     ) -> std::result::Result<Response<AnalyzeDisturbanceResponse>, Status> {
-        let inner = request.into_inner();
-        let radius_cells = inner.requested_cells(self.routing_context.h3_resolution())?;
+        let input = request
+            .into_inner()
+            .get_input(self.routing_context.h3_resolution())?;
 
-        let population = self.load_population(&radius_cells.within_buffer).await?;
+        let population = self.load_population(&input.within_buffer).await?;
 
-        let routing_start_cells: Vec<H3Cell> = radius_cells
+        let routing_start_cells: Vec<H3Cell> = input
             .within_buffer
             .iter()
-            .filter(|cell| !radius_cells.disturbance.contains(cell))
+            .filter(|cell| !input.disturbance.contains(cell))
             .cloned()
             .collect();
 
         let routing_context = self.routing_context.clone();
-        tokio::task::spawn_blocking(move || {
+        let routes = tokio::task::spawn_blocking(move || {
             let options = ManyToManyOptions {
-                num_destinations_to_reach: Some(2),
+                num_destinations_to_reach: input.num_destinations_to_reach,
             };
-            routing_context
-                .route_many_to_many(&routing_start_cells, &radius_cells.targets, &options)
-                .unwrap() // TODO: no unwrap
+            routing_context.route_many_to_many(&routing_start_cells, &input.destinations, &options)
         })
         .await
         .map_err(|e| {
             log::error!("joining blocking task failed: {:?}", e);
             Status::internal("join error")
+        })?
+        .map_err(|e| {
+            log::error!("calculating routes failed: {:?}", e);
+            Status::internal("calculating routes failed")
         })?;
+
+        /*
+        let gc = GeometryCollection::from_iter(routes.iter().map(|route| route.to_linestring()));
+        let fc = FeatureCollection::from(&gc);
+        let mut f = File::create("/tmp/gj.json").unwrap();
+        f.write_all(fc.to_string().as_bytes()).unwrap();
+
+         */
 
         Ok(Response::new(AnalyzeDisturbanceResponse {
             population_within_disturbance: 0.0, /* radius_cells

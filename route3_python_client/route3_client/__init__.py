@@ -28,14 +28,15 @@ class Server:
     def server_version(self) -> str:
         return self.stub.Version(route3_pb2.VersionRequest()).version
 
-    def analyze_disturbance(self, geom: BaseGeometry, radius_meters: float, target_points: Iterable[Point]):
+    def analyze_disturbance(self, geom: BaseGeometry, radius_meters: float, destination_points: Iterable[Point], num_destinations_to_reach: int = 3):
         req = route3_pb2.AnalyzeDisturbanceRequest()
         req.wkb_geometry = shapely.wkb.dumps(geom)
         req.radius_meters = radius_meters
+        req.num_destinations_to_reach = num_destinations_to_reach
 
-        for target_point in target_points:
-            pt = req.target_points.add()
-            pt.x = target_point.x
-            pt.y = target_point.y
+        for destination_point in destination_points:
+            pt = req.destinations.add()
+            pt.x = destination_point.x
+            pt.y = destination_point.y
 
         return self.stub.AnalyzeDisturbance(req)

@@ -22,8 +22,14 @@ message AnalyzeDisturbanceRequest {
       units are meters. */
   double radius_meters = 2;
 
+  /** number of destinations which should be reached for one cell. after that routing for this cell will be stopped.
+      0 -> continue until all are reached
+   */
+  uint32 num_destinations_to_reach = 3;
+
   /* targets to route to */
-  repeated Point target_points = 3;
+  repeated Point destinations = 4;
+
 }
 
 message AnalyzeDisturbanceResponse {

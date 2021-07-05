@@ -8,6 +8,7 @@ use geo_types::LineString;
 use num_traits::Zero;
 use pathfinding::directed::dijkstra::dijkstra_partial;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
 use crate::graph::{downsample_graph, H3Graph, NodeType};
@@ -57,7 +58,7 @@ impl Default for ManyToManyOptions {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Route<T> {
     /// cells of the route in the order origin -> destination
     pub cells: Vec<H3Cell>,
