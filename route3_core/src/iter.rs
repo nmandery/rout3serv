@@ -57,8 +57,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::algo::iter::change_h3_resolution;
     use crate::h3ron::Index;
+    use crate::iter::change_h3_resolution;
     use geo::Coordinate;
     use h3ron::H3Cell;
     use std::iter::once;

@@ -7,10 +7,10 @@ use num_traits::Zero;
 use pathfinding::directed::dijkstra::dijkstra_partial;
 use rayon::prelude::*;
 
-use crate::algo::iter::change_h3_resolution;
 use crate::error::Error;
 use crate::graph::{downsample_graph, H3Graph, NodeType};
 use crate::h3ron::{H3Cell, H3Edge, Index, ToCoordinate};
+use crate::iter::change_h3_resolution;
 use crate::{H3CellMap, H3CellSet, WithH3Resolution};
 use geo_types::LineString;
 use std::cmp::Ordering;

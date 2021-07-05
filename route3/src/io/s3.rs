@@ -16,8 +16,8 @@ use rusoto_s3::{GetObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
 
-use route3_core::algo::iter::change_h3_resolution;
 use route3_core::h3ron::H3Cell;
+use route3_core::iter::change_h3_resolution;
 
 #[derive(Deserialize)]
 pub struct S3Config {

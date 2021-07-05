@@ -1,17 +1,20 @@
 use std::collections::{HashMap, HashSet};
 
-// re-export core libraries for easier dependency management
-#[cfg(feature = "with-gdal")]
-pub use gdal;
 pub use geo_types;
 pub use h3ron;
 
+// re-export core libraries for easier dependency management
+#[cfg(feature = "with-gdal")]
+pub use gdal;
+
 use crate::h3ron::{H3Cell, H3Edge};
 
-pub mod algo;
 pub mod error;
+#[cfg(feature = "with-gdal")]
+pub mod gdal_util;
 pub mod graph;
 pub mod io;
+pub mod iter;
 pub mod routing;
 
 pub type H3EdgeMap<V> = HashMap<H3Edge, V>;

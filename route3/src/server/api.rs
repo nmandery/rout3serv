@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use tonic::{include_proto, Status};
 
-use route3_core::algo::gdal::buffer_meters;
+use route3_core::gdal_util::buffer_meters;
 use route3_core::geo_types::Coordinate;
 use route3_core::h3ron::H3Cell;
 
