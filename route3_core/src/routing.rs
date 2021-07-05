@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use std::ops::Add;
 
+use geo_types::LineString;
 use num_traits::Zero;
 use pathfinding::directed::dijkstra::dijkstra_partial;
 use rayon::prelude::*;
@@ -12,8 +14,6 @@ use crate::graph::{downsample_graph, H3Graph, NodeType};
 use crate::h3ron::{H3Cell, H3Edge, Index, ToCoordinate};
 use crate::iter::change_h3_resolution;
 use crate::{H3CellMap, H3CellSet, WithH3Resolution};
-use geo_types::LineString;
-use std::cmp::Ordering;
 
 pub struct SearchSpace {
     /// h3 resolution used for the cells of the search space
@@ -28,6 +28,16 @@ impl SearchSpace {
     pub fn contains(&self, cell: &H3Cell) -> bool {
         self.cells
             .contains(&cell.get_parent_unchecked(self.h3_resolution))
+    }
+
+    pub fn len(&self) -> usize {
+        self.cells.len()
+    }
+}
+
+impl WithH3Resolution for SearchSpace {
+    fn h3_resolution(&self) -> u8 {
+        self.h3_resolution
     }
 }
 
@@ -269,30 +279,41 @@ impl<T> RoutingContext<T>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
 {
+    /// create a constrained search space first to limit the spread of the dijkstra routing
+    /// by prerouting on a lower resolutions (-> less nodes to visit)
+    /// https://i11www.iti.kit.edu/_media/teaching/theses/files/studienarbeit-schuetz-05.pdf
+    fn searchspace_from_routes<I>(&self, routes: I, h3_resolution: u8) -> SearchSpace
+    where
+        I: Iterator,
+        I::Item: Borrow<Route<T>>,
+    {
+        let mut cells = H3CellSet::new();
+        for route in routes {
+            cells.extend(change_h3_resolution(&route.borrow().cells, h3_resolution));
+        }
+        log::debug!(
+            "search space uses {} cells at r={}",
+            cells.len(),
+            h3_resolution
+        );
+        SearchSpace {
+            h3_resolution,
+            cells,
+        }
+    }
+
     pub fn route_many_to_many(
         &self,
         origin_cells: &[H3Cell],
         destination_cells: &[H3Cell],
         options: &ManyToManyOptions,
     ) -> Result<Vec<Route<T>>, Error> {
-        // create a constrained search space first to limit the spread of the dijkstra routing
-        // by prerouting on a lower resolutions (-> less nodes to visit)
-        // https://i11www.iti.kit.edu/_media/teaching/theses/files/studienarbeit-schuetz-05.pdf
-        let search_space = {
-            let mut cells = H3CellSet::new();
-            for route in self.downsampled_routing_graph.route_many_to_many(
-                origin_cells,
-                destination_cells,
-                options,
-                None,
-            )? {
-                cells.extend(route.cells)
-            }
-            SearchSpace {
-                h3_resolution: self.downsampled_routing_graph.h3_resolution(),
-                cells,
-            }
-        };
+        let search_space = self.searchspace_from_routes(
+            self.downsampled_routing_graph
+                .route_many_to_many(origin_cells, destination_cells, options, None)?
+                .into_iter(),
+            self.downsampled_routing_graph.h3_resolution(),
+        );
         self.routing_graph.route_many_to_many(
             origin_cells,
             destination_cells,
