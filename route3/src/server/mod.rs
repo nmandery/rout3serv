@@ -134,6 +134,11 @@ impl Route3 for ServerImpl {
             .get_input(self.routing_context.h3_resolution())?;
 
         let population = self.load_population(&input.within_buffer).await?;
+        let population_within_disturbance = input
+            .disturbance
+            .iter()
+            .filter_map(|cell| population.get(cell))
+            .sum::<f32>() as f64;
 
         let routing_start_cells: Vec<H3Cell> = input
             .within_buffer
@@ -168,11 +173,7 @@ impl Route3 for ServerImpl {
          */
 
         Ok(Response::new(AnalyzeDisturbanceResponse {
-            population_within_disturbance: 0.0, /* radius_cells
-                                                .disturbance
-                                                .iter()
-                                                .filter_map(|cell| population.get(cell))
-                                                .sum::<f32>() as f64*/
+            population_within_disturbance,
         }))
     }
 }
