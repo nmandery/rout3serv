@@ -26,7 +26,7 @@ pub struct SearchSpace {
 /// search space to constrain the area dijkstra is working on
 impl SearchSpace {
     /// should only be called with cells with a resolution >= self.h3_resolution
-    pub fn contains(&self, cell: &H3Cell) -> bool {
+    pub fn contains_parent(&self, cell: &H3Cell) -> bool {
         self.cells
             .contains(&cell.get_parent_unchecked(self.h3_resolution))
     }
@@ -48,12 +48,16 @@ pub struct ManyToManyOptions {
     /// Routing for the origin cell will stop when this number of targets are reached. When not set,
     /// routing will continue until all destinations are reached
     pub num_destinations_to_reach: Option<usize>,
+
+    /// cells which are not allowed to be used for routing
+    pub exclude_cells: Option<H3CellSet>,
 }
 
 impl Default for ManyToManyOptions {
     fn default() -> Self {
         Self {
             num_destinations_to_reach: None,
+            exclude_cells: None,
         }
     }
 }
@@ -201,8 +205,13 @@ where
                                     let destination_cell = edge.destination_index_unchecked();
                                     if search_space
                                         .as_ref()
-                                        .map(|s_space| s_space.contains(&destination_cell))
+                                        .map(|s_space| s_space.contains_parent(&destination_cell))
                                         .unwrap_or(true)
+                                        && options
+                                            .exclude_cells
+                                            .as_ref()
+                                            .map(|exclude| !exclude.contains(&destination_cell))
+                                            .unwrap_or(true)
                                     {
                                         Some((destination_cell, *weight))
                                     } else {
@@ -273,6 +282,11 @@ where
     T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero,
 {
     routing_graph: RoutingGraph<T>,
+
+    /// a downsampled version of the `routing_graph` using a lower h3 resolution.
+    ///
+    /// Allows faster routing queries to collect cells for a `SearchSpace` to
+    /// restrict full-resolution routing
     downsampled_routing_graph: RoutingGraph<T>,
 }
 

@@ -23,7 +23,7 @@ rayon = "1.5"
 
 [dependencies.hashbrown]
 version = "0.11"
-features = ["rayon"]
+features = ["rayon", "serde"]
 
 [dependencies.serde]
 version = "1"

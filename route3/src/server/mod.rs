@@ -1,4 +1,3 @@
-use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::fs::File;
 use std::io::Write;
@@ -13,19 +12,24 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use api::route3_server::{Route3, Route3Server};
-use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest, VersionResponse};
+use api::{
+    DisturbanceOfPopulationMovementInput, DisturbanceOfPopulationMovementRequest,
+    DisturbanceOfPopulationMovementResponse, VersionRequest, VersionResponse,
+};
 use route3_core::geo_types::GeometryCollection;
 use route3_core::graph::H3Graph;
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
-use route3_core::routing::{ManyToManyOptions, RoutingContext};
-use route3_core::WithH3Resolution;
+use route3_core::routing::RoutingContext;
+use route3_core::{H3CellMap, H3CellSet, WithH3Resolution};
 
 use crate::constants::WeightType;
 use crate::io::recordbatch_array;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
+use crate::server::algo::disturbance_of_population_movement;
 use crate::server::util::spawn_blocking_status;
 
+mod algo;
 mod api;
 mod util;
 
@@ -47,7 +51,7 @@ impl ServerImpl {
             ObjectBytes::NotFound => return Err(Report::msg("could not find graph")),
         };
 
-        if config.population_dataset.file_h3_resolution > graph.h3_resolution {
+        if config.population_dataset.file_h3_resolution > graph.h3_resolution() {
             return Err(Report::msg(
                 "file_h3_resolution of the population must be lower than the graph h3 resolution",
             ));
@@ -63,7 +67,7 @@ impl ServerImpl {
     async fn load_population(
         &self,
         cells: &[H3Cell],
-    ) -> std::result::Result<HashMap<H3Cell, f32>, Status> {
+    ) -> std::result::Result<H3CellMap<f32>, Status> {
         let h3index_column_name = self.config.population_dataset.get_h3index_column_name();
         let population_count_column_name = self
             .config
@@ -82,7 +86,7 @@ impl ServerImpl {
                 log::error!("loading population from s3 failed: {:?}", e);
                 Status::internal("population data inaccessible")
             })?;
-        let mut population_cells = HashMap::new();
+        let mut population_cells = H3CellMap::new();
         for pop in population.iter() {
             let h3index_array = recordbatch_array::<UInt64Array>(pop, &h3index_column_name)
                 .map_err(|report| {
@@ -95,7 +99,7 @@ impl ServerImpl {
                 Status::internal("population h3index is inaccessible")
             })?;
 
-            let cells_to_use: HashSet<_> = cells.iter().collect();
+            let cells_to_use: H3CellSet = cells.iter().cloned().collect();
             for (h3index_o, pop_o) in h3index_array.iter().zip(pop_array.iter()) {
                 if let (Some(h3index), Some(population_count)) = (h3index_o, pop_o) {
                     if let Ok(cell) = H3Cell::try_from(h3index) {
@@ -126,34 +130,18 @@ impl Route3 for ServerImpl {
         }))
     }
 
-    async fn analyze_disturbance(
+    async fn analyze_disturbance_of_population_movement(
         &self,
-        request: Request<AnalyzeDisturbanceRequest>,
-    ) -> std::result::Result<Response<AnalyzeDisturbanceResponse>, Status> {
+        request: Request<DisturbanceOfPopulationMovementRequest>,
+    ) -> std::result::Result<Response<DisturbanceOfPopulationMovementResponse>, Status> {
         let input = request
             .into_inner()
             .get_input(self.routing_context.h3_resolution())?;
 
         let population = self.load_population(&input.within_buffer).await?;
-        let population_within_disturbance = input
-            .disturbance
-            .iter()
-            .filter_map(|cell| population.get(cell))
-            .sum::<f32>() as f64;
-
-        let routing_start_cells: Vec<H3Cell> = input
-            .within_buffer
-            .iter()
-            .filter(|cell| !input.disturbance.contains(cell))
-            .cloned()
-            .collect();
-
         let routing_context = self.routing_context.clone();
-        let routes = spawn_blocking_status(move || {
-            let options = ManyToManyOptions {
-                num_destinations_to_reach: input.num_destinations_to_reach,
-            };
-            routing_context.route_many_to_many(&routing_start_cells, &input.destinations, &options)
+        let output = spawn_blocking_status(move || {
+            disturbance_of_population_movement(routing_context, input, population)
         })
         .await?
         .map_err(|e| {
@@ -169,8 +157,9 @@ impl Route3 for ServerImpl {
 
          */
 
-        Ok(Response::new(AnalyzeDisturbanceResponse {
-            population_within_disturbance,
+        Ok(Response::new(DisturbanceOfPopulationMovementResponse {
+            id: output.id.clone(),
+            population_within_disturbance: output.population_within_disturbance,
         }))
     }
 }

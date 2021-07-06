@@ -24,8 +24,11 @@ tonic = "0.4"
 wkb = "0.7.1"
 regex = "1.5"
 lazy_static = "1.4"
-#rayon = "1.5"
 jemallocator = "0.3.0"
+
+[dependencies.uuid]
+version = "0.8"
+features = ["v4"]
 
 [dependencies.tokio]
 version = "1.6"

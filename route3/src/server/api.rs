@@ -1,18 +1,19 @@
-use std::collections::HashSet;
-
 use tonic::{include_proto, Status};
 
 use route3_core::gdal_util::buffer_meters;
 use route3_core::geo_types::Coordinate;
 use route3_core::h3ron::H3Cell;
+use serde::{Deserialize, Serialize};
 
 use crate::server::util::{gdal_geom_to_h3, read_wkb_to_gdal};
+use route3_core::H3CellSet;
 
 include_proto!("grpc.route3");
 
-pub struct AnalyzeDisturbanceInput {
+#[derive(Serialize, Deserialize)]
+pub struct DisturbanceOfPopulationMovementInput {
     /// the cells within the disturbance
-    pub disturbance: HashSet<H3Cell>,
+    pub disturbance: H3CellSet,
 
     /// the cells of the disturbance and within the surrounding buffer
     pub within_buffer: Vec<H3Cell>,
@@ -23,13 +24,13 @@ pub struct AnalyzeDisturbanceInput {
     pub num_destinations_to_reach: Option<usize>,
 }
 
-impl AnalyzeDisturbanceRequest {
+impl DisturbanceOfPopulationMovementRequest {
     pub fn get_input(
         &self,
         h3_resolution: u8,
-    ) -> std::result::Result<AnalyzeDisturbanceInput, Status> {
+    ) -> std::result::Result<DisturbanceOfPopulationMovementInput, Status> {
         let (disturbance, within_buffer) = self.disturbance_and_buffered_cells(h3_resolution)?;
-        Ok(AnalyzeDisturbanceInput {
+        Ok(DisturbanceOfPopulationMovementInput {
             disturbance,
             within_buffer,
             destinations: self.destination_cells(h3_resolution)?,
@@ -44,9 +45,9 @@ impl AnalyzeDisturbanceRequest {
     fn disturbance_and_buffered_cells(
         &self,
         h3_resolution: u8,
-    ) -> std::result::Result<(HashSet<H3Cell>, Vec<H3Cell>), Status> {
-        let disturbance_geom = read_wkb_to_gdal(&self.wkb_geometry)?;
-        let disturbed_cells: HashSet<_> = gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
+    ) -> std::result::Result<(H3CellSet, Vec<H3Cell>), Status> {
+        let disturbance_geom = read_wkb_to_gdal(&self.disturbance_wkb_geometry)?;
+        let disturbed_cells: H3CellSet = gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
             .drain(..)
             .collect();
 

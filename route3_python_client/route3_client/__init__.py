@@ -28,9 +28,9 @@ class Server:
     def server_version(self) -> str:
         return self.stub.Version(route3_pb2.VersionRequest()).version
 
-    def analyze_disturbance(self, geom: BaseGeometry, radius_meters: float, destination_points: Iterable[Point], num_destinations_to_reach: int = 3):
-        req = route3_pb2.AnalyzeDisturbanceRequest()
-        req.wkb_geometry = shapely.wkb.dumps(geom)
+    def analyze_disturbance_of_population_movement(self, disturbance_geom: BaseGeometry, radius_meters: float, destination_points: Iterable[Point], num_destinations_to_reach: int = 3):
+        req = route3_pb2.DisturbanceOfPopulationMovementRequest()
+        req.disturbance_wkb_geometry = shapely.wkb.dumps(disturbance_geom)
         req.radius_meters = radius_meters
         req.num_destinations_to_reach = num_destinations_to_reach
 
@@ -39,4 +39,4 @@ class Server:
             pt.x = destination_point.x
             pt.y = destination_point.y
 
-        return self.stub.AnalyzeDisturbance(req)
+        return self.stub.AnalyzeDisturbanceOfPopulationMovement(req)

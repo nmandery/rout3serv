@@ -10,13 +10,18 @@ message VersionResponse {
   string version = 1;
 }
 
+/** A point in WGS84 coordinates */
 message Point {
   double x = 1;
   double y = 2;
 }
 
-message AnalyzeDisturbanceRequest {
-  bytes wkb_geometry = 1;
+message DisturbanceOfPopulationMovementRequest {
+  /** the geometry of the disturbance in WKB format
+
+  WGS84 coordinate system
+   */
+  bytes disturbance_wkb_geometry = 1;
 
   /* The radius around the wkb_geometry to be analyzed.
       units are meters. */
@@ -32,12 +37,13 @@ message AnalyzeDisturbanceRequest {
 
 }
 
-message AnalyzeDisturbanceResponse {
-  double population_within_disturbance = 1;
+message DisturbanceOfPopulationMovementResponse {
+  string id = 1;
+  double population_within_disturbance = 2;
 }
 
 service Route3 {
   rpc Version(VersionRequest) returns (VersionResponse) {}
 
-  rpc AnalyzeDisturbance(AnalyzeDisturbanceRequest) returns (AnalyzeDisturbanceResponse) {}
+  rpc AnalyzeDisturbanceOfPopulationMovement(DisturbanceOfPopulationMovementRequest) returns (DisturbanceOfPopulationMovementResponse) {}
 }
