@@ -6,6 +6,7 @@ use h3ron::ToCoordinate;
 
 use crate::error::Error;
 use crate::graph::H3Graph;
+use ordered_float::OrderedFloat;
 
 pub trait OgrWrite {
     fn ogr_write<S: AsRef<str>>(
@@ -49,7 +50,7 @@ impl WeightFeatureField for i64 {
     }
 }
 
-impl WeightFeatureField for f64 {
+impl WeightFeatureField for OrderedFloat<f64> {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let weight_field_defn = FieldDefn::new(WEIGHT_FIELD_NAME, OGRFieldType::OFTReal)?;
         weight_field_defn.add_to_layer(&layer)?;
@@ -57,12 +58,12 @@ impl WeightFeatureField for f64 {
     }
 
     fn fill_weight_feature_fields<'a>(&self, feature: &mut Feature<'a>) -> Result<(), Error> {
-        feature.set_field_double(WEIGHT_FIELD_NAME, *self)?;
+        feature.set_field_double(WEIGHT_FIELD_NAME, **self)?;
         Ok(())
     }
 }
 
-impl WeightFeatureField for f32 {
+impl WeightFeatureField for OrderedFloat<f32> {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let weight_field_defn = FieldDefn::new(WEIGHT_FIELD_NAME, OGRFieldType::OFTReal)?;
         weight_field_defn.add_to_layer(&layer)?;
@@ -70,7 +71,7 @@ impl WeightFeatureField for f32 {
     }
 
     fn fill_weight_feature_fields<'a>(&self, feature: &mut Feature<'a>) -> Result<(), Error> {
-        feature.set_field_double(WEIGHT_FIELD_NAME, *self as f64)?;
+        feature.set_field_double(WEIGHT_FIELD_NAME, **self as f64)?;
         Ok(())
     }
 }

@@ -23,7 +23,7 @@ use route3_core::io::load_graph_from_byte_slice;
 use route3_core::routing::RoutingContext;
 use route3_core::{H3CellMap, H3CellSet, WithH3Resolution};
 
-use crate::constants::WeightType;
+use crate::constants::Weight;
 use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
 use crate::server::algo::{disturbance_of_population_movement, StorableOutput};
@@ -36,14 +36,14 @@ mod util;
 struct ServerImpl {
     config: ServerConfig,
     s3_client: Arc<S3Client>,
-    routing_context: Arc<RoutingContext<WeightType>>,
+    routing_context: Arc<RoutingContext<Weight>>,
 }
 
 impl ServerImpl {
     pub async fn create(config: ServerConfig) -> Result<Self> {
         let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
 
-        let graph: H3Graph<WeightType> = match s3_client
+        let graph: H3Graph<Weight> = match s3_client
             .get_object_bytes(config.graph.bucket.clone(), config.graph.key.clone())
             .await?
         {

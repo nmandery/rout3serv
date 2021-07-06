@@ -7,7 +7,7 @@ use route3_core::h3ron::H3Cell;
 use route3_core::routing::{ManyToManyOptions, Route, RoutingContext};
 use route3_core::H3CellMap;
 
-use crate::constants::WeightType;
+use crate::constants::Weight;
 use crate::server::api::DisturbanceOfPopulationMovementInput;
 
 #[derive(Serialize, Deserialize)]
@@ -30,8 +30,8 @@ pub struct DisturbanceOfPopulationMovementOutput {
 
     pub population_within_disturbance: f64,
 
-    pub routes_without_disturbance: Vec<Route<WeightType>>,
-    pub routes_with_disturbance: Vec<Route<WeightType>>,
+    pub routes_without_disturbance: Vec<Route<Weight>>,
+    pub routes_with_disturbance: Vec<Route<Weight>>,
 }
 
 impl From<DisturbanceOfPopulationMovementOutput> for StorableOutput {
@@ -41,7 +41,7 @@ impl From<DisturbanceOfPopulationMovementOutput> for StorableOutput {
 }
 
 pub fn disturbance_of_population_movement(
-    routing_context: Arc<RoutingContext<WeightType>>,
+    routing_context: Arc<RoutingContext<Weight>>,
     input: DisturbanceOfPopulationMovementInput,
     population: H3CellMap<f32>,
 ) -> Result<DisturbanceOfPopulationMovementOutput> {

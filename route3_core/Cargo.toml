@@ -22,6 +22,10 @@ toml = "0.5"
 num-traits = "0.2"
 rayon = "1.5"
 
+[dependencies.ordered-float]
+version = "2.5"
+features = ["serde"]
+
 [dependencies.osmpbfreader]
 version = "0.14"
 optional = true

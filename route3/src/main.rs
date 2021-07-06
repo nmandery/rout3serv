@@ -1,21 +1,26 @@
+extern crate jemallocator;
 #[macro_use]
 extern crate lazy_static;
-extern crate jemallocator;
 
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::Write;
+use std::path::Path;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
 
-use crate::constants::WeightType;
-use route3_core::graph::H3Graph;
+use route3_core::graph::{GraphBuilder, H3Graph};
 use route3_core::io::gdal::OgrWrite;
-use route3_core::io::load_graph;
+use route3_core::io::{load_graph, save_graph_to_file};
+use route3_core::osm::OsmPbfGraphBuilder;
+
+use crate::constants::Weight;
+use crate::osm::way_properties;
 
 mod constants;
 mod io;
+mod osm;
 mod server;
 
 #[global_allocator]
@@ -74,6 +79,27 @@ fn main() -> Result<()> {
                                 .default_value("graph"),
                         ),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name("graph-from-osm-pbf")
+                .about("Build a routing graph from an OSM PBF file")
+                .arg(
+                    Arg::with_name("h3_resolution")
+                        .short("r")
+                        .takes_value(true)
+                        .default_value("10"),
+                )
+                .arg(
+                    Arg::with_name("OUTPUT-GRAPH")
+                        .help("output file to write the graph to")
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("OSM-PBF")
+                        .help("input OSM .pbf file")
+                        .required(true)
+                        .min_values(1),
+                ),
         );
 
     let matches = app.get_matches();
@@ -81,11 +107,12 @@ fn main() -> Result<()> {
     match matches.subcommand() {
         ("graph-stats", Some(sc_matches)) => {
             let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-            let graph: H3Graph<WeightType> = load_graph(File::open(graph_filename)?)?;
+            let graph: H3Graph<Weight> = load_graph(File::open(graph_filename)?)?;
             println!("{}", toml::to_string(&graph.stats()?)?);
         }
         ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
         ("graph-covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
+        ("graph-from-osm-pbf", Some(sc_matches)) => subcommand_from_osm_pbf(sc_matches)?,
         ("server", Some(sc_matches)) => subcommand_server(sc_matches)?,
         _ => {
             println!("unknown command");
@@ -96,7 +123,7 @@ fn main() -> Result<()> {
 
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3Graph<WeightType> = load_graph(File::open(graph_filename)?)?;
+    let graph: H3Graph<Weight> = load_graph(File::open(graph_filename)?)?;
     graph.ogr_write(
         sc_matches.value_of("driver").unwrap(),
         sc_matches.value_of("OUTPUT").unwrap(),
@@ -107,7 +134,7 @@ fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3Graph<WeightType> = load_graph(File::open(graph_filename)?)?;
+    let graph: H3Graph<Weight> = load_graph(File::open(graph_filename)?)?;
 
     let mut outfile = File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?;
     let multi_poly = graph.covered_area()?;
@@ -122,5 +149,25 @@ fn subcommand_server(sc_matches: &ArgMatches) -> Result<()> {
     let config_contents = std::fs::read_to_string(sc_matches.value_of("CONFIG-FILE").unwrap())?;
     let config = toml::from_str(&config_contents)?;
     crate::server::launch_server(config)?;
+    Ok(())
+}
+
+fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
+    let h3_resolution: u8 = sc_matches.value_of("h3_resolution").unwrap().parse()?;
+    let graph_output = sc_matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
+
+    let mut builder = OsmPbfGraphBuilder::new(h3_resolution, way_properties);
+    for pbf_input in sc_matches.values_of("OSM-PBF").unwrap() {
+        builder.read_pbf(Path::new(&pbf_input))?;
+    }
+    let graph = builder.build_graph()?;
+
+    log::info!(
+        "Created graph ({} nodes, {} edges)",
+        graph.num_nodes()?,
+        graph.num_edges()
+    );
+    let mut out_file = File::create(graph_output)?;
+    save_graph_to_file(&graph, &mut out_file)?;
     Ok(())
 }
