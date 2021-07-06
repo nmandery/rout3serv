@@ -24,9 +24,9 @@ use route3_core::routing::RoutingContext;
 use route3_core::{H3CellMap, H3CellSet, WithH3Resolution};
 
 use crate::constants::WeightType;
-use crate::io::recordbatch_array;
-use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
-use crate::server::algo::disturbance_of_population_movement;
+use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
+use crate::io::{recordbatch_array, FoundOption};
+use crate::server::algo::{disturbance_of_population_movement, StorableOutput};
 use crate::server::util::spawn_blocking_status;
 
 mod algo;
@@ -47,8 +47,8 @@ impl ServerImpl {
             .get_object_bytes(config.graph.bucket.clone(), config.graph.key.clone())
             .await?
         {
-            ObjectBytes::Found(graph_bytes) => load_graph_from_byte_slice(&graph_bytes)?,
-            ObjectBytes::NotFound => return Err(Report::msg("could not find graph")),
+            FoundOption::Found(graph_bytes) => load_graph_from_byte_slice(&graph_bytes)?,
+            FoundOption::NotFound => return Err(Report::msg("could not find graph")),
         };
 
         if config.population_dataset.file_h3_resolution > graph.h3_resolution() {
@@ -117,6 +117,63 @@ impl ServerImpl {
         }
         Ok(population_cells)
     }
+
+    fn output_s3_key<I: AsRef<str>>(&self, id: I) -> String {
+        format!(
+            "{}.bincode",
+            self.config
+                .output
+                .key_prefix
+                .as_ref()
+                .map(|prefix| format!("{}{}", prefix, id.as_ref()))
+                .unwrap_or_else(|| id.as_ref().to_string())
+        )
+    }
+
+    async fn store_output(&self, output: &StorableOutput) -> Result<()> {
+        let serialized = bincode::serialize(output).map_err(|e| {
+            log::error!("serializing output failed: {:?}", e);
+            Status::internal("serializing output failed")
+        })?;
+        self.s3_client
+            .put_object_bytes(
+                self.config.output.bucket.clone(),
+                self.output_s3_key(output.id()),
+                serialized,
+            )
+            .await
+            .map_err(|e| {
+                log::error!("storing output failed: {:?}", e);
+                Status::internal("storing output failed")
+            })?;
+        Ok(())
+    }
+
+    async fn retrieve_output<I: AsRef<str>>(
+        &self,
+        id: I,
+    ) -> std::result::Result<FoundOption<StorableOutput>, Status> {
+        let key = self.output_s3_key(id);
+        let found_option = match self
+            .s3_client
+            .get_object_bytes(self.config.output.bucket.clone(), key.clone())
+            .await
+            .map_err(|e| {
+                log::error!("retrieving output with key = {} failed: {:?}", key, e);
+                Status::internal(format!("retrieving output with key = {} failed", key))
+            })? {
+            FoundOption::Found(bytes) => {
+                let storable_output: StorableOutput =
+                    bincode::deserialize(&bytes).map_err(|e| {
+                        log::error!("deserializing output with key = {} failed: {:?}", key, e);
+                        Status::internal(format!("deserializing output with key = {} failed", key))
+                    })?;
+                FoundOption::Found(storable_output)
+            }
+            FoundOption::NotFound => FoundOption::NotFound,
+        };
+        Ok(found_option)
+    }
 }
 
 #[tonic::async_trait]
@@ -156,17 +213,27 @@ impl Route3 for ServerImpl {
         f.write_all(fc.to_string().as_bytes()).unwrap();
 
          */
-
-        Ok(Response::new(DisturbanceOfPopulationMovementResponse {
+        let response = DisturbanceOfPopulationMovementResponse {
             id: output.id.clone(),
             population_within_disturbance: output.population_within_disturbance,
-        }))
+        };
+
+        // save the output for later
+        self.store_output(&output.into()).await.unwrap();
+
+        Ok(Response::new(response))
     }
 }
 
 #[derive(Deserialize)]
 pub struct GraphConfig {
     key: String,
+    bucket: String,
+}
+
+#[derive(Deserialize)]
+pub struct OutputConfig {
+    key_prefix: Option<String>,
     bucket: String,
 }
 
@@ -213,6 +280,7 @@ pub struct ServerConfig {
     pub s3: S3Config,
     pub graph: GraphConfig,
     pub population_dataset: PopulationDatasetConfig,
+    pub output: OutputConfig,
 }
 
 pub fn launch_server(server_config: ServerConfig) -> Result<()> {

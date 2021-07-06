@@ -6,6 +6,12 @@ use eyre::{Report, Result};
 
 pub mod s3;
 
+/// a minimal option type to indicate if something has been found or not
+pub enum FoundOption<T> {
+    Found(T),
+    NotFound,
+}
+
 /// get and downcast an array of a arrow recordbatch
 pub fn recordbatch_array<'a, A: Any>(rb: &'a RecordBatch, column_name: &'a str) -> Result<&'a A> {
     let schema = rb.schema();

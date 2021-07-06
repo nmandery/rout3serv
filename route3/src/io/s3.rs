@@ -12,10 +12,11 @@ use futures::TryStreamExt;
 use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{Region, RusotoError};
-use rusoto_s3::{GetObjectRequest, S3};
+use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
 
+use crate::io::FoundOption;
 use route3_core::h3ron::H3Cell;
 use route3_core::iter::change_h3_resolution;
 
@@ -31,11 +32,6 @@ pub struct S3Config {
 pub struct S3Client {
     s3: rusoto_s3::S3Client,
     retry_duration: Duration,
-}
-
-pub enum ObjectBytes {
-    Found(Vec<u8>),
-    NotFound,
 }
 
 impl S3Client {
@@ -68,7 +64,11 @@ impl S3Client {
         })
     }
 
-    pub async fn get_object_bytes(&self, bucket: String, key: String) -> Result<ObjectBytes> {
+    pub async fn get_object_bytes(
+        &self,
+        bucket: String,
+        key: String,
+    ) -> Result<FoundOption<Vec<u8>>> {
         log::debug!("get_object_bytes: bucket={}, key={}", bucket, key);
         let ob = backoff::future::retry(
             backoff::ExponentialBackoff {
@@ -96,9 +96,9 @@ impl S3Client {
                                 byte_content.len(),
                                 ByteSize(byte_content.len() as u64)
                             );
-                            Ok(ObjectBytes::Found(byte_content))
+                            Ok(FoundOption::Found(byte_content))
                         } else {
-                            Ok(ObjectBytes::Found(vec![])) // has no body
+                            Ok(FoundOption::Found(vec![])) // has no body
                         }
                     }
                     Err(e) => match e {
@@ -108,7 +108,7 @@ impl S3Client {
                                 bucket,
                                 key
                             );
-                            Ok(ObjectBytes::NotFound)
+                            Ok(FoundOption::NotFound)
                         }
                         _ => {
                             log::error!(
@@ -125,6 +125,36 @@ impl S3Client {
         )
         .await?;
         Ok(ob)
+    }
+
+    pub async fn put_object_bytes(&self, bucket: String, key: String, data: Vec<u8>) -> Result<()> {
+        log::info!(
+            "put_object_bytes: bucket={}, key={}, num_bytes={}",
+            bucket,
+            key,
+            data.len()
+        );
+
+        // TODO: add backoff
+
+        let put_object_req = PutObjectRequest {
+            bucket: bucket.clone(),
+            key: key.clone(),
+            body: Some(data.into()),
+            ..Default::default()
+        };
+        match self.s3.put_object(put_object_req).await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                log::error!(
+                    "put_object_bytes: bucket={}, key={} -> {}",
+                    bucket,
+                    key,
+                    e.to_string()
+                );
+                Err(Report::from(e))
+            }
+        }
     }
 }
 
@@ -173,7 +203,7 @@ impl S3RecordBatchLoader {
                     .await
                     .and_then(|object_bytes| {
                         let mut record_batches = vec![];
-                        if let ObjectBytes::Found(bytes) = object_bytes {
+                        if let FoundOption::Found(bytes) = object_bytes {
                             let cursor = Cursor::new(&bytes);
                             for record_batch in FileReader::try_new(cursor)? {
                                 record_batches.push(record_batch?);

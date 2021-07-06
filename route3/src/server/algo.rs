@@ -11,7 +11,7 @@ use crate::constants::WeightType;
 use crate::server::api::DisturbanceOfPopulationMovementInput;
 
 #[derive(Serialize, Deserialize)]
-enum StorableOutput {
+pub enum StorableOutput {
     DisturbanceOfPopulationMovement(DisturbanceOfPopulationMovementOutput),
 }
 
@@ -58,24 +58,22 @@ pub fn disturbance_of_population_movement(
         .cloned()
         .collect();
 
-    let options_without_disturbance = ManyToManyOptions {
-        num_destinations_to_reach: input.num_destinations_to_reach,
-        ..Default::default()
-    };
     let routes_without_disturbance = routing_context.route_many_to_many(
         &routing_start_cells,
         &input.destinations,
-        &options_without_disturbance,
+        &ManyToManyOptions {
+            num_destinations_to_reach: input.num_destinations_to_reach,
+            ..Default::default()
+        },
     )?;
 
-    let options_with_disturbance = ManyToManyOptions {
-        num_destinations_to_reach: input.num_destinations_to_reach,
-        exclude_cells: Some(input.disturbance.clone()),
-    };
     let routes_with_disturbance = routing_context.route_many_to_many(
         &routing_start_cells,
         &input.destinations,
-        &options_with_disturbance,
+        &ManyToManyOptions {
+            num_destinations_to_reach: input.num_destinations_to_reach,
+            exclude_cells: Some(input.disturbance.clone()),
+        },
     )?;
 
     Ok(DisturbanceOfPopulationMovementOutput {

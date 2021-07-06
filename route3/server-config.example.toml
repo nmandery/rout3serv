@@ -24,3 +24,8 @@ file_h3_resolution = 5
 ## must be type Float32
 ## default: "population"
 # population_count_column_name = "population"
+
+
+[output]
+bucket = "outputs"
+key_prefix = "out-"
