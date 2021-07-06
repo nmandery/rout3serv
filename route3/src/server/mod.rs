@@ -1,29 +1,30 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
+use std::fs::File;
+use std::io::Write;
+use std::iter::FromIterator;
 use std::sync::Arc;
 
 use arrow::array::{Float32Array, UInt64Array};
 use eyre::{Report, Result};
+use geojson::FeatureCollection;
 use serde::Deserialize;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use api::route3_server::{Route3, Route3Server};
 use api::{AnalyzeDisturbanceRequest, AnalyzeDisturbanceResponse, VersionRequest, VersionResponse};
+use route3_core::geo_types::GeometryCollection;
+use route3_core::graph::H3Graph;
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
+use route3_core::routing::{ManyToManyOptions, RoutingContext};
+use route3_core::WithH3Resolution;
 
 use crate::constants::WeightType;
 use crate::io::recordbatch_array;
 use crate::io::s3::{ObjectBytes, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
-use geojson::FeatureCollection;
-use route3_core::geo_types::GeometryCollection;
-use route3_core::graph::H3Graph;
-use route3_core::routing::{ManyToManyOptions, RoutingContext};
-use route3_core::WithH3Resolution;
-use std::fs::File;
-use std::io::Write;
-use std::iter::FromIterator;
+use crate::server::util::spawn_blocking_status;
 
 mod api;
 mod util;
@@ -148,17 +149,13 @@ impl Route3 for ServerImpl {
             .collect();
 
         let routing_context = self.routing_context.clone();
-        let routes = tokio::task::spawn_blocking(move || {
+        let routes = spawn_blocking_status(move || {
             let options = ManyToManyOptions {
                 num_destinations_to_reach: input.num_destinations_to_reach,
             };
             routing_context.route_many_to_many(&routing_start_cells, &input.destinations, &options)
         })
-        .await
-        .map_err(|e| {
-            log::error!("joining blocking task failed: {:?}", e);
-            Status::internal("join error")
-        })?
+        .await?
         .map_err(|e| {
             log::error!("calculating routes failed: {:?}", e);
             Status::internal("calculating routes failed")

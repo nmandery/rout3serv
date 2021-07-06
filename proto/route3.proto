@@ -38,5 +38,6 @@ message AnalyzeDisturbanceResponse {
 
 service Route3 {
   rpc Version(VersionRequest) returns (VersionResponse) {}
+
   rpc AnalyzeDisturbance(AnalyzeDisturbanceRequest) returns (AnalyzeDisturbanceResponse) {}
 }

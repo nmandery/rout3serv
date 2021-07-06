@@ -7,10 +7,12 @@ use route3_core::gdal::vector::Geometry;
 use route3_core::geo_types::Geometry as GTGeometry;
 use route3_core::h3ron::{H3Cell, ToH3Indexes};
 
+/// read binary WKB into a gdal `Geometry`
 pub fn read_wkb_to_gdal(wkb_bytes: &[u8]) -> std::result::Result<Geometry, Status> {
     Geometry::from_wkb(wkb_bytes).map_err(|_e| Status::invalid_argument("Can not parse WKB"))
 }
 
+/// convert a gdal `Geometry` to `H3Cell`s.
 pub fn gdal_geom_to_h3(
     geom: &Geometry,
     h3_resolution: u8,
@@ -35,4 +37,17 @@ pub fn gdal_geom_to_h3(
     cells.sort_unstable();
     cells.dedup();
     Ok(cells)
+}
+
+/// wrapper around tokios `spawn_blocking` to directly
+/// return the `JoinHandle` as a tonic `Status`.
+pub async fn spawn_blocking_status<F, R>(f: F) -> Result<R, Status>
+where
+    F: FnOnce() -> R + Send + 'static,
+    R: Send + 'static,
+{
+    tokio::task::spawn_blocking(f).await.map_err(|e| {
+        log::error!("joining blocking task failed: {:?}", e);
+        Status::internal("join error")
+    })
 }
