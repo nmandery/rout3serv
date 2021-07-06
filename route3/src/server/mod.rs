@@ -130,7 +130,7 @@ impl ServerImpl {
         )
     }
 
-    async fn store_output(&self, output: &StorableOutput) -> Result<()> {
+    async fn store_output(&self, output: &StorableOutput) -> std::result::Result<(), Status> {
         let serialized = bincode::serialize(output).map_err(|e| {
             log::error!("serializing output failed: {:?}", e);
             Status::internal("serializing output failed")
@@ -219,7 +219,7 @@ impl Route3 for ServerImpl {
         };
 
         // save the output for later
-        self.store_output(&output.into()).await.unwrap();
+        self.store_output(&output.into()).await?;
 
         Ok(Response::new(response))
     }
