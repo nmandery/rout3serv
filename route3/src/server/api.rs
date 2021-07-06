@@ -64,7 +64,7 @@ impl DisturbanceOfPopulationMovementRequest {
 
     /// cells to route to
     fn destination_cells(&self, h3_resolution: u8) -> std::result::Result<Vec<H3Cell>, Status> {
-        let destination_cells = self
+        let mut destination_cells = self
             .destinations
             .iter()
             .map(|pt| H3Cell::from_coordinate(&Coordinate::from((pt.x, pt.y)), h3_resolution))
@@ -73,6 +73,8 @@ impl DisturbanceOfPopulationMovementRequest {
                 log::error!("can not convert the target_points to h3: {}", e);
                 Status::internal("can not convert the target_points to h3")
             })?;
+        destination_cells.sort_unstable();
+        destination_cells.dedup();
         Ok(destination_cells)
     }
 }
