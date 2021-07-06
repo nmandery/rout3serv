@@ -13,7 +13,7 @@ pub fn way_properties(tags: &Tags) -> Option<EdgeProperties<Weight>> {
             "tertiary" | "tertiary_link" => Some(Weight::from(5.0)),
             "unclassified" | "residential" | "living_street" => Some(Weight::from(8.0)),
             "road" => Some(Weight::from(9.0)),
-            //"service" | "track" => Some(WeightType::from(20.0)),
+            "service" | "track" => Some(Weight::from(200.0)),
             _ => None,
         }
         .map(|weight| {
