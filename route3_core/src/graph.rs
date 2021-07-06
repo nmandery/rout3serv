@@ -238,6 +238,11 @@ where
     if target_h3_resolution >= graph.h3_resolution {
         return Err(Error::TooHighH3Resolution(target_h3_resolution));
     }
+    log::debug!(
+        "downsampling graph from r={} to r={}",
+        graph.h3_resolution(),
+        target_h3_resolution
+    );
     let downsampled_edges = graph
         .edges
         .into_iter()
