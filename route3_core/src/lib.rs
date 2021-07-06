@@ -1,11 +1,11 @@
-use hashbrown::{HashMap, HashSet};
-
-pub use geo_types;
-pub use h3ron;
-
 // re-export core libraries for easier dependency management
 #[cfg(feature = "with-gdal")]
 pub use gdal;
+pub use geo_types;
+pub use h3ron;
+use hashbrown::{HashMap, HashSet};
+#[cfg(feature = "osm")]
+pub use osmpbfreader;
 
 use crate::h3ron::{H3Cell, H3Edge};
 
@@ -15,6 +15,8 @@ pub mod gdal_util;
 pub mod graph;
 pub mod io;
 pub mod iter;
+#[cfg(feature = "osm")]
+pub mod osm;
 pub mod routing;
 
 pub type H3EdgeMap<V> = HashMap<H3Edge, V>;

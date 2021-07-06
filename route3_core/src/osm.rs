@@ -3,14 +3,12 @@ use std::convert::TryFrom;
 use std::ops::Add;
 use std::path::Path;
 
-use eyre::Result;
 use osmpbfreader::{OsmPbfReader, Tags};
 
-use route3_core::error::Error;
-use route3_core::geo_types::{Coordinate, LineString};
-use route3_core::graph::{GraphBuilder, H3Graph};
-use route3_core::h3ron;
-use route3_core::h3ron::H3Cell;
+use crate::error::Error;
+use crate::geo_types::{Coordinate, LineString};
+use crate::graph::{GraphBuilder, H3Graph};
+use crate::h3ron::H3Cell;
 
 pub struct EdgeProperties<T> {
     pub is_bidirectional: bool,
@@ -28,7 +26,7 @@ pub struct OsmPbfGraphBuilder<
 
 impl<T, F> OsmPbfGraphBuilder<T, F>
 where
-    T: PartialOrd + PartialEq + Add + Copy,
+    T: PartialOrd + PartialEq + Add + Copy + Send,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
 {
     pub fn new(h3_resolution: u8, edge_properties_fn: F) -> Self {
@@ -39,7 +37,7 @@ where
         }
     }
 
-    pub fn read_pbf(&mut self, pbf_path: &Path) -> Result<()> {
+    pub fn read_pbf(&mut self, pbf_path: &Path) -> Result<(), Error> {
         let pbf_file = std::fs::File::open(pbf_path)?;
         let mut pbf = OsmPbfReader::new(pbf_file);
         let mut nodeid_coordinates: HashMap<_, _> = Default::default();
@@ -95,7 +93,7 @@ where
 
 impl<T, F> GraphBuilder<T> for OsmPbfGraphBuilder<T, F>
 where
-    T: PartialOrd + PartialEq + Add + Copy,
+    T: PartialOrd + PartialEq + Add + Copy + Send,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
 {
     fn build_graph(self) -> std::result::Result<H3Graph<T>, Error> {

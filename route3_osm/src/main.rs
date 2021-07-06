@@ -3,27 +3,24 @@ use std::path::Path;
 
 use clap::{App, Arg, SubCommand};
 use eyre::Result;
-use osmpbfreader::Tags;
 
 use route3_core::graph::GraphBuilder;
 use route3_core::io::save_graph_to_file;
+use route3_core::osm::{EdgeProperties, OsmPbfGraphBuilder};
+use route3_core::osmpbfreader::Tags;
 
-use crate::osm::{EdgeProperties, OsmPbfGraphBuilder};
-
-mod osm;
-
-fn way_properties(tags: &Tags) -> Option<EdgeProperties<u64>> {
+fn way_properties(tags: &Tags) -> Option<EdgeProperties<f64>> {
     // https://wiki.openstreetmap.org/wiki/Key:highway
     if let Some(highway_value) = tags.get("highway") {
         match highway_value.to_lowercase().as_str() {
             "motorway" | "motorway_link" | "trunk" | "trunk_link" | "primary" | "primary_link" => {
-                Some(3)
+                Some(3.0)
             }
-            "secondary" | "secondary_link" => Some(4),
-            "tertiary" | "tertiary_link" => Some(5),
-            "unclassified" | "residential" | "living_street" => Some(8),
-            "road" => Some(12),
-            //"service" | "track" => Some(20),
+            "secondary" | "secondary_link" => Some(4.0),
+            "tertiary" | "tertiary_link" => Some(5.0),
+            "unclassified" | "residential" | "living_street" => Some(8.0),
+            "road" => Some(9.0),
+            //"service" | "track" => Some(20.0),
             _ => None,
         }
         .map(|weight| {

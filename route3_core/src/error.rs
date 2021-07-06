@@ -29,4 +29,8 @@ pub enum Error {
 
     #[error("none of the routing destinatons is part of the routing graph")]
     DestinationsNotInGraph,
+
+    #[cfg(feature = "osm")]
+    #[error("osmpbfreader error: {0}")]
+    OSMPbfReaderError(#[from] osmpbfreader::Error),
 }
