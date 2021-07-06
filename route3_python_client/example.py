@@ -11,7 +11,8 @@ target_points = [
 
 server = Server()
 t_start = datetime.now()
-resp = server.analyze_disturbance_of_population_movement(disturbance, 5000.0, target_points, num_destinations_to_reach=3)
+stats = server.analyze_disturbance_of_population_movement(disturbance, 5000.0, target_points, num_destinations_to_reach=3)
 print(f"took {datetime.now() - t_start}")
-print(f"id: {resp.id}")
-print(f"population within disturbance: {resp.population_within_disturbance}")
+print(f"id: {stats.id}")
+print(f"population within disturbance: {stats.population_within_disturbance}")
+print(stats.dataframe)

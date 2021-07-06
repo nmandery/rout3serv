@@ -5,12 +5,20 @@ from typing import Optional, Iterable
 import grpc
 from shapely.geometry.base import BaseGeometry
 from shapely.geometry import Point
+import pyarrow as pa
+import pandas as pd
 import shapely.wkb
 
 from . import route3_pb2
 from .route3_pb2_grpc import Route3Stub
 
 DEFAULT_PORT = 7088
+
+
+class DisturbanceOfPopulationMovementStats:
+    id: Optional[str]
+    population_within_disturbance: float
+    dataframe: pd.DataFrame
 
 
 class Server:
@@ -28,7 +36,9 @@ class Server:
     def server_version(self) -> str:
         return self.stub.Version(route3_pb2.VersionRequest()).version
 
-    def analyze_disturbance_of_population_movement(self, disturbance_geom: BaseGeometry, radius_meters: float, destination_points: Iterable[Point], num_destinations_to_reach: int = 3):
+    def analyze_disturbance_of_population_movement(self, disturbance_geom: BaseGeometry, radius_meters: float,
+                                                   destination_points: Iterable[Point],
+                                                   num_destinations_to_reach: int = 3) -> DisturbanceOfPopulationMovementStats:
         req = route3_pb2.DisturbanceOfPopulationMovementRequest()
         req.disturbance_wkb_geometry = shapely.wkb.dumps(disturbance_geom)
         req.radius_meters = radius_meters
@@ -39,4 +49,9 @@ class Server:
             pt.x = destination_point.x
             pt.y = destination_point.y
 
-        return self.stub.AnalyzeDisturbanceOfPopulationMovement(req)
+        response = self.stub.AnalyzeDisturbanceOfPopulationMovement(req)
+        stats = DisturbanceOfPopulationMovementStats()
+        stats.id = response.id
+        stats.population_within_disturbance = response.stats.population_within_disturbance
+        stats.dataframe = pa.ipc.open_file(response.stats.recordbatch).read_pandas()
+        return stats

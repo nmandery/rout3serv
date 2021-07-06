@@ -5,6 +5,8 @@ use route3_core::geo_types::Coordinate;
 use route3_core::h3ron::H3Cell;
 use serde::{Deserialize, Serialize};
 
+use crate::io::recordbatch_to_bytes;
+use crate::server::algo::DisturbanceOfPopulationMovementOutput;
 use crate::server::util::{gdal_geom_to_h3, read_wkb_to_gdal};
 use route3_core::H3CellSet;
 
@@ -76,5 +78,26 @@ impl DisturbanceOfPopulationMovementRequest {
         destination_cells.sort_unstable();
         destination_cells.dedup();
         Ok(destination_cells)
+    }
+}
+
+impl DisturbanceOfPopulationMovementStats {
+    pub fn from_output(
+        output: &DisturbanceOfPopulationMovementOutput,
+    ) -> std::result::Result<Self, Status> {
+        let recordbatch = output.stats_recordbatch().map_err(|e| {
+            log::error!("creating recordbatch failed: {:?}", e);
+            Status::internal("creating recordbatch failed")
+        })?;
+
+        let recordbatch_bytes = recordbatch_to_bytes(&recordbatch).map_err(|e| {
+            log::error!("serializing recordbatch failed: {:?}", e);
+            Status::internal("serializing recordbatch failed")
+        })?;
+
+        Ok(Self {
+            population_within_disturbance: output.population_within_disturbance,
+            recordbatch: recordbatch_bytes,
+        })
     }
 }

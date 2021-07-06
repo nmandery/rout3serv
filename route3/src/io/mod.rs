@@ -1,6 +1,7 @@
 use std::any::type_name;
 use std::any::Any;
 
+use arrow::ipc::writer::FileWriter;
 use arrow::record_batch::RecordBatch;
 use eyre::{Report, Result};
 
@@ -28,4 +29,14 @@ pub fn recordbatch_array<'a, A: Any>(rb: &'a RecordBatch, column_name: &'a str) 
         ))
     })?;
     Ok(arr)
+}
+
+pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>> {
+    let mut buf: Vec<u8> = vec![];
+    {
+        let mut filewriter = FileWriter::try_new(&mut buf, &*recordbatch.schema())?;
+        filewriter.write(recordbatch)?;
+        filewriter.finish()?;
+    }
+    Ok(buf)
 }

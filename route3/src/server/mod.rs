@@ -1,22 +1,12 @@
 use std::convert::{TryFrom, TryInto};
-use std::fs::File;
-use std::io::Write;
-use std::iter::FromIterator;
 use std::sync::Arc;
 
 use arrow::array::{Float32Array, UInt64Array};
 use eyre::{Report, Result};
-use geojson::FeatureCollection;
 use serde::Deserialize;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
-use api::route3_server::{Route3, Route3Server};
-use api::{
-    DisturbanceOfPopulationMovementInput, DisturbanceOfPopulationMovementRequest,
-    DisturbanceOfPopulationMovementResponse, VersionRequest, VersionResponse,
-};
-use route3_core::geo_types::GeometryCollection;
 use route3_core::graph::H3Graph;
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
@@ -27,6 +17,11 @@ use crate::constants::Weight;
 use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
 use crate::server::algo::{disturbance_of_population_movement, StorableOutput};
+use crate::server::api::route3_server::{Route3, Route3Server};
+use crate::server::api::{
+    DisturbanceOfPopulationMovementRequest, DisturbanceOfPopulationMovementResponse,
+    DisturbanceOfPopulationMovementStats, VersionRequest, VersionResponse,
+};
 use crate::server::util::spawn_blocking_status;
 
 mod algo;
@@ -206,16 +201,9 @@ impl Route3 for ServerImpl {
             Status::internal("calculating routes failed")
         })?;
 
-        /*
-        let gc = GeometryCollection::from_iter(routes.iter().map(|route| route.to_linestring()));
-        let fc = FeatureCollection::from(&gc);
-        let mut f = File::create("/tmp/gj.json").unwrap();
-        f.write_all(fc.to_string().as_bytes()).unwrap();
-
-         */
         let response = DisturbanceOfPopulationMovementResponse {
             id: output.id.clone(),
-            population_within_disturbance: output.population_within_disturbance,
+            stats: Some(DisturbanceOfPopulationMovementStats::from_output(&output)?),
         };
 
         // save the output for later

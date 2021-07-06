@@ -37,9 +37,17 @@ message DisturbanceOfPopulationMovementRequest {
 
 }
 
+message DisturbanceOfPopulationMovementStats {
+  double population_within_disturbance = 1;
+
+  // arrow recordbatch in Arrow IPC File format
+  bytes recordbatch = 2;
+
+}
+
 message DisturbanceOfPopulationMovementResponse {
   string id = 1;
-  double population_within_disturbance = 2;
+  DisturbanceOfPopulationMovementStats stats = 2;
 }
 
 service Route3 {
