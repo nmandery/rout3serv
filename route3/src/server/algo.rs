@@ -35,8 +35,11 @@ pub struct DisturbanceOfPopulationMovementOutput {
     pub population_within_disturbance: f64,
     pub population_at_origins: H3CellMap<f64>,
 
-    pub routes_without_disturbance: Vec<Route<Weight>>,
-    pub routes_with_disturbance: Vec<Route<Weight>>,
+    /// keyed with the origin-cell
+    pub routes_without_disturbance: H3CellMap<Vec<Route<Weight>>>,
+
+    /// keyed with the origin-cell
+    pub routes_with_disturbance: H3CellMap<Vec<Route<Weight>>>,
 }
 
 impl From<DisturbanceOfPopulationMovementOutput> for StorableOutput {
@@ -117,28 +120,31 @@ impl Default for DOPMOWeights {
 impl DisturbanceOfPopulationMovementOutput {
     /// build an arrow dataset with some basic stats for each of the origin cells
     pub fn stats_recordbatch(&self) -> Result<RecordBatch> {
-        // TODO: isolated origins, which can not be routed will be lost
-        // also TODO: this code is ugly as hell - improve this
+        // TODO: this code is ugly - improve this
         let mut aggregated_weights: H3CellMap<DOPMOWeights> = H3CellMap::new();
-        for route in self.routes_without_disturbance.iter() {
-            let entry = aggregated_weights.entry(route.origin_cell()?).or_default();
-            if entry.without_disturbance.is_empty()
-                || !entry.without_disturbance.iter().any(|w| &route.cost < w)
-            {
-                entry.preferred_destination_without_disturbance =
-                    Some(route.destination_cell()?.h3index());
+        for (origin_cell, routes) in self.routes_without_disturbance.iter() {
+            let entry = aggregated_weights.entry(*origin_cell).or_default();
+            for route in routes.iter() {
+                if entry.without_disturbance.is_empty()
+                    || !entry.without_disturbance.iter().any(|w| &route.cost < w)
+                {
+                    entry.preferred_destination_without_disturbance =
+                        Some(route.destination_cell()?.h3index());
+                }
+                entry.without_disturbance.push(route.cost);
             }
-            entry.without_disturbance.push(route.cost);
         }
-        for route in self.routes_with_disturbance.iter() {
-            let entry = aggregated_weights.entry(route.origin_cell()?).or_default();
-            if entry.with_disturbance.is_empty()
-                || !entry.with_disturbance.iter().any(|w| &route.cost < w)
-            {
-                entry.preferred_destination_with_disturbance =
-                    Some(route.destination_cell()?.h3index());
+        for (origin_cell, routes) in self.routes_with_disturbance.iter() {
+            let entry = aggregated_weights.entry(*origin_cell).or_default();
+            for route in routes.iter() {
+                if entry.with_disturbance.is_empty()
+                    || !entry.with_disturbance.iter().any(|w| &route.cost < w)
+                {
+                    entry.preferred_destination_with_disturbance =
+                        Some(route.destination_cell()?.h3index());
+                }
+                entry.with_disturbance.push(route.cost);
             }
-            entry.with_disturbance.push(route.cost);
         }
 
         let mut cell_h3indexes = Vec::with_capacity(aggregated_weights.len());

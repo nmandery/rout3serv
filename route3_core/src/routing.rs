@@ -140,6 +140,8 @@ where
     T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
 {
     ///
+    /// Returns found routes keyed by the origin cell.
+    ///
     /// `search_space` limits the routing to child nodes contained in the search space.
     pub fn route_many_to_many<I>(
         &self,
@@ -147,7 +149,7 @@ where
         destination_cells: I,
         options: &ManyToManyOptions,
         search_space: Option<SearchSpace>,
-    ) -> Result<Vec<Route<T>>, Error>
+    ) -> Result<H3CellMap<Vec<Route<T>>>, Error>
     where
         I: IntoIterator,
         I::Item: Borrow<H3Cell>,
@@ -167,7 +169,7 @@ where
         };
 
         if filtered_origin_cells.is_empty() {
-            return Ok(vec![]);
+            return Ok(Default::default());
         }
 
         let filtered_destination_cells =
@@ -261,10 +263,9 @@ where
                         cost,
                     })
                 }
-                routes
+                (*origin_cell, routes)
             })
-            .flatten()
-            .collect::<Vec<_>>();
+            .collect::<H3CellMap<_>>();
         Ok(routes)
     }
 }
@@ -326,11 +327,12 @@ where
         origin_cells: &[H3Cell],
         destination_cells: &[H3Cell],
         options: &ManyToManyOptions,
-    ) -> Result<Vec<Route<T>>, Error> {
+    ) -> Result<H3CellMap<Vec<Route<T>>>, Error> {
         let search_space = self.searchspace_from_routes(
             self.downsampled_routing_graph
                 .route_many_to_many(origin_cells, destination_cells, options, None)?
-                .into_iter(),
+                .values()
+                .flatten(),
             self.downsampled_routing_graph.h3_resolution(),
         );
         self.routing_graph.route_many_to_many(
