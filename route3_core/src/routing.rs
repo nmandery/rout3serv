@@ -255,7 +255,10 @@ where
                     while let Some((cell, weight)) = routemap.get(&last_cell) {
                         route_cells.push(*cell);
                         last_cell = *cell;
-                        cost = cost + *weight;
+                        if cost == T::zero() {
+                            // TODO: check this
+                            cost = cost + *weight;
+                        }
                     }
                     route_cells.reverse();
                     routes.push(Route {

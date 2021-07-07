@@ -2,12 +2,14 @@ use tonic::{include_proto, Status};
 
 use route3_core::gdal_util::buffer_meters;
 use route3_core::geo_types::Coordinate;
-use route3_core::h3ron::H3Cell;
+use route3_core::h3ron::{H3Cell, Index};
 use serde::{Deserialize, Serialize};
 
+use crate::constants::Weight;
 use crate::io::recordbatch_to_bytes;
 use crate::server::algo::DisturbanceOfPopulationMovementOutput;
 use crate::server::util::{gdal_geom_to_h3, read_wkb_to_gdal};
+use route3_core::routing::Route;
 use route3_core::H3CellSet;
 
 include_proto!("grpc.route3");
@@ -98,6 +100,21 @@ impl DisturbanceOfPopulationMovementStats {
         Ok(Self {
             population_within_disturbance: output.population_within_disturbance,
             recordbatch: recordbatch_bytes,
+        })
+    }
+}
+
+impl RouteWkb {
+    pub fn from_route(route: &Route<Weight>) -> Result<Self, Status> {
+        let wkb_bytes = wkb::geom_to_wkb(&route.to_linestring().into()).map_err(|e| {
+            log::error!("can not encode route to wkb: {:?}", e);
+            Status::internal("can not encode wkb")
+        })?;
+        Ok(Self {
+            origin_cell: route.origin_cell().map(|c| c.h3index()).unwrap_or(0),
+            destination_cell: route.destination_cell().map(|c| c.h3index()).unwrap_or(0),
+            cost: f64::from(route.cost),
+            wkb: wkb_bytes,
         })
     }
 }

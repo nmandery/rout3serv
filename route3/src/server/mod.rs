@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use arrow::array::{Float32Array, UInt64Array};
 use eyre::{Report, Result};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -16,9 +16,12 @@ use route3_core::{H3CellMap, H3CellSet, WithH3Resolution};
 use crate::constants::Weight;
 use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
-use crate::server::algo::{disturbance_of_population_movement, StorableOutput};
+use crate::server::algo::{
+    disturbance_of_population_movement, DisturbanceOfPopulationMovementOutput, StrId,
+};
 use crate::server::api::route3_server::{Route3, Route3Server};
 use crate::server::util::spawn_blocking_status;
+use serde::de::DeserializeOwned;
 
 mod algo;
 mod api;
@@ -121,7 +124,10 @@ impl ServerImpl {
         )
     }
 
-    async fn store_output(&self, output: &StorableOutput) -> std::result::Result<(), Status> {
+    async fn store_output<O: Serialize + StrId>(
+        &self,
+        output: &O,
+    ) -> std::result::Result<(), Status> {
         let serialized = bincode::serialize(output).map_err(|e| {
             log::error!("serializing output failed: {:?}", e);
             Status::internal("serializing output failed")
@@ -140,10 +146,10 @@ impl ServerImpl {
         Ok(())
     }
 
-    async fn retrieve_output<I: AsRef<str>>(
+    async fn retrieve_output<I: AsRef<str>, O: DeserializeOwned>(
         &self,
         id: I,
-    ) -> std::result::Result<FoundOption<StorableOutput>, Status> {
+    ) -> std::result::Result<FoundOption<O>, Status> {
         let key = self.output_s3_key(id);
         let found_option = match self
             .s3_client
@@ -154,12 +160,11 @@ impl ServerImpl {
                 Status::internal(format!("retrieving output with key = {} failed", key))
             })? {
             FoundOption::Found(bytes) => {
-                let storable_output: StorableOutput =
-                    bincode::deserialize(&bytes).map_err(|e| {
-                        log::error!("deserializing output with key = {} failed: {:?}", key, e);
-                        Status::internal(format!("deserializing output with key = {} failed", key))
-                    })?;
-                FoundOption::Found(storable_output)
+                let output: O = bincode::deserialize(&bytes).map_err(|e| {
+                    log::error!("deserializing output with key = {} failed: {:?}", key, e);
+                    Status::internal(format!("deserializing output with key = {} failed", key))
+                })?;
+                FoundOption::Found(output)
             }
             FoundOption::NotFound => FoundOption::NotFound,
         };
@@ -198,14 +203,14 @@ impl Route3 for ServerImpl {
         })?;
 
         let response = api::DisturbanceOfPopulationMovementResponse {
-            dopm_id: output.id.clone(),
+            dopm_id: output.dopm_id.clone(),
             stats: Some(api::DisturbanceOfPopulationMovementStats::from_output(
                 &output,
             )?),
         };
 
         // save the output for later
-        self.store_output(&output.into()).await?;
+        self.store_output(&output).await?;
 
         Ok(Response::new(response))
     }
@@ -215,21 +220,17 @@ impl Route3 for ServerImpl {
         request: Request<api::GetDisturbanceOfPopulationMovementRequest>,
     ) -> std::result::Result<Response<api::DisturbanceOfPopulationMovementResponse>, Status> {
         let inner = request.into_inner();
-
-        if let FoundOption::Found(output) = self.retrieve_output(inner.dopm_id).await? {
-            if let StorableOutput::DisturbanceOfPopulationMovement(dop_output) = output {
-                let response = api::DisturbanceOfPopulationMovementResponse {
-                    dopm_id: dop_output.id.clone(),
-                    stats: Some(api::DisturbanceOfPopulationMovementStats::from_output(
-                        &dop_output,
-                    )?),
-                };
-                Ok(Response::new(response))
-            } else {
-                Err(Status::not_found(
-                    "given id did not refer to the correct data type",
-                ))
-            }
+        if let FoundOption::Found(output) = self
+            .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.dopm_id)
+            .await?
+        {
+            let response = api::DisturbanceOfPopulationMovementResponse {
+                dopm_id: output.dopm_id.clone(),
+                stats: Some(api::DisturbanceOfPopulationMovementStats::from_output(
+                    &output,
+                )?),
+            };
+            Ok(Response::new(response))
         } else {
             Err(Status::not_found("not found"))
         }
@@ -239,7 +240,46 @@ impl Route3 for ServerImpl {
         &self,
         request: Request<api::GetDisturbanceOfPopulationMovementRoutesRequest>,
     ) -> Result<Response<api::GetDisturbanceOfPopulationMovementRoutesResponse>, Status> {
-        unimplemented!()
+        let inner = request.into_inner();
+        if let FoundOption::Found(output) = self
+            .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.dopm_id)
+            .await?
+        {
+            let mut response = api::GetDisturbanceOfPopulationMovementRoutesResponse {
+                dopm_id: output.dopm_id.clone(),
+                routes_without_disturbance: vec![],
+                routes_with_disturbance: vec![],
+            };
+
+            for h3index in inner.cells.iter() {
+                if let Ok(cell) = H3Cell::try_from(*h3index) {
+                    if let Some(routes) = output.routes_without_disturbance.get(&cell) {
+                        for route in routes {
+                            response
+                                .routes_without_disturbance
+                                .push(api::RouteWkb::from_route(route)?)
+                        }
+                    }
+                    if let Some(routes) = output.routes_with_disturbance.get(&cell) {
+                        for route in routes {
+                            response
+                                .routes_with_disturbance
+                                .push(api::RouteWkb::from_route(route)?)
+                        }
+                    }
+                } else {
+                    log::warn!("recieved invalid h3index: {}", h3index);
+                }
+            }
+            log::debug!(
+                "returning wkb for routes_without_disturbance={} and routes_with_disturbance={}",
+                response.routes_without_disturbance.len(),
+                response.routes_with_disturbance.len()
+            );
+            Ok(Response::new(response))
+        } else {
+            Err(Status::not_found("not found"))
+        }
     }
 }
 

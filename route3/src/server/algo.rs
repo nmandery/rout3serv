@@ -13,22 +13,13 @@ use crate::server::api::DisturbanceOfPopulationMovementInput;
 use arrow::array::{Float64Array, UInt64Array};
 use arrow::datatypes::{DataType, Field, Schema};
 
-#[derive(Serialize, Deserialize)]
-pub enum StorableOutput {
-    DisturbanceOfPopulationMovement(DisturbanceOfPopulationMovementOutput),
-}
-
-impl StorableOutput {
-    pub fn id(&self) -> &str {
-        match self {
-            StorableOutput::DisturbanceOfPopulationMovement(dopm) => dopm.id.as_ref(),
-        }
-    }
+pub trait StrId {
+    fn id(&self) -> &str;
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct DisturbanceOfPopulationMovementOutput {
-    pub id: String,
+    pub dopm_id: String,
     pub input: DisturbanceOfPopulationMovementInput,
 
     pub population_within_disturbance: f64,
@@ -41,9 +32,9 @@ pub struct DisturbanceOfPopulationMovementOutput {
     pub routes_with_disturbance: H3CellMap<Vec<Route<Weight>>>,
 }
 
-impl From<DisturbanceOfPopulationMovementOutput> for StorableOutput {
-    fn from(inner: DisturbanceOfPopulationMovementOutput) -> Self {
-        Self::DisturbanceOfPopulationMovement(inner)
+impl StrId for DisturbanceOfPopulationMovementOutput {
+    fn id(&self) -> &str {
+        self.dopm_id.as_ref()
     }
 }
 
@@ -88,7 +79,7 @@ pub fn disturbance_of_population_movement(
     )?;
 
     Ok(DisturbanceOfPopulationMovementOutput {
-        id: uuid::Uuid::new_v4().to_string(),
+        dopm_id: uuid::Uuid::new_v4().to_string(),
         input,
         population_within_disturbance,
         population_at_origins,

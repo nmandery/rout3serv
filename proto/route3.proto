@@ -53,13 +53,14 @@ message DisturbanceOfPopulationMovementResponse {
   DisturbanceOfPopulationMovementStats stats = 2;
 }
 
+enum CellInRoutePosition {
+  Origin = 0;
+  Destination = 1;
+}
+
 message GetDisturbanceOfPopulationMovementRoutesRequest {
-  enum CellRole {
-    Origin = 0;
-    Destination = 1;
-  }
   string dopm_id = 1;
-  CellRole cell_role = 2;
+  //CellInRoutePosition cell_position = 2;
   repeated uint64 cells = 3;
 }
 
@@ -73,7 +74,8 @@ message RouteWKB {
 
 message GetDisturbanceOfPopulationMovementRoutesResponse {
   string dopm_id = 1;
-  repeated RouteWKB routes = 2;
+  repeated RouteWKB routes_without_disturbance = 2;
+  repeated RouteWKB routes_with_disturbance = 3;
 }
 
 
