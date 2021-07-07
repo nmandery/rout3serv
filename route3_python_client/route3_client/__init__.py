@@ -10,14 +10,14 @@ import pandas as pd
 import shapely.wkb
 
 from . import route3_pb2
-from .route3_pb2 import DisturbanceOfPopulationMovementResponse
+from .route3_pb2 import DisturbanceOfPopulationMovementResponse, RouteWKB
 from .route3_pb2_grpc import Route3Stub
 
 DEFAULT_PORT = 7088
 
 
 class DisturbanceOfPopulationMovementStats:
-    id: str
+    dopm_id: str
     population_within_disturbance: float
     dataframe: pd.DataFrame
 
@@ -39,7 +39,7 @@ class Server:
 
     def _return_stats(self, response: DisturbanceOfPopulationMovementResponse) -> DisturbanceOfPopulationMovementStats:
         stats = DisturbanceOfPopulationMovementStats()
-        stats.id = response.id
+        stats.dopm_id = response.dopm_id
         stats.population_within_disturbance = response.stats.population_within_disturbance
         stats.dataframe = pa.ipc.open_file(response.stats.recordbatch).read_pandas()
         return stats
@@ -60,8 +60,16 @@ class Server:
         response = self.stub.AnalyzeDisturbanceOfPopulationMovement(req)
         return self._return_stats(response)
 
-    def get_disturbance_of_population_movement(self, id: str) -> DisturbanceOfPopulationMovementStats:
+    def get_disturbance_of_population_movement(self, dopm_id: str) -> DisturbanceOfPopulationMovementStats:
         req = route3_pb2.GetDisturbanceOfPopulationMovementRequest()
-        req.id = id
+        req.dopm_id = dopm_id
         response = self.stub.GetDisturbanceOfPopulationMovement(req)
         return self._return_stats(response)
+
+
+def _routewkb_get_geometry(self):
+    return shapely.wkb.loads(self.wkb)
+
+
+# monkey-patching methods into the proto-generated classes
+RouteWKB.geometry = _routewkb_get_geometry

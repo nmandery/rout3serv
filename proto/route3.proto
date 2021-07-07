@@ -37,7 +37,7 @@ message DisturbanceOfPopulationMovementRequest {
 }
 
 message GetDisturbanceOfPopulationMovementRequest {
-  string id = 1;
+  string dopm_id = 1;
 }
 
 message DisturbanceOfPopulationMovementStats {
@@ -49,9 +49,33 @@ message DisturbanceOfPopulationMovementStats {
 }
 
 message DisturbanceOfPopulationMovementResponse {
-  string id = 1;
+  string dopm_id = 1;
   DisturbanceOfPopulationMovementStats stats = 2;
 }
+
+message GetDisturbanceOfPopulationMovementRoutesRequest {
+  enum CellRole {
+    Origin = 0;
+    Destination = 1;
+  }
+  string dopm_id = 1;
+  CellRole cell_role = 2;
+  repeated uint64 cells = 3;
+}
+
+message RouteWKB {
+  uint64 origin_cell = 1;
+  uint64 destination_cell = 2;
+  double cost = 3;
+  bytes wkb = 4;
+}
+
+
+message GetDisturbanceOfPopulationMovementRoutesResponse {
+  string dopm_id = 1;
+  repeated RouteWKB routes = 2;
+}
+
 
 service Route3 {
   rpc Version(VersionRequest) returns (VersionResponse) {}
@@ -60,4 +84,6 @@ service Route3 {
 
   /* get an already computed analysis */
   rpc GetDisturbanceOfPopulationMovement(GetDisturbanceOfPopulationMovementRequest) returns (DisturbanceOfPopulationMovementResponse) {}
+  rpc GetDisturbanceOfPopulationMovementRoutes(GetDisturbanceOfPopulationMovementRoutesRequest) returns (GetDisturbanceOfPopulationMovementRoutesResponse) {}
+
 }

@@ -18,11 +18,6 @@ use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
 use crate::server::algo::{disturbance_of_population_movement, StorableOutput};
 use crate::server::api::route3_server::{Route3, Route3Server};
-use crate::server::api::{
-    DisturbanceOfPopulationMovementRequest, DisturbanceOfPopulationMovementResponse,
-    DisturbanceOfPopulationMovementStats, GetDisturbanceOfPopulationMovementRequest,
-    VersionRequest, VersionResponse,
-};
 use crate::server::util::spawn_blocking_status;
 
 mod algo;
@@ -176,17 +171,17 @@ impl ServerImpl {
 impl Route3 for ServerImpl {
     async fn version(
         &self,
-        _request: Request<VersionRequest>,
-    ) -> std::result::Result<Response<VersionResponse>, Status> {
-        Ok(Response::new(VersionResponse {
+        _request: Request<api::VersionRequest>,
+    ) -> std::result::Result<Response<api::VersionResponse>, Status> {
+        Ok(Response::new(api::VersionResponse {
             version: env!("CARGO_PKG_VERSION").to_string(),
         }))
     }
 
     async fn analyze_disturbance_of_population_movement(
         &self,
-        request: Request<DisturbanceOfPopulationMovementRequest>,
-    ) -> std::result::Result<Response<DisturbanceOfPopulationMovementResponse>, Status> {
+        request: Request<api::DisturbanceOfPopulationMovementRequest>,
+    ) -> std::result::Result<Response<api::DisturbanceOfPopulationMovementResponse>, Status> {
         let input = request
             .into_inner()
             .get_input(self.routing_context.h3_resolution())?;
@@ -202,9 +197,11 @@ impl Route3 for ServerImpl {
             Status::internal("calculating routes failed")
         })?;
 
-        let response = DisturbanceOfPopulationMovementResponse {
-            id: output.id.clone(),
-            stats: Some(DisturbanceOfPopulationMovementStats::from_output(&output)?),
+        let response = api::DisturbanceOfPopulationMovementResponse {
+            dopm_id: output.id.clone(),
+            stats: Some(api::DisturbanceOfPopulationMovementStats::from_output(
+                &output,
+            )?),
         };
 
         // save the output for later
@@ -215,15 +212,15 @@ impl Route3 for ServerImpl {
 
     async fn get_disturbance_of_population_movement(
         &self,
-        request: Request<GetDisturbanceOfPopulationMovementRequest>,
-    ) -> std::result::Result<Response<DisturbanceOfPopulationMovementResponse>, Status> {
+        request: Request<api::GetDisturbanceOfPopulationMovementRequest>,
+    ) -> std::result::Result<Response<api::DisturbanceOfPopulationMovementResponse>, Status> {
         let inner = request.into_inner();
 
-        if let FoundOption::Found(output) = self.retrieve_output(inner.id).await? {
+        if let FoundOption::Found(output) = self.retrieve_output(inner.dopm_id).await? {
             if let StorableOutput::DisturbanceOfPopulationMovement(dop_output) = output {
-                let response = DisturbanceOfPopulationMovementResponse {
-                    id: dop_output.id.clone(),
-                    stats: Some(DisturbanceOfPopulationMovementStats::from_output(
+                let response = api::DisturbanceOfPopulationMovementResponse {
+                    dopm_id: dop_output.id.clone(),
+                    stats: Some(api::DisturbanceOfPopulationMovementStats::from_output(
                         &dop_output,
                     )?),
                 };
@@ -236,6 +233,13 @@ impl Route3 for ServerImpl {
         } else {
             Err(Status::not_found("not found"))
         }
+    }
+
+    async fn get_disturbance_of_population_movement_routes(
+        &self,
+        request: Request<api::GetDisturbanceOfPopulationMovementRoutesRequest>,
+    ) -> Result<Response<api::GetDisturbanceOfPopulationMovementRoutesResponse>, Status> {
+        unimplemented!()
     }
 }
 

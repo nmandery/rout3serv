@@ -29,6 +29,11 @@ class Route3Stub(object):
                 request_serializer=route3__pb2.GetDisturbanceOfPopulationMovementRequest.SerializeToString,
                 response_deserializer=route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
                 )
+        self.GetDisturbanceOfPopulationMovementRoutes = channel.unary_unary(
+                '/grpc.route3.Route3/GetDisturbanceOfPopulationMovementRoutes',
+                request_serializer=route3__pb2.GetDisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
+                response_deserializer=route3__pb2.GetDisturbanceOfPopulationMovementRoutesResponse.FromString,
+                )
 
 
 class Route3Servicer(object):
@@ -53,6 +58,12 @@ class Route3Servicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetDisturbanceOfPopulationMovementRoutes(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_Route3Servicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -70,6 +81,11 @@ def add_Route3Servicer_to_server(servicer, server):
                     servicer.GetDisturbanceOfPopulationMovement,
                     request_deserializer=route3__pb2.GetDisturbanceOfPopulationMovementRequest.FromString,
                     response_serializer=route3__pb2.DisturbanceOfPopulationMovementResponse.SerializeToString,
+            ),
+            'GetDisturbanceOfPopulationMovementRoutes': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetDisturbanceOfPopulationMovementRoutes,
+                    request_deserializer=route3__pb2.GetDisturbanceOfPopulationMovementRoutesRequest.FromString,
+                    response_serializer=route3__pb2.GetDisturbanceOfPopulationMovementRoutesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -129,5 +145,22 @@ class Route3(object):
         return grpc.experimental.unary_unary(request, target, '/grpc.route3.Route3/GetDisturbanceOfPopulationMovement',
             route3__pb2.GetDisturbanceOfPopulationMovementRequest.SerializeToString,
             route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetDisturbanceOfPopulationMovementRoutes(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/grpc.route3.Route3/GetDisturbanceOfPopulationMovementRoutes',
+            route3__pb2.GetDisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
+            route3__pb2.GetDisturbanceOfPopulationMovementRoutesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
