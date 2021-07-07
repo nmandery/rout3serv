@@ -24,6 +24,11 @@ class Route3Stub(object):
                 request_serializer=route3__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
                 response_deserializer=route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
                 )
+        self.GetDisturbanceOfPopulationMovement = channel.unary_unary(
+                '/grpc.route3.Route3/GetDisturbanceOfPopulationMovement',
+                request_serializer=route3__pb2.GetDisturbanceOfPopulationMovementRequest.SerializeToString,
+                response_deserializer=route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
+                )
 
 
 class Route3Servicer(object):
@@ -41,6 +46,13 @@ class Route3Servicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetDisturbanceOfPopulationMovement(self, request, context):
+        """get an already computed analysis 
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_Route3Servicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -52,6 +64,11 @@ def add_Route3Servicer_to_server(servicer, server):
             'AnalyzeDisturbanceOfPopulationMovement': grpc.unary_unary_rpc_method_handler(
                     servicer.AnalyzeDisturbanceOfPopulationMovement,
                     request_deserializer=route3__pb2.DisturbanceOfPopulationMovementRequest.FromString,
+                    response_serializer=route3__pb2.DisturbanceOfPopulationMovementResponse.SerializeToString,
+            ),
+            'GetDisturbanceOfPopulationMovement': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetDisturbanceOfPopulationMovement,
+                    request_deserializer=route3__pb2.GetDisturbanceOfPopulationMovementRequest.FromString,
                     response_serializer=route3__pb2.DisturbanceOfPopulationMovementResponse.SerializeToString,
             ),
     }
@@ -94,6 +111,23 @@ class Route3(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/grpc.route3.Route3/AnalyzeDisturbanceOfPopulationMovement',
             route3__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
+            route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetDisturbanceOfPopulationMovement(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/grpc.route3.Route3/GetDisturbanceOfPopulationMovement',
+            route3__pb2.GetDisturbanceOfPopulationMovementRequest.SerializeToString,
             route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

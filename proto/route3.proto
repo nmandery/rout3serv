@@ -1,4 +1,3 @@
-
 syntax = "proto3";
 
 package grpc.route3;
@@ -37,6 +36,10 @@ message DisturbanceOfPopulationMovementRequest {
 
 }
 
+message GetDisturbanceOfPopulationMovementRequest {
+  string id = 1;
+}
+
 message DisturbanceOfPopulationMovementStats {
   double population_within_disturbance = 1;
 
@@ -54,4 +57,7 @@ service Route3 {
   rpc Version(VersionRequest) returns (VersionResponse) {}
 
   rpc AnalyzeDisturbanceOfPopulationMovement(DisturbanceOfPopulationMovementRequest) returns (DisturbanceOfPopulationMovementResponse) {}
+
+  /* get an already computed analysis */
+  rpc GetDisturbanceOfPopulationMovement(GetDisturbanceOfPopulationMovementRequest) returns (DisturbanceOfPopulationMovementResponse) {}
 }

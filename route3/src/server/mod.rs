@@ -20,7 +20,8 @@ use crate::server::algo::{disturbance_of_population_movement, StorableOutput};
 use crate::server::api::route3_server::{Route3, Route3Server};
 use crate::server::api::{
     DisturbanceOfPopulationMovementRequest, DisturbanceOfPopulationMovementResponse,
-    DisturbanceOfPopulationMovementStats, VersionRequest, VersionResponse,
+    DisturbanceOfPopulationMovementStats, GetDisturbanceOfPopulationMovementRequest,
+    VersionRequest, VersionResponse,
 };
 use crate::server::util::spawn_blocking_status;
 
@@ -210,6 +211,31 @@ impl Route3 for ServerImpl {
         self.store_output(&output.into()).await?;
 
         Ok(Response::new(response))
+    }
+
+    async fn get_disturbance_of_population_movement(
+        &self,
+        request: Request<GetDisturbanceOfPopulationMovementRequest>,
+    ) -> std::result::Result<Response<DisturbanceOfPopulationMovementResponse>, Status> {
+        let inner = request.into_inner();
+
+        if let FoundOption::Found(output) = self.retrieve_output(inner.id).await? {
+            if let StorableOutput::DisturbanceOfPopulationMovement(dop_output) = output {
+                let response = DisturbanceOfPopulationMovementResponse {
+                    id: dop_output.id.clone(),
+                    stats: Some(DisturbanceOfPopulationMovementStats::from_output(
+                        &dop_output,
+                    )?),
+                };
+                Ok(Response::new(response))
+            } else {
+                Err(Status::not_found(
+                    "given id did not refer to the correct data type",
+                ))
+            }
+        } else {
+            Err(Status::not_found("not found"))
+        }
     }
 }
 
