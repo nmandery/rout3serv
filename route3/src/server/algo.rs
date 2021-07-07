@@ -3,7 +3,6 @@ use std::sync::Arc;
 use arrow::record_batch::RecordBatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use statrs::statistics::Statistics;
 
 use route3_core::h3ron::{H3Cell, Index};
 use route3_core::routing::{ManyToManyOptions, Route, RoutingContext};
@@ -125,9 +124,7 @@ impl DisturbanceOfPopulationMovementOutput {
         for (origin_cell, routes) in self.routes_without_disturbance.iter() {
             let entry = aggregated_weights.entry(*origin_cell).or_default();
             for route in routes.iter() {
-                if entry.without_disturbance.is_empty()
-                    || !entry.without_disturbance.iter().any(|w| &route.cost < w)
-                {
+                if !entry.without_disturbance.iter().any(|w| &route.cost < w) {
                     entry.preferred_destination_without_disturbance =
                         Some(route.destination_cell()?.h3index());
                 }
@@ -137,9 +134,7 @@ impl DisturbanceOfPopulationMovementOutput {
         for (origin_cell, routes) in self.routes_with_disturbance.iter() {
             let entry = aggregated_weights.entry(*origin_cell).or_default();
             for route in routes.iter() {
-                if entry.with_disturbance.is_empty()
-                    || !entry.with_disturbance.iter().any(|w| &route.cost < w)
-                {
+                if !entry.with_disturbance.iter().any(|w| &route.cost < w) {
                     entry.preferred_destination_with_disturbance =
                         Some(route.destination_cell()?.h3index());
                 }
@@ -151,9 +146,8 @@ impl DisturbanceOfPopulationMovementOutput {
         let mut population = Vec::with_capacity(aggregated_weights.len());
         let mut num_reached_without_disturbance = Vec::with_capacity(aggregated_weights.len());
         let mut num_reached_with_disturbance = Vec::with_capacity(aggregated_weights.len());
-        let mut mean_cost_without_disturbance = Vec::with_capacity(aggregated_weights.len());
-        let mut mean_cost_with_disturbance = Vec::with_capacity(aggregated_weights.len());
-        let mut cost_change_factor = Vec::with_capacity(aggregated_weights.len());
+        let mut avg_cost_without_disturbance = Vec::with_capacity(aggregated_weights.len());
+        let mut avg_cost_with_disturbance = Vec::with_capacity(aggregated_weights.len());
         let mut preferred_destination_without_disturbance =
             Vec::with_capacity(aggregated_weights.len());
         let mut preferred_destination_with_disturbance =
@@ -161,33 +155,41 @@ impl DisturbanceOfPopulationMovementOutput {
         for (cell, agg_weight) in aggregated_weights.drain() {
             cell_h3indexes.push(cell.h3index() as u64);
             population.push(self.population_at_origins.get(&cell).cloned());
-            num_reached_without_disturbance.push(agg_weight.without_disturbance.len() as u64);
-            num_reached_with_disturbance.push(agg_weight.with_disturbance.len() as u64);
+
+            let num_reached_wo_d = agg_weight.without_disturbance.len() as u64;
+            num_reached_without_disturbance.push(num_reached_wo_d);
+            avg_cost_without_disturbance.push(if num_reached_wo_d > 0 {
+                Some(
+                    agg_weight
+                        .without_disturbance
+                        .iter()
+                        .map(|weight| f64::from(*weight))
+                        .sum::<f64>()
+                        / num_reached_wo_d as f64,
+                )
+            } else {
+                None
+            });
+
+            let num_reached_w_d = agg_weight.with_disturbance.len() as u64;
+            num_reached_with_disturbance.push(num_reached_w_d);
+            avg_cost_with_disturbance.push(if num_reached_w_d > 0 {
+                Some(
+                    agg_weight
+                        .with_disturbance
+                        .iter()
+                        .map(|weight| f64::from(*weight))
+                        .sum::<f64>()
+                        / num_reached_w_d as f64,
+                )
+            } else {
+                None
+            });
+
             preferred_destination_without_disturbance
                 .push(agg_weight.preferred_destination_without_disturbance);
             preferred_destination_with_disturbance
                 .push(agg_weight.preferred_destination_with_disturbance);
-
-            let cell_mean_cost_without_disturbance = agg_weight
-                .without_disturbance
-                .iter()
-                .map(|weight| f64::from(*weight))
-                .mean();
-            let cell_mean_cost_with_disturbance = agg_weight
-                .with_disturbance
-                .iter()
-                .map(|weight| f64::from(*weight))
-                .mean();
-            let cell_cost_change_change_factor = if cell_mean_cost_with_disturbance.is_normal()
-                && cell_mean_cost_without_disturbance.is_normal()
-            {
-                cell_mean_cost_with_disturbance / cell_mean_cost_without_disturbance
-            } else {
-                f64::NAN
-            };
-            mean_cost_with_disturbance.push(cell_mean_cost_with_disturbance);
-            mean_cost_without_disturbance.push(cell_mean_cost_without_disturbance);
-            cost_change_factor.push(cell_cost_change_change_factor);
         }
 
         let h3index_origin_array = UInt64Array::from(cell_h3indexes);
@@ -195,9 +197,8 @@ impl DisturbanceOfPopulationMovementOutput {
         let num_reached_without_disturbance_array =
             UInt64Array::from(num_reached_without_disturbance);
         let num_reached_with_disturbance_array = UInt64Array::from(num_reached_with_disturbance);
-        let mean_cost_without_disturbance_array = Float64Array::from(mean_cost_without_disturbance);
-        let mean_cost_with_disturbance_array = Float64Array::from(mean_cost_with_disturbance);
-        let cost_change_factor_array = Float64Array::from(cost_change_factor);
+        let avg_cost_without_disturbance_array = Float64Array::from(avg_cost_without_disturbance);
+        let avg_cost_with_disturbance_array = Float64Array::from(avg_cost_with_disturbance);
         let preferred_destination_without_disturbance_array =
             UInt64Array::from(preferred_destination_without_disturbance);
         let preferred_destination_with_disturbance_array =
@@ -218,9 +219,8 @@ impl DisturbanceOfPopulationMovementOutput {
             Field::new("population_origin", DataType::Float64, true), // TODO: should be nullable instead of NAN values
             Field::new("num_reached_without_disturbance", DataType::UInt64, false),
             Field::new("num_reached_with_disturbance", DataType::UInt64, false),
-            Field::new("mean_cost_without_disturbance", DataType::Float64, false),
-            Field::new("mean_cost_with_disturbance", DataType::Float64, false),
-            Field::new("cost_change_factor", DataType::Float64, false),
+            Field::new("avg_cost_without_disturbance", DataType::Float64, true),
+            Field::new("avg_cost_with_disturbance", DataType::Float64, true),
         ]);
 
         let batch = RecordBatch::try_new(
@@ -232,9 +232,8 @@ impl DisturbanceOfPopulationMovementOutput {
                 Arc::new(population_origin_array),
                 Arc::new(num_reached_without_disturbance_array),
                 Arc::new(num_reached_with_disturbance_array),
-                Arc::new(mean_cost_without_disturbance_array),
-                Arc::new(mean_cost_with_disturbance_array),
-                Arc::new(cost_change_factor_array),
+                Arc::new(avg_cost_without_disturbance_array),
+                Arc::new(avg_cost_with_disturbance_array),
             ],
         )?;
         Ok(batch)
