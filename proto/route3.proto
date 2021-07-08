@@ -58,7 +58,7 @@ enum CellInRoutePosition {
   Destination = 1;
 }
 
-message GetDisturbanceOfPopulationMovementRoutesRequest {
+message DisturbanceOfPopulationMovementRoutesRequest {
   string dopm_id = 1;
   //CellInRoutePosition cell_position = 2;
   repeated uint64 cells = 3;
@@ -72,8 +72,7 @@ message RouteWKB {
 }
 
 
-message GetDisturbanceOfPopulationMovementRoutesResponse {
-  string dopm_id = 1;
+message DisturbanceOfPopulationMovementRoutes {
   repeated RouteWKB routes_without_disturbance = 2;
   repeated RouteWKB routes_with_disturbance = 3;
 }
@@ -86,6 +85,6 @@ service Route3 {
 
   /* get an already computed analysis */
   rpc GetDisturbanceOfPopulationMovement(GetDisturbanceOfPopulationMovementRequest) returns (DisturbanceOfPopulationMovementResponse) {}
-  rpc GetDisturbanceOfPopulationMovementRoutes(GetDisturbanceOfPopulationMovementRoutesRequest) returns (GetDisturbanceOfPopulationMovementRoutesResponse) {}
+  rpc GetDisturbanceOfPopulationMovementRoutes(DisturbanceOfPopulationMovementRoutesRequest) returns (stream DisturbanceOfPopulationMovementRoutes) {}
 
 }

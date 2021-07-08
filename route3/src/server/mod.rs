@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use arrow::array::{Float32Array, UInt64Array};
 use eyre::{Report, Result};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -21,7 +24,6 @@ use crate::server::algo::{
 };
 use crate::server::api::route3_server::{Route3, Route3Server};
 use crate::server::util::spawn_blocking_status;
-use serde::de::DeserializeOwned;
 
 mod algo;
 mod api;
@@ -236,51 +238,60 @@ impl Route3 for ServerImpl {
         }
     }
 
+    type GetDisturbanceOfPopulationMovementRoutesStream =
+        ReceiverStream<Result<api::DisturbanceOfPopulationMovementRoutes, Status>>;
+
     async fn get_disturbance_of_population_movement_routes(
         &self,
-        request: Request<api::GetDisturbanceOfPopulationMovementRoutesRequest>,
-    ) -> Result<Response<api::GetDisturbanceOfPopulationMovementRoutesResponse>, Status> {
+        request: Request<api::DisturbanceOfPopulationMovementRoutesRequest>,
+    ) -> Result<Response<Self::GetDisturbanceOfPopulationMovementRoutesStream>, Status> {
+        let (tx, rx) = mpsc::channel(4);
         let inner = request.into_inner();
-        if let FoundOption::Found(output) = self
-            .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.dopm_id)
+        let output = if let FoundOption::Found(output) = self
+            .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.dopm_id.as_str())
             .await?
         {
-            let mut response = api::GetDisturbanceOfPopulationMovementRoutesResponse {
-                dopm_id: output.dopm_id.clone(),
-                routes_without_disturbance: vec![],
-                routes_with_disturbance: vec![],
-            };
+            output
+        } else {
+            return Err(Status::not_found("not found"));
+        };
 
+        tokio::spawn(async move {
             for h3index in inner.cells.iter() {
                 if let Ok(cell) = H3Cell::try_from(*h3index) {
-                    if let Some(routes) = output.routes_without_disturbance.get(&cell) {
-                        for route in routes {
-                            response
-                                .routes_without_disturbance
-                                .push(api::RouteWkb::from_route(route)?)
-                        }
-                    }
-                    if let Some(routes) = output.routes_with_disturbance.get(&cell) {
-                        for route in routes {
-                            response
-                                .routes_with_disturbance
-                                .push(api::RouteWkb::from_route(route)?)
-                        }
-                    }
+                    tx.send(build_routes_response(&output, cell)).await.unwrap();
                 } else {
                     log::warn!("recieved invalid h3index: {}", h3index);
                 }
             }
-            log::debug!(
-                "returning wkb for routes_without_disturbance={} and routes_with_disturbance={}",
-                response.routes_without_disturbance.len(),
-                response.routes_with_disturbance.len()
-            );
-            Ok(Response::new(response))
-        } else {
-            Err(Status::not_found("not found"))
+        });
+        Ok(Response::new(ReceiverStream::new(rx)))
+    }
+}
+
+fn build_routes_response(
+    output: &DisturbanceOfPopulationMovementOutput,
+    cell: H3Cell,
+) -> Result<api::DisturbanceOfPopulationMovementRoutes, Status> {
+    let mut response = api::DisturbanceOfPopulationMovementRoutes {
+        routes_without_disturbance: vec![],
+        routes_with_disturbance: vec![],
+    };
+    if let Some(routes) = output.routes_without_disturbance.get(&cell) {
+        for route in routes {
+            response
+                .routes_without_disturbance
+                .push(api::RouteWkb::from_route(route)?)
         }
     }
+    if let Some(routes) = output.routes_with_disturbance.get(&cell) {
+        for route in routes {
+            response
+                .routes_with_disturbance
+                .push(api::RouteWkb::from_route(route)?)
+        }
+    }
+    Ok(response)
 }
 
 #[derive(Deserialize)]

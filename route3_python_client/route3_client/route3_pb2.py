@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0croute3.proto\x12\x0bgrpc.route3\"\x10\n\x0eVersionRequest\"\"\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"\xae\x01\n&DisturbanceOfPopulationMovementRequest\x12 \n\x18\x64isturbance_wkb_geometry\x18\x01 \x01(\x0c\x12\x15\n\rradius_meters\x18\x02 \x01(\x01\x12!\n\x19num_destinations_to_reach\x18\x03 \x01(\r\x12(\n\x0c\x64\x65stinations\x18\x04 \x03(\x0b\x32\x12.grpc.route3.Point\"<\n)GetDisturbanceOfPopulationMovementRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\"b\n$DisturbanceOfPopulationMovementStats\x12%\n\x1dpopulation_within_disturbance\x18\x01 \x01(\x01\x12\x13\n\x0brecordbatch\x18\x02 \x01(\x0c\"|\n\'DisturbanceOfPopulationMovementResponse\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12@\n\x05stats\x18\x02 \x01(\x0b\x32\x31.grpc.route3.DisturbanceOfPopulationMovementStats\"Q\n/GetDisturbanceOfPopulationMovementRoutesRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"\xb6\x01\n0GetDisturbanceOfPopulationMovementRoutesResponse\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.grpc.route3.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.grpc.route3.RouteWKB*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\xab\x04\n\x06Route3\x12\x46\n\x07Version\x12\x1b.grpc.route3.VersionRequest\x1a\x1c.grpc.route3.VersionResponse\"\x00\x12\x95\x01\n&AnalyzeDisturbanceOfPopulationMovement\x12\x33.grpc.route3.DisturbanceOfPopulationMovementRequest\x1a\x34.grpc.route3.DisturbanceOfPopulationMovementResponse\"\x00\x12\x94\x01\n\"GetDisturbanceOfPopulationMovement\x12\x36.grpc.route3.GetDisturbanceOfPopulationMovementRequest\x1a\x34.grpc.route3.DisturbanceOfPopulationMovementResponse\"\x00\x12\xa9\x01\n(GetDisturbanceOfPopulationMovementRoutes\x12<.grpc.route3.GetDisturbanceOfPopulationMovementRoutesRequest\x1a=.grpc.route3.GetDisturbanceOfPopulationMovementRoutesResponse\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x0croute3.proto\x12\x0bgrpc.route3\"\x10\n\x0eVersionRequest\"\"\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"\xae\x01\n&DisturbanceOfPopulationMovementRequest\x12 \n\x18\x64isturbance_wkb_geometry\x18\x01 \x01(\x0c\x12\x15\n\rradius_meters\x18\x02 \x01(\x01\x12!\n\x19num_destinations_to_reach\x18\x03 \x01(\r\x12(\n\x0c\x64\x65stinations\x18\x04 \x03(\x0b\x32\x12.grpc.route3.Point\"<\n)GetDisturbanceOfPopulationMovementRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\"b\n$DisturbanceOfPopulationMovementStats\x12%\n\x1dpopulation_within_disturbance\x18\x01 \x01(\x01\x12\x13\n\x0brecordbatch\x18\x02 \x01(\x0c\"|\n\'DisturbanceOfPopulationMovementResponse\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12@\n\x05stats\x18\x02 \x01(\x0b\x32\x31.grpc.route3.DisturbanceOfPopulationMovementStats\"N\n,DisturbanceOfPopulationMovementRoutesRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"\x9a\x01\n%DisturbanceOfPopulationMovementRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.grpc.route3.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.grpc.route3.RouteWKB*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\x9f\x04\n\x06Route3\x12\x46\n\x07Version\x12\x1b.grpc.route3.VersionRequest\x1a\x1c.grpc.route3.VersionResponse\"\x00\x12\x95\x01\n&AnalyzeDisturbanceOfPopulationMovement\x12\x33.grpc.route3.DisturbanceOfPopulationMovementRequest\x1a\x34.grpc.route3.DisturbanceOfPopulationMovementResponse\"\x00\x12\x94\x01\n\"GetDisturbanceOfPopulationMovement\x12\x36.grpc.route3.GetDisturbanceOfPopulationMovementRequest\x1a\x34.grpc.route3.DisturbanceOfPopulationMovementResponse\"\x00\x12\x9d\x01\n(GetDisturbanceOfPopulationMovementRoutes\x12\x39.grpc.route3.DisturbanceOfPopulationMovementRoutesRequest\x1a\x32.grpc.route3.DisturbanceOfPopulationMovementRoutes\"\x00\x30\x01\x62\x06proto3'
 )
 
 _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
@@ -43,8 +43,8 @@ _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=933,
-  serialized_end=983,
+  serialized_start=902,
+  serialized_end=952,
 )
 _sym_db.RegisterEnumDescriptor(_CELLINROUTEPOSITION)
 
@@ -313,23 +313,23 @@ _DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE = _descriptor.Descriptor(
 )
 
 
-_GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST = _descriptor.Descriptor(
-  name='GetDisturbanceOfPopulationMovementRoutesRequest',
-  full_name='grpc.route3.GetDisturbanceOfPopulationMovementRoutesRequest',
+_DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST = _descriptor.Descriptor(
+  name='DisturbanceOfPopulationMovementRoutesRequest',
+  full_name='grpc.route3.DisturbanceOfPopulationMovementRoutesRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='dopm_id', full_name='grpc.route3.GetDisturbanceOfPopulationMovementRoutesRequest.dopm_id', index=0,
+      name='dopm_id', full_name='grpc.route3.DisturbanceOfPopulationMovementRoutesRequest.dopm_id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='cells', full_name='grpc.route3.GetDisturbanceOfPopulationMovementRoutesRequest.cells', index=1,
+      name='cells', full_name='grpc.route3.DisturbanceOfPopulationMovementRoutesRequest.cells', index=1,
       number=3, type=4, cpp_type=4, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -348,7 +348,7 @@ _GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=579,
-  serialized_end=660,
+  serialized_end=657,
 )
 
 
@@ -400,35 +400,28 @@ _ROUTEWKB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=662,
-  serialized_end=746,
+  serialized_start=659,
+  serialized_end=743,
 )
 
 
-_GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESRESPONSE = _descriptor.Descriptor(
-  name='GetDisturbanceOfPopulationMovementRoutesResponse',
-  full_name='grpc.route3.GetDisturbanceOfPopulationMovementRoutesResponse',
+_DISTURBANCEOFPOPULATIONMOVEMENTROUTES = _descriptor.Descriptor(
+  name='DisturbanceOfPopulationMovementRoutes',
+  full_name='grpc.route3.DisturbanceOfPopulationMovementRoutes',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='dopm_id', full_name='grpc.route3.GetDisturbanceOfPopulationMovementRoutesResponse.dopm_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='routes_without_disturbance', full_name='grpc.route3.GetDisturbanceOfPopulationMovementRoutesResponse.routes_without_disturbance', index=1,
+      name='routes_without_disturbance', full_name='grpc.route3.DisturbanceOfPopulationMovementRoutes.routes_without_disturbance', index=0,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='routes_with_disturbance', full_name='grpc.route3.GetDisturbanceOfPopulationMovementRoutesResponse.routes_with_disturbance', index=2,
+      name='routes_with_disturbance', full_name='grpc.route3.DisturbanceOfPopulationMovementRoutes.routes_with_disturbance', index=1,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -446,14 +439,14 @@ _GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=749,
-  serialized_end=931,
+  serialized_start=746,
+  serialized_end=900,
 )
 
 _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST.fields_by_name['destinations'].message_type = _POINT
 _DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE.fields_by_name['stats'].message_type = _DISTURBANCEOFPOPULATIONMOVEMENTSTATS
-_GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESRESPONSE.fields_by_name['routes_without_disturbance'].message_type = _ROUTEWKB
-_GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESRESPONSE.fields_by_name['routes_with_disturbance'].message_type = _ROUTEWKB
+_DISTURBANCEOFPOPULATIONMOVEMENTROUTES.fields_by_name['routes_without_disturbance'].message_type = _ROUTEWKB
+_DISTURBANCEOFPOPULATIONMOVEMENTROUTES.fields_by_name['routes_with_disturbance'].message_type = _ROUTEWKB
 DESCRIPTOR.message_types_by_name['VersionRequest'] = _VERSIONREQUEST
 DESCRIPTOR.message_types_by_name['VersionResponse'] = _VERSIONRESPONSE
 DESCRIPTOR.message_types_by_name['Point'] = _POINT
@@ -461,9 +454,9 @@ DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRequest'] = _DI
 DESCRIPTOR.message_types_by_name['GetDisturbanceOfPopulationMovementRequest'] = _GETDISTURBANCEOFPOPULATIONMOVEMENTREQUEST
 DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementStats'] = _DISTURBANCEOFPOPULATIONMOVEMENTSTATS
 DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementResponse'] = _DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE
-DESCRIPTOR.message_types_by_name['GetDisturbanceOfPopulationMovementRoutesRequest'] = _GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST
+DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRoutesRequest'] = _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST
 DESCRIPTOR.message_types_by_name['RouteWKB'] = _ROUTEWKB
-DESCRIPTOR.message_types_by_name['GetDisturbanceOfPopulationMovementRoutesResponse'] = _GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESRESPONSE
+DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRoutes'] = _DISTURBANCEOFPOPULATIONMOVEMENTROUTES
 DESCRIPTOR.enum_types_by_name['CellInRoutePosition'] = _CELLINROUTEPOSITION
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -516,12 +509,12 @@ DisturbanceOfPopulationMovementResponse = _reflection.GeneratedProtocolMessageTy
   })
 _sym_db.RegisterMessage(DisturbanceOfPopulationMovementResponse)
 
-GetDisturbanceOfPopulationMovementRoutesRequest = _reflection.GeneratedProtocolMessageType('GetDisturbanceOfPopulationMovementRoutesRequest', (_message.Message,), {
-  'DESCRIPTOR' : _GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST,
+DisturbanceOfPopulationMovementRoutesRequest = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementRoutesRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST,
   '__module__' : 'route3_pb2'
-  # @@protoc_insertion_point(class_scope:grpc.route3.GetDisturbanceOfPopulationMovementRoutesRequest)
+  # @@protoc_insertion_point(class_scope:grpc.route3.DisturbanceOfPopulationMovementRoutesRequest)
   })
-_sym_db.RegisterMessage(GetDisturbanceOfPopulationMovementRoutesRequest)
+_sym_db.RegisterMessage(DisturbanceOfPopulationMovementRoutesRequest)
 
 RouteWKB = _reflection.GeneratedProtocolMessageType('RouteWKB', (_message.Message,), {
   'DESCRIPTOR' : _ROUTEWKB,
@@ -530,12 +523,12 @@ RouteWKB = _reflection.GeneratedProtocolMessageType('RouteWKB', (_message.Messag
   })
 _sym_db.RegisterMessage(RouteWKB)
 
-GetDisturbanceOfPopulationMovementRoutesResponse = _reflection.GeneratedProtocolMessageType('GetDisturbanceOfPopulationMovementRoutesResponse', (_message.Message,), {
-  'DESCRIPTOR' : _GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESRESPONSE,
+DisturbanceOfPopulationMovementRoutes = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementRoutes', (_message.Message,), {
+  'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTROUTES,
   '__module__' : 'route3_pb2'
-  # @@protoc_insertion_point(class_scope:grpc.route3.GetDisturbanceOfPopulationMovementRoutesResponse)
+  # @@protoc_insertion_point(class_scope:grpc.route3.DisturbanceOfPopulationMovementRoutes)
   })
-_sym_db.RegisterMessage(GetDisturbanceOfPopulationMovementRoutesResponse)
+_sym_db.RegisterMessage(DisturbanceOfPopulationMovementRoutes)
 
 
 
@@ -546,8 +539,8 @@ _ROUTE3 = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=986,
-  serialized_end=1541,
+  serialized_start=955,
+  serialized_end=1498,
   methods=[
   _descriptor.MethodDescriptor(
     name='Version',
@@ -584,8 +577,8 @@ _ROUTE3 = _descriptor.ServiceDescriptor(
     full_name='grpc.route3.Route3.GetDisturbanceOfPopulationMovementRoutes',
     index=3,
     containing_service=None,
-    input_type=_GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST,
-    output_type=_GETDISTURBANCEOFPOPULATIONMOVEMENTROUTESRESPONSE,
+    input_type=_DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST,
+    output_type=_DISTURBANCEOFPOPULATIONMOVEMENTROUTES,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),

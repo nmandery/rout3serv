@@ -26,6 +26,7 @@ rustc-hash = "1.1"
 toml = "0.5"
 tonic = "0.4"
 wkb = "0.7"
+tokio-stream = "0.1"
 
 [dependencies.ordered-float]
 version = "2.5"

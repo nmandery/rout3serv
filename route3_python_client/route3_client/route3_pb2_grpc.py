@@ -29,10 +29,10 @@ class Route3Stub(object):
                 request_serializer=route3__pb2.GetDisturbanceOfPopulationMovementRequest.SerializeToString,
                 response_deserializer=route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
                 )
-        self.GetDisturbanceOfPopulationMovementRoutes = channel.unary_unary(
+        self.GetDisturbanceOfPopulationMovementRoutes = channel.unary_stream(
                 '/grpc.route3.Route3/GetDisturbanceOfPopulationMovementRoutes',
-                request_serializer=route3__pb2.GetDisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
-                response_deserializer=route3__pb2.GetDisturbanceOfPopulationMovementRoutesResponse.FromString,
+                request_serializer=route3__pb2.DisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
+                response_deserializer=route3__pb2.DisturbanceOfPopulationMovementRoutes.FromString,
                 )
 
 
@@ -82,10 +82,10 @@ def add_Route3Servicer_to_server(servicer, server):
                     request_deserializer=route3__pb2.GetDisturbanceOfPopulationMovementRequest.FromString,
                     response_serializer=route3__pb2.DisturbanceOfPopulationMovementResponse.SerializeToString,
             ),
-            'GetDisturbanceOfPopulationMovementRoutes': grpc.unary_unary_rpc_method_handler(
+            'GetDisturbanceOfPopulationMovementRoutes': grpc.unary_stream_rpc_method_handler(
                     servicer.GetDisturbanceOfPopulationMovementRoutes,
-                    request_deserializer=route3__pb2.GetDisturbanceOfPopulationMovementRoutesRequest.FromString,
-                    response_serializer=route3__pb2.GetDisturbanceOfPopulationMovementRoutesResponse.SerializeToString,
+                    request_deserializer=route3__pb2.DisturbanceOfPopulationMovementRoutesRequest.FromString,
+                    response_serializer=route3__pb2.DisturbanceOfPopulationMovementRoutes.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -159,8 +159,8 @@ class Route3(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/grpc.route3.Route3/GetDisturbanceOfPopulationMovementRoutes',
-            route3__pb2.GetDisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
-            route3__pb2.GetDisturbanceOfPopulationMovementRoutesResponse.FromString,
+        return grpc.experimental.unary_stream(request, target, '/grpc.route3.Route3/GetDisturbanceOfPopulationMovementRoutes',
+            route3__pb2.DisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
+            route3__pb2.DisturbanceOfPopulationMovementRoutes.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

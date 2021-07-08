@@ -12,8 +12,6 @@ from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 
 from . import route3_pb2
-from .route3_pb2 import DisturbanceOfPopulationMovementResponse, RouteWKB, \
-    GetDisturbanceOfPopulationMovementRoutesResponse
 from .route3_pb2_grpc import Route3Stub
 
 DEFAULT_PORT = 7088
@@ -40,7 +38,7 @@ class Server:
     def server_version(self) -> str:
         return self.stub.Version(route3_pb2.VersionRequest()).version
 
-    def _return_stats(self, response: DisturbanceOfPopulationMovementResponse) -> DisturbanceOfPopulationMovementStats:
+    def _return_stats(self, response: route3_pb2.DisturbanceOfPopulationMovementResponse) -> DisturbanceOfPopulationMovementStats:
         stats = DisturbanceOfPopulationMovementStats()
         stats.dopm_id = response.dopm_id
         stats.population_within_disturbance = response.stats.population_within_disturbance
@@ -63,34 +61,34 @@ class Server:
         response = self.stub.AnalyzeDisturbanceOfPopulationMovement(req)
         return self._return_stats(response)
 
-    def get_disturbance_of_population_movement(self, dopm_id: str) -> DisturbanceOfPopulationMovementStats:
+    def get_disturbance_of_population_movement(self, dopm_id: str) -> route3_pb2.DisturbanceOfPopulationMovementStats:
         req = route3_pb2.GetDisturbanceOfPopulationMovementRequest()
         req.dopm_id = dopm_id
         response = self.stub.GetDisturbanceOfPopulationMovement(req)
         return self._return_stats(response)
 
     def get_disturbance_of_population_movement_routes(self, dopm_id: str, cells: Iterable[int]) -> gpd.GeoDataFrame:
-        req = route3_pb2.GetDisturbanceOfPopulationMovementRoutesRequest()
+        req = route3_pb2.DisturbanceOfPopulationMovementRoutesRequest()
         req.dopm_id = dopm_id
         for cell in cells:
             req.cells.append(cell)
 
         response = self.stub.GetDisturbanceOfPopulationMovementRoutes(req)
 
-        print(len(response.routes_with_disturbance), len(response.routes_without_disturbance))
         geoms = []
         h3index_origin = []
         h3index_destination = []
         cost = []
         with_disturbance_list = []
-        for with_disturbance, route_list in (
-        (1, response.routes_with_disturbance), (0, response.routes_without_disturbance)):
-            for route in route_list:
-                h3index_origin.append(route.origin_cell)
-                h3index_destination.append(route.destination_cell)
-                with_disturbance_list.append(with_disturbance)
-                cost.append(route.cost)
-                geoms.append(shapely.wkb.loads(route.wkb))
+        for stream_item in response:
+            for with_disturbance, route_list in (
+            (1, stream_item.routes_with_disturbance), (0, stream_item.routes_without_disturbance)):
+                for route in route_list:
+                    h3index_origin.append(route.origin_cell)
+                    h3index_destination.append(route.destination_cell)
+                    with_disturbance_list.append(with_disturbance)
+                    cost.append(route.cost)
+                    geoms.append(shapely.wkb.loads(route.wkb))
 
         gdf = gpd.GeoDataFrame({
             "geometry": geoms,
@@ -100,11 +98,3 @@ class Server:
             "with_disturbance": np.asarray(with_disturbance_list, dtype=np.int),
         }, crs=4326)
         return gdf
-
-
-def _routewkb_get_geometry(self):
-    return shapely.wkb.loads(self.wkb)
-
-
-# monkey-patching methods into the proto-generated classes
-RouteWKB.geometry = _routewkb_get_geometry
