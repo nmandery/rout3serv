@@ -4,13 +4,14 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 use std::ops::Add;
 
-use geo_types::LineString;
+use geo_types::{LineString, Point};
 use num_traits::Zero;
 use pathfinding::directed::dijkstra::dijkstra_partial;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
+use crate::geo_types::Geometry;
 use crate::graph::{downsample_graph, H3Graph, NodeType};
 use crate::h3ron::{H3Cell, H3Edge, Index, ToCoordinate};
 use crate::iter::change_h3_resolution;
@@ -92,13 +93,18 @@ where
     pub fn destination_cell(&self) -> Result<H3Cell, Error> {
         self.cells.last().cloned().ok_or(Error::EmptyRoute)
     }
-    pub fn to_linestring(&self) -> LineString<f64> {
-        LineString::from(
-            self.cells
-                .iter()
-                .map(|cell| cell.to_coordinate())
-                .collect::<Vec<_>>(),
-        )
+    pub fn geometry(&self) -> Geometry<f64> {
+        match self.cells.len() {
+            0 => unreachable!(),
+            1 => Point::from(self.cells[0].to_coordinate()).into(),
+            _ => LineString::from(
+                self.cells
+                    .iter()
+                    .map(|cell| cell.to_coordinate())
+                    .collect::<Vec<_>>(),
+            )
+            .into(),
+        }
     }
 
     pub fn to_h3_edges(&self) -> Result<Vec<H3Edge>, Error> {

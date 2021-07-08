@@ -106,7 +106,7 @@ impl DisturbanceOfPopulationMovementStats {
 
 impl RouteWkb {
     pub fn from_route(route: &Route<Weight>) -> Result<Self, Status> {
-        let wkb_bytes = wkb::geom_to_wkb(&route.to_linestring().into()).map_err(|e| {
+        let wkb_bytes = wkb::geom_to_wkb(&route.geometry()).map_err(|e| {
             log::error!("can not encode route to wkb: {:?}", e);
             Status::internal("can not encode wkb")
         })?;
