@@ -17,3 +17,4 @@ poetry.lock
 perf.data*
 flamegraph*.svg
 .minio.sys
+/route3/src/server/api/route3.rs

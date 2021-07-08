@@ -22,7 +22,13 @@ use crate::io::{recordbatch_array, FoundOption};
 use crate::server::algo::{
     disturbance_of_population_movement, DisturbanceOfPopulationMovementOutput, StrId,
 };
-use crate::server::api::route3_server::{Route3, Route3Server};
+use crate::server::api::route3::route3_server::{Route3, Route3Server};
+use crate::server::api::route3::{
+    DisturbanceOfPopulationMovementRequest, DisturbanceOfPopulationMovementResponse,
+    DisturbanceOfPopulationMovementRoutes, DisturbanceOfPopulationMovementRoutesRequest,
+    DisturbanceOfPopulationMovementStats, GetDisturbanceOfPopulationMovementRequest, RouteWkb,
+    VersionRequest, VersionResponse,
+};
 use crate::server::util::spawn_blocking_status;
 
 mod algo;
@@ -178,17 +184,17 @@ impl ServerImpl {
 impl Route3 for ServerImpl {
     async fn version(
         &self,
-        _request: Request<api::VersionRequest>,
-    ) -> std::result::Result<Response<api::VersionResponse>, Status> {
-        Ok(Response::new(api::VersionResponse {
+        _request: Request<VersionRequest>,
+    ) -> std::result::Result<Response<VersionResponse>, Status> {
+        Ok(Response::new(VersionResponse {
             version: env!("CARGO_PKG_VERSION").to_string(),
         }))
     }
 
     async fn analyze_disturbance_of_population_movement(
         &self,
-        request: Request<api::DisturbanceOfPopulationMovementRequest>,
-    ) -> std::result::Result<Response<api::DisturbanceOfPopulationMovementResponse>, Status> {
+        request: Request<DisturbanceOfPopulationMovementRequest>,
+    ) -> std::result::Result<Response<DisturbanceOfPopulationMovementResponse>, Status> {
         let input = request
             .into_inner()
             .get_input(self.routing_context.h3_resolution())?;
@@ -204,11 +210,9 @@ impl Route3 for ServerImpl {
             Status::internal("calculating routes failed")
         })?;
 
-        let response = api::DisturbanceOfPopulationMovementResponse {
+        let response = DisturbanceOfPopulationMovementResponse {
             dopm_id: output.dopm_id.clone(),
-            stats: Some(api::DisturbanceOfPopulationMovementStats::from_output(
-                &output,
-            )?),
+            stats: Some(DisturbanceOfPopulationMovementStats::from_output(&output)?),
         };
 
         // save the output for later
@@ -219,18 +223,16 @@ impl Route3 for ServerImpl {
 
     async fn get_disturbance_of_population_movement(
         &self,
-        request: Request<api::GetDisturbanceOfPopulationMovementRequest>,
-    ) -> std::result::Result<Response<api::DisturbanceOfPopulationMovementResponse>, Status> {
+        request: Request<GetDisturbanceOfPopulationMovementRequest>,
+    ) -> std::result::Result<Response<DisturbanceOfPopulationMovementResponse>, Status> {
         let inner = request.into_inner();
         if let FoundOption::Found(output) = self
             .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.dopm_id)
             .await?
         {
-            let response = api::DisturbanceOfPopulationMovementResponse {
+            let response = DisturbanceOfPopulationMovementResponse {
                 dopm_id: output.dopm_id.clone(),
-                stats: Some(api::DisturbanceOfPopulationMovementStats::from_output(
-                    &output,
-                )?),
+                stats: Some(DisturbanceOfPopulationMovementStats::from_output(&output)?),
             };
             Ok(Response::new(response))
         } else {
@@ -239,11 +241,11 @@ impl Route3 for ServerImpl {
     }
 
     type GetDisturbanceOfPopulationMovementRoutesStream =
-        ReceiverStream<Result<api::DisturbanceOfPopulationMovementRoutes, Status>>;
+        ReceiverStream<Result<DisturbanceOfPopulationMovementRoutes, Status>>;
 
     async fn get_disturbance_of_population_movement_routes(
         &self,
-        request: Request<api::DisturbanceOfPopulationMovementRoutesRequest>,
+        request: Request<DisturbanceOfPopulationMovementRoutesRequest>,
     ) -> Result<Response<Self::GetDisturbanceOfPopulationMovementRoutesStream>, Status> {
         let (tx, rx) = mpsc::channel(4);
         let inner = request.into_inner();
@@ -272,8 +274,8 @@ impl Route3 for ServerImpl {
 fn build_routes_response(
     output: &DisturbanceOfPopulationMovementOutput,
     cell: H3Cell,
-) -> Result<api::DisturbanceOfPopulationMovementRoutes, Status> {
-    let mut response = api::DisturbanceOfPopulationMovementRoutes {
+) -> Result<DisturbanceOfPopulationMovementRoutes, Status> {
+    let mut response = DisturbanceOfPopulationMovementRoutes {
         routes_without_disturbance: vec![],
         routes_with_disturbance: vec![],
     };
@@ -281,14 +283,14 @@ fn build_routes_response(
         for route in routes {
             response
                 .routes_without_disturbance
-                .push(api::RouteWkb::from_route(route)?)
+                .push(RouteWkb::from_route(route)?)
         }
     }
     if let Some(routes) = output.routes_with_disturbance.get(&cell) {
         for route in routes {
             response
                 .routes_with_disturbance
-                .push(api::RouteWkb::from_route(route)?)
+                .push(RouteWkb::from_route(route)?)
         }
     }
     Ok(response)

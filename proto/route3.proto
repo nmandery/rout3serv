@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package grpc.route3;
+package route3;
 
 message VersionRequest {
 }
