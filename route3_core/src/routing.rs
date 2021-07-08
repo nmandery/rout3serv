@@ -143,6 +143,8 @@ where
     /// Returns found routes keyed by the origin cell.
     ///
     /// `search_space` limits the routing to child nodes contained in the search space.
+    ///
+    /// All cells must be in the h3 resolution of the graph.
     pub fn route_many_to_many<I>(
         &self,
         origin_cells: I,
@@ -197,7 +199,7 @@ where
             .map(|origin_cell| {
                 let mut destination_cells_reached = H3CellSet::new();
 
-                // TODO: add timeout to not continue routing forever
+                // Possible improvement: add timeout to avoid continuing routing forever
                 let (routemap, _) = dijkstra_partial(
                     // start cell
                     origin_cell,
@@ -331,18 +333,44 @@ where
         destination_cells: &[H3Cell],
         options: &ManyToManyOptions,
     ) -> Result<H3CellMap<Vec<Route<T>>>, Error> {
-        let search_space = self.searchspace_from_routes(
-            self.downsampled_routing_graph
-                .route_many_to_many(origin_cells, destination_cells, options, None)?
-                .values()
-                .flatten(),
-            self.downsampled_routing_graph.h3_resolution(),
-        );
+        let search_space = if options.exclude_cells.is_none() {
+            // TODO: using this method together with `exclude_cells` leads to an overestimation
+            //      of the disturbance. maybe pull the remaining edges
+            //      from the full resolution graph?
+
+            // Possible improvement: spatial clustering the origin cells (DBSCAN?)
+            // to create multiple tighter searchspaces. Would probably lead to a speedup
+            // when the origin cells are spread over a larger area
+            let downsampled_options = ManyToManyOptions {
+                num_destinations_to_reach: options.num_destinations_to_reach.clone(),
+
+                exclude_cells: options.exclude_cells.as_ref().map(|cellset| {
+                    change_h3_resolution(cellset, self.downsampled_routing_graph.h3_resolution())
+                        .collect()
+                }),
+            };
+            Some(
+                self.searchspace_from_routes(
+                    self.downsampled_routing_graph
+                        .route_many_to_many(
+                            origin_cells,
+                            destination_cells,
+                            &downsampled_options,
+                            None,
+                        )?
+                        .values()
+                        .flatten(),
+                    self.downsampled_routing_graph.h3_resolution(),
+                ),
+            )
+        } else {
+            None
+        };
         self.routing_graph.route_many_to_many(
             origin_cells,
             destination_cells,
             options,
-            Some(search_space),
+            search_space,
         )
     }
 }
@@ -366,7 +394,7 @@ where
         let routing_graph: RoutingGraph<T> = graph.try_into()?;
         let downsampled_routing_graph = downsample_graph(
             routing_graph.graph.clone(),
-            routing_graph.graph.h3_resolution.saturating_sub(3),
+            routing_graph.graph.h3_resolution.saturating_sub(4),
         )?
         .try_into()?;
 
