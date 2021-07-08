@@ -18,7 +18,7 @@ pub fn gdal_geom_to_h3(
     h3_resolution: u8,
     include_centroid: bool,
 ) -> std::result::Result<Vec<H3Cell>, Status> {
-    let gt_geom: GTGeometry<f64> = geom.clone().into();
+    let gt_geom: GTGeometry<f64> = geom.clone().into(); // TODO: gdal crate 0.7 will panic on converting unsupported geometry types
     let mut cells = gt_geom.to_h3_indexes(h3_resolution).map_err(|e| {
         log::error!("could not convert to h3: {:?}", e);
         Status::internal("could not convert to h3")
