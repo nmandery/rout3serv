@@ -348,7 +348,7 @@ where
             // to create multiple tighter searchspaces. Would probably lead to a speedup
             // when the origin cells are spread over a larger area
             let downsampled_options = ManyToManyOptions {
-                num_destinations_to_reach: options.num_destinations_to_reach.clone(),
+                num_destinations_to_reach: options.num_destinations_to_reach,
 
                 exclude_cells: options.exclude_cells.as_ref().map(|cellset| {
                     change_h3_resolution(cellset, self.downsampled_routing_graph.h3_resolution())

@@ -41,26 +41,6 @@ message IdRef {
   string id = 1;
 }
 
-/*
-message GetDisturbanceOfPopulationMovementRequest {
-  string dopm_id = 1;
-}
-
-message DisturbanceOfPopulationMovementStats {
-  double population_within_disturbance = 1;
-
-  // arrow recordbatch in Arrow IPC File format
-  bytes recordbatch = 2;
-
-}
-
-message DisturbanceOfPopulationMovementResponse {
-  string dopm_id = 1;
-  DisturbanceOfPopulationMovementStats stats = 2;
-}
-
- */
-
 enum CellInRoutePosition {
   Origin = 0;
   Destination = 1;
