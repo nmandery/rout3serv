@@ -6,7 +6,8 @@ from . import route3_pb2 as route3__pb2
 
 
 class Route3Stub(object):
-    """Missing associated documentation comment in .proto file."""
+    """general methods -------------------------------------
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -19,15 +20,15 @@ class Route3Stub(object):
                 request_serializer=route3__pb2.VersionRequest.SerializeToString,
                 response_deserializer=route3__pb2.VersionResponse.FromString,
                 )
-        self.AnalyzeDisturbanceOfPopulationMovement = channel.unary_unary(
+        self.AnalyzeDisturbanceOfPopulationMovement = channel.unary_stream(
                 '/route3.Route3/AnalyzeDisturbanceOfPopulationMovement',
                 request_serializer=route3__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
-                response_deserializer=route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
+                response_deserializer=route3__pb2.ArrowRecordBatch.FromString,
                 )
-        self.GetDisturbanceOfPopulationMovement = channel.unary_unary(
+        self.GetDisturbanceOfPopulationMovement = channel.unary_stream(
                 '/route3.Route3/GetDisturbanceOfPopulationMovement',
-                request_serializer=route3__pb2.GetDisturbanceOfPopulationMovementRequest.SerializeToString,
-                response_deserializer=route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
+                request_serializer=route3__pb2.IdRef.SerializeToString,
+                response_deserializer=route3__pb2.ArrowRecordBatch.FromString,
                 )
         self.GetDisturbanceOfPopulationMovementRoutes = channel.unary_stream(
                 '/route3.Route3/GetDisturbanceOfPopulationMovementRoutes',
@@ -37,7 +38,8 @@ class Route3Stub(object):
 
 
 class Route3Servicer(object):
-    """Missing associated documentation comment in .proto file."""
+    """general methods -------------------------------------
+    """
 
     def Version(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -46,7 +48,9 @@ class Route3Servicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def AnalyzeDisturbanceOfPopulationMovement(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """Population movement ---------------------------------
+
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -72,15 +76,15 @@ def add_Route3Servicer_to_server(servicer, server):
                     request_deserializer=route3__pb2.VersionRequest.FromString,
                     response_serializer=route3__pb2.VersionResponse.SerializeToString,
             ),
-            'AnalyzeDisturbanceOfPopulationMovement': grpc.unary_unary_rpc_method_handler(
+            'AnalyzeDisturbanceOfPopulationMovement': grpc.unary_stream_rpc_method_handler(
                     servicer.AnalyzeDisturbanceOfPopulationMovement,
                     request_deserializer=route3__pb2.DisturbanceOfPopulationMovementRequest.FromString,
-                    response_serializer=route3__pb2.DisturbanceOfPopulationMovementResponse.SerializeToString,
+                    response_serializer=route3__pb2.ArrowRecordBatch.SerializeToString,
             ),
-            'GetDisturbanceOfPopulationMovement': grpc.unary_unary_rpc_method_handler(
+            'GetDisturbanceOfPopulationMovement': grpc.unary_stream_rpc_method_handler(
                     servicer.GetDisturbanceOfPopulationMovement,
-                    request_deserializer=route3__pb2.GetDisturbanceOfPopulationMovementRequest.FromString,
-                    response_serializer=route3__pb2.DisturbanceOfPopulationMovementResponse.SerializeToString,
+                    request_deserializer=route3__pb2.IdRef.FromString,
+                    response_serializer=route3__pb2.ArrowRecordBatch.SerializeToString,
             ),
             'GetDisturbanceOfPopulationMovementRoutes': grpc.unary_stream_rpc_method_handler(
                     servicer.GetDisturbanceOfPopulationMovementRoutes,
@@ -95,7 +99,8 @@ def add_Route3Servicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class Route3(object):
-    """Missing associated documentation comment in .proto file."""
+    """general methods -------------------------------------
+    """
 
     @staticmethod
     def Version(request,
@@ -125,9 +130,9 @@ class Route3(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/route3.Route3/AnalyzeDisturbanceOfPopulationMovement',
+        return grpc.experimental.unary_stream(request, target, '/route3.Route3/AnalyzeDisturbanceOfPopulationMovement',
             route3__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
-            route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
+            route3__pb2.ArrowRecordBatch.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -142,9 +147,9 @@ class Route3(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/route3.Route3/GetDisturbanceOfPopulationMovement',
-            route3__pb2.GetDisturbanceOfPopulationMovementRequest.SerializeToString,
-            route3__pb2.DisturbanceOfPopulationMovementResponse.FromString,
+        return grpc.experimental.unary_stream(request, target, '/route3.Route3/GetDisturbanceOfPopulationMovement',
+            route3__pb2.IdRef.SerializeToString,
+            route3__pb2.ArrowRecordBatch.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

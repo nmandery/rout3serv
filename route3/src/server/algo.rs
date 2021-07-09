@@ -12,6 +12,7 @@ use crate::constants::Weight;
 use crate::server::api::DisturbanceOfPopulationMovementInput;
 use arrow::array::{Float64Array, UInt64Array};
 use arrow::datatypes::{DataType, Field, Schema};
+use tonic::Status;
 
 pub trait StrId {
     fn id(&self) -> &str;
@@ -107,12 +108,14 @@ impl Default for DOPMOWeights {
     }
 }
 
-impl DisturbanceOfPopulationMovementOutput {
-    /// build an arrow dataset with some basic stats for each of the origin cells
-    pub fn stats_recordbatch(&self) -> Result<RecordBatch> {
-        // TODO: this code is ugly - improve this
+/// build an arrow dataset with some basic stats for each of the origin cells
+/// TODO: improve this method - it is messy
+pub fn disturbance_of_population_movement_stats(
+    output: &DisturbanceOfPopulationMovementOutput,
+) -> Result<Vec<RecordBatch>> {
+    let mut aggregated_weights = {
         let mut aggregated_weights: H3CellMap<DOPMOWeights> = H3CellMap::new();
-        for (origin_cell, routes) in self.routes_without_disturbance.iter() {
+        for (origin_cell, routes) in output.routes_without_disturbance.iter() {
             let entry = aggregated_weights.entry(*origin_cell).or_default();
             for route in routes.iter() {
                 if !entry.without_disturbance.iter().any(|w| &route.cost < w) {
@@ -122,7 +125,8 @@ impl DisturbanceOfPopulationMovementOutput {
                 entry.without_disturbance.push(route.cost);
             }
         }
-        for (origin_cell, routes) in self.routes_with_disturbance.iter() {
+
+        for (origin_cell, routes) in output.routes_with_disturbance.iter() {
             let entry = aggregated_weights.entry(*origin_cell).or_default();
             for route in routes.iter() {
                 if !entry.with_disturbance.iter().any(|w| &route.cost < w) {
@@ -133,19 +137,41 @@ impl DisturbanceOfPopulationMovementOutput {
             }
         }
 
-        let mut cell_h3indexes = Vec::with_capacity(aggregated_weights.len());
-        let mut population = Vec::with_capacity(aggregated_weights.len());
-        let mut num_reached_without_disturbance = Vec::with_capacity(aggregated_weights.len());
-        let mut num_reached_with_disturbance = Vec::with_capacity(aggregated_weights.len());
-        let mut avg_cost_without_disturbance = Vec::with_capacity(aggregated_weights.len());
-        let mut avg_cost_with_disturbance = Vec::with_capacity(aggregated_weights.len());
-        let mut preferred_destination_without_disturbance =
-            Vec::with_capacity(aggregated_weights.len());
-        let mut preferred_destination_with_disturbance =
-            Vec::with_capacity(aggregated_weights.len());
-        for (cell, agg_weight) in aggregated_weights.drain() {
+        aggregated_weights
+    };
+
+    let schema = Arc::new(Schema::new(vec![
+        Field::new("h3index_origin", DataType::UInt64, false),
+        Field::new(
+            "preferred_dest_h3index_without_disturbance",
+            DataType::UInt64,
+            true,
+        ),
+        Field::new(
+            "preferred_dest_h3index_with_disturbance",
+            DataType::UInt64,
+            true,
+        ),
+        Field::new("population_origin", DataType::Float64, true), // TODO: should be nullable instead of NAN values
+        Field::new("num_reached_without_disturbance", DataType::UInt64, false),
+        Field::new("num_reached_with_disturbance", DataType::UInt64, false),
+        Field::new("avg_cost_without_disturbance", DataType::Float64, true),
+        Field::new("avg_cost_with_disturbance", DataType::Float64, true),
+    ]));
+
+    let mut batches = vec![];
+    for chunk in aggregated_weights.drain().collect::<Vec<_>>().chunks(1000) {
+        let mut cell_h3indexes = Vec::with_capacity(chunk.len());
+        let mut population = Vec::with_capacity(chunk.len());
+        let mut num_reached_without_disturbance = Vec::with_capacity(chunk.len());
+        let mut num_reached_with_disturbance = Vec::with_capacity(chunk.len());
+        let mut avg_cost_without_disturbance = Vec::with_capacity(chunk.len());
+        let mut avg_cost_with_disturbance = Vec::with_capacity(chunk.len());
+        let mut preferred_destination_without_disturbance = Vec::with_capacity(chunk.len());
+        let mut preferred_destination_with_disturbance = Vec::with_capacity(chunk.len());
+        for (cell, agg_weight) in chunk {
             cell_h3indexes.push(cell.h3index() as u64);
-            population.push(self.population_at_origins.get(&cell).cloned());
+            population.push(output.population_at_origins.get(&cell).cloned());
 
             let num_reached_wo_d = agg_weight.without_disturbance.len() as u64;
             num_reached_without_disturbance.push(num_reached_wo_d);
@@ -195,27 +221,8 @@ impl DisturbanceOfPopulationMovementOutput {
         let preferred_destination_with_disturbance_array =
             UInt64Array::from(preferred_destination_with_disturbance);
 
-        let schema = Schema::new(vec![
-            Field::new("h3index_origin", DataType::UInt64, false),
-            Field::new(
-                "preferred_dest_h3index_without_disturbance",
-                DataType::UInt64,
-                true,
-            ),
-            Field::new(
-                "preferred_dest_h3index_with_disturbance",
-                DataType::UInt64,
-                true,
-            ),
-            Field::new("population_origin", DataType::Float64, true), // TODO: should be nullable instead of NAN values
-            Field::new("num_reached_without_disturbance", DataType::UInt64, false),
-            Field::new("num_reached_with_disturbance", DataType::UInt64, false),
-            Field::new("avg_cost_without_disturbance", DataType::Float64, true),
-            Field::new("avg_cost_with_disturbance", DataType::Float64, true),
-        ]);
-
         let batch = RecordBatch::try_new(
-            Arc::new(schema),
+            schema.clone(),
             vec![
                 Arc::new(h3index_origin_array),
                 Arc::new(preferred_destination_without_disturbance_array),
@@ -227,6 +234,17 @@ impl DisturbanceOfPopulationMovementOutput {
                 Arc::new(avg_cost_with_disturbance_array),
             ],
         )?;
-        Ok(batch)
+        batches.push(batch);
     }
+    Ok(batches)
+}
+
+pub fn disturbance_of_population_movement_stats_status(
+    output: &DisturbanceOfPopulationMovementOutput,
+) -> std::result::Result<Vec<RecordBatch>, Status> {
+    let rbs = disturbance_of_population_movement_stats(output).map_err(|e| {
+        log::error!("calculating population movement stats failed: {:?}", e);
+        Status::internal("calculating population movement stats failed")
+    })?;
+    Ok(rbs)
 }

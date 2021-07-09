@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0croute3.proto\x12\x06route3\"\x10\n\x0eVersionRequest\"\"\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"\xa9\x01\n&DisturbanceOfPopulationMovementRequest\x12 \n\x18\x64isturbance_wkb_geometry\x18\x01 \x01(\x0c\x12\x15\n\rradius_meters\x18\x02 \x01(\x01\x12!\n\x19num_destinations_to_reach\x18\x03 \x01(\r\x12#\n\x0c\x64\x65stinations\x18\x04 \x03(\x0b\x32\r.route3.Point\"<\n)GetDisturbanceOfPopulationMovementRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\"b\n$DisturbanceOfPopulationMovementStats\x12%\n\x1dpopulation_within_disturbance\x18\x01 \x01(\x01\x12\x13\n\x0brecordbatch\x18\x02 \x01(\x0c\"w\n\'DisturbanceOfPopulationMovementResponse\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12;\n\x05stats\x18\x02 \x01(\x0b\x32,.route3.DisturbanceOfPopulationMovementStats\"N\n,DisturbanceOfPopulationMovementRoutesRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"\x90\x01\n%DisturbanceOfPopulationMovementRoutes\x12\x34\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x10.route3.RouteWKB\x12\x31\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x10.route3.RouteWKB*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\xf7\x03\n\x06Route3\x12<\n\x07Version\x12\x16.route3.VersionRequest\x1a\x17.route3.VersionResponse\"\x00\x12\x8b\x01\n&AnalyzeDisturbanceOfPopulationMovement\x12..route3.DisturbanceOfPopulationMovementRequest\x1a/.route3.DisturbanceOfPopulationMovementResponse\"\x00\x12\x8a\x01\n\"GetDisturbanceOfPopulationMovement\x12\x31.route3.GetDisturbanceOfPopulationMovementRequest\x1a/.route3.DisturbanceOfPopulationMovementResponse\"\x00\x12\x93\x01\n(GetDisturbanceOfPopulationMovementRoutes\x12\x34.route3.DisturbanceOfPopulationMovementRoutesRequest\x1a-.route3.DisturbanceOfPopulationMovementRoutes\"\x00\x30\x01\x62\x06proto3'
+  serialized_pb=b'\n\x0croute3.proto\x12\x06route3\"\x10\n\x0eVersionRequest\"\"\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"\xa9\x01\n&DisturbanceOfPopulationMovementRequest\x12 \n\x18\x64isturbance_wkb_geometry\x18\x01 \x01(\x0c\x12\x15\n\rradius_meters\x18\x02 \x01(\x01\x12!\n\x19num_destinations_to_reach\x18\x03 \x01(\r\x12#\n\x0c\x64\x65stinations\x18\x04 \x03(\x0b\x32\r.route3.Point\"\x13\n\x05IdRef\x12\n\n\x02id\x18\x01 \x01(\t\"N\n,DisturbanceOfPopulationMovementRoutesRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"3\n\x10\x41rrowRecordBatch\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x90\x01\n%DisturbanceOfPopulationMovementRoutes\x12\x34\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x10.route3.RouteWKB\x12\x31\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x10.route3.RouteWKB*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\xa7\x03\n\x06Route3\x12<\n\x07Version\x12\x16.route3.VersionRequest\x1a\x17.route3.VersionResponse\"\x00\x12v\n&AnalyzeDisturbanceOfPopulationMovement\x12..route3.DisturbanceOfPopulationMovementRequest\x1a\x18.route3.ArrowRecordBatch\"\x00\x30\x01\x12Q\n\"GetDisturbanceOfPopulationMovement\x12\r.route3.IdRef\x1a\x18.route3.ArrowRecordBatch\"\x00\x30\x01\x12\x93\x01\n(GetDisturbanceOfPopulationMovementRoutes\x12\x34.route3.DisturbanceOfPopulationMovementRoutesRequest\x1a-.route3.DisturbanceOfPopulationMovementRoutes\"\x00\x30\x01\x62\x06proto3'
 )
 
 _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
@@ -43,8 +43,8 @@ _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=877,
-  serialized_end=927,
+  serialized_start=668,
+  serialized_end=718,
 )
 _sym_db.RegisterEnumDescriptor(_CELLINROUTEPOSITION)
 
@@ -203,16 +203,16 @@ _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST = _descriptor.Descriptor(
 )
 
 
-_GETDISTURBANCEOFPOPULATIONMOVEMENTREQUEST = _descriptor.Descriptor(
-  name='GetDisturbanceOfPopulationMovementRequest',
-  full_name='route3.GetDisturbanceOfPopulationMovementRequest',
+_IDREF = _descriptor.Descriptor(
+  name='IdRef',
+  full_name='route3.IdRef',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='dopm_id', full_name='route3.GetDisturbanceOfPopulationMovementRequest.dopm_id', index=0,
+      name='id', full_name='route3.IdRef.id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -231,85 +231,7 @@ _GETDISTURBANCEOFPOPULATIONMOVEMENTREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=281,
-  serialized_end=341,
-)
-
-
-_DISTURBANCEOFPOPULATIONMOVEMENTSTATS = _descriptor.Descriptor(
-  name='DisturbanceOfPopulationMovementStats',
-  full_name='route3.DisturbanceOfPopulationMovementStats',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='population_within_disturbance', full_name='route3.DisturbanceOfPopulationMovementStats.population_within_disturbance', index=0,
-      number=1, type=1, cpp_type=5, label=1,
-      has_default_value=False, default_value=float(0),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='recordbatch', full_name='route3.DisturbanceOfPopulationMovementStats.recordbatch', index=1,
-      number=2, type=12, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"",
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=343,
-  serialized_end=441,
-)
-
-
-_DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE = _descriptor.Descriptor(
-  name='DisturbanceOfPopulationMovementResponse',
-  full_name='route3.DisturbanceOfPopulationMovementResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='dopm_id', full_name='route3.DisturbanceOfPopulationMovementResponse.dopm_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='stats', full_name='route3.DisturbanceOfPopulationMovementResponse.stats', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=443,
-  serialized_end=562,
+  serialized_end=300,
 )
 
 
@@ -347,8 +269,8 @@ _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=564,
-  serialized_end=642,
+  serialized_start=302,
+  serialized_end=380,
 )
 
 
@@ -400,8 +322,47 @@ _ROUTEWKB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=644,
-  serialized_end=728,
+  serialized_start=382,
+  serialized_end=466,
+)
+
+
+_ARROWRECORDBATCH = _descriptor.Descriptor(
+  name='ArrowRecordBatch',
+  full_name='route3.ArrowRecordBatch',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='object_id', full_name='route3.ArrowRecordBatch.object_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='route3.ArrowRecordBatch.data', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=468,
+  serialized_end=519,
 )
 
 
@@ -439,23 +400,21 @@ _DISTURBANCEOFPOPULATIONMOVEMENTROUTES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=731,
-  serialized_end=875,
+  serialized_start=522,
+  serialized_end=666,
 )
 
 _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST.fields_by_name['destinations'].message_type = _POINT
-_DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE.fields_by_name['stats'].message_type = _DISTURBANCEOFPOPULATIONMOVEMENTSTATS
 _DISTURBANCEOFPOPULATIONMOVEMENTROUTES.fields_by_name['routes_without_disturbance'].message_type = _ROUTEWKB
 _DISTURBANCEOFPOPULATIONMOVEMENTROUTES.fields_by_name['routes_with_disturbance'].message_type = _ROUTEWKB
 DESCRIPTOR.message_types_by_name['VersionRequest'] = _VERSIONREQUEST
 DESCRIPTOR.message_types_by_name['VersionResponse'] = _VERSIONRESPONSE
 DESCRIPTOR.message_types_by_name['Point'] = _POINT
 DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRequest'] = _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST
-DESCRIPTOR.message_types_by_name['GetDisturbanceOfPopulationMovementRequest'] = _GETDISTURBANCEOFPOPULATIONMOVEMENTREQUEST
-DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementStats'] = _DISTURBANCEOFPOPULATIONMOVEMENTSTATS
-DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementResponse'] = _DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE
+DESCRIPTOR.message_types_by_name['IdRef'] = _IDREF
 DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRoutesRequest'] = _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST
 DESCRIPTOR.message_types_by_name['RouteWKB'] = _ROUTEWKB
+DESCRIPTOR.message_types_by_name['ArrowRecordBatch'] = _ARROWRECORDBATCH
 DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRoutes'] = _DISTURBANCEOFPOPULATIONMOVEMENTROUTES
 DESCRIPTOR.enum_types_by_name['CellInRoutePosition'] = _CELLINROUTEPOSITION
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -488,26 +447,12 @@ DisturbanceOfPopulationMovementRequest = _reflection.GeneratedProtocolMessageTyp
   })
 _sym_db.RegisterMessage(DisturbanceOfPopulationMovementRequest)
 
-GetDisturbanceOfPopulationMovementRequest = _reflection.GeneratedProtocolMessageType('GetDisturbanceOfPopulationMovementRequest', (_message.Message,), {
-  'DESCRIPTOR' : _GETDISTURBANCEOFPOPULATIONMOVEMENTREQUEST,
+IdRef = _reflection.GeneratedProtocolMessageType('IdRef', (_message.Message,), {
+  'DESCRIPTOR' : _IDREF,
   '__module__' : 'route3_pb2'
-  # @@protoc_insertion_point(class_scope:route3.GetDisturbanceOfPopulationMovementRequest)
+  # @@protoc_insertion_point(class_scope:route3.IdRef)
   })
-_sym_db.RegisterMessage(GetDisturbanceOfPopulationMovementRequest)
-
-DisturbanceOfPopulationMovementStats = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementStats', (_message.Message,), {
-  'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTSTATS,
-  '__module__' : 'route3_pb2'
-  # @@protoc_insertion_point(class_scope:route3.DisturbanceOfPopulationMovementStats)
-  })
-_sym_db.RegisterMessage(DisturbanceOfPopulationMovementStats)
-
-DisturbanceOfPopulationMovementResponse = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementResponse', (_message.Message,), {
-  'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE,
-  '__module__' : 'route3_pb2'
-  # @@protoc_insertion_point(class_scope:route3.DisturbanceOfPopulationMovementResponse)
-  })
-_sym_db.RegisterMessage(DisturbanceOfPopulationMovementResponse)
+_sym_db.RegisterMessage(IdRef)
 
 DisturbanceOfPopulationMovementRoutesRequest = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementRoutesRequest', (_message.Message,), {
   'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST,
@@ -522,6 +467,13 @@ RouteWKB = _reflection.GeneratedProtocolMessageType('RouteWKB', (_message.Messag
   # @@protoc_insertion_point(class_scope:route3.RouteWKB)
   })
 _sym_db.RegisterMessage(RouteWKB)
+
+ArrowRecordBatch = _reflection.GeneratedProtocolMessageType('ArrowRecordBatch', (_message.Message,), {
+  'DESCRIPTOR' : _ARROWRECORDBATCH,
+  '__module__' : 'route3_pb2'
+  # @@protoc_insertion_point(class_scope:route3.ArrowRecordBatch)
+  })
+_sym_db.RegisterMessage(ArrowRecordBatch)
 
 DisturbanceOfPopulationMovementRoutes = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementRoutes', (_message.Message,), {
   'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTROUTES,
@@ -539,8 +491,8 @@ _ROUTE3 = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=930,
-  serialized_end=1433,
+  serialized_start=721,
+  serialized_end=1144,
   methods=[
   _descriptor.MethodDescriptor(
     name='Version',
@@ -558,7 +510,7 @@ _ROUTE3 = _descriptor.ServiceDescriptor(
     index=1,
     containing_service=None,
     input_type=_DISTURBANCEOFPOPULATIONMOVEMENTREQUEST,
-    output_type=_DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE,
+    output_type=_ARROWRECORDBATCH,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),
@@ -567,8 +519,8 @@ _ROUTE3 = _descriptor.ServiceDescriptor(
     full_name='route3.Route3.GetDisturbanceOfPopulationMovement',
     index=2,
     containing_service=None,
-    input_type=_GETDISTURBANCEOFPOPULATIONMOVEMENTREQUEST,
-    output_type=_DISTURBANCEOFPOPULATIONMOVEMENTRESPONSE,
+    input_type=_IDREF,
+    output_type=_ARROWRECORDBATCH,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),

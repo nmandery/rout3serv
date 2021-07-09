@@ -1,6 +1,6 @@
 __version__ = '0.1.0'
 
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Tuple
 
 import geopandas as gpd
 import grpc
@@ -17,7 +17,7 @@ from .route3_pb2_grpc import Route3Stub
 DEFAULT_PORT = 7088
 
 
-class DisturbanceOfPopulationMovementStats:
+class DataFrameWithId:
     dopm_id: str
     population_within_disturbance: float
     dataframe: pd.DataFrame
@@ -38,16 +38,9 @@ class Server:
     def server_version(self) -> str:
         return self.stub.Version(route3_pb2.VersionRequest()).version
 
-    def _return_stats(self, response: route3_pb2.DisturbanceOfPopulationMovementResponse) -> DisturbanceOfPopulationMovementStats:
-        stats = DisturbanceOfPopulationMovementStats()
-        stats.dopm_id = response.dopm_id
-        stats.population_within_disturbance = response.stats.population_within_disturbance
-        stats.dataframe = pa.ipc.open_file(response.stats.recordbatch).read_pandas()
-        return stats
-
     def analyze_disturbance_of_population_movement(self, disturbance_geom: BaseGeometry, radius_meters: float,
                                                    destination_points: Iterable[Point],
-                                                   num_destinations_to_reach: int = 3) -> DisturbanceOfPopulationMovementStats:
+                                                   num_destinations_to_reach: int = 3) -> Tuple[str, pd.DataFrame]:
         req = route3_pb2.DisturbanceOfPopulationMovementRequest()
         req.disturbance_wkb_geometry = shapely.wkb.dumps(disturbance_geom)
         req.radius_meters = radius_meters
@@ -59,13 +52,13 @@ class Server:
             pt.y = destination_point.y
 
         response = self.stub.AnalyzeDisturbanceOfPopulationMovement(req)
-        return self._return_stats(response)
+        return _arrowrecordbatch_to_dataframe(response)
 
-    def get_disturbance_of_population_movement(self, dopm_id: str) -> route3_pb2.DisturbanceOfPopulationMovementStats:
-        req = route3_pb2.GetDisturbanceOfPopulationMovementRequest()
-        req.dopm_id = dopm_id
+    def get_disturbance_of_population_movement(self, dopm_id: str) -> Tuple[str, pd.DataFrame]:
+        req = route3_pb2.IdRef()
+        req.id = dopm_id
         response = self.stub.GetDisturbanceOfPopulationMovement(req)
-        return self._return_stats(response)
+        return _arrowrecordbatch_to_dataframe(response)
 
     def get_disturbance_of_population_movement_routes(self, dopm_id: str, cells: Iterable[int]) -> gpd.GeoDataFrame:
         req = route3_pb2.DisturbanceOfPopulationMovementRoutesRequest()
@@ -82,7 +75,7 @@ class Server:
         with_disturbance_list = []
         for stream_item in response:
             for with_disturbance, route_list in (
-            (1, stream_item.routes_with_disturbance), (0, stream_item.routes_without_disturbance)):
+                    (1, stream_item.routes_with_disturbance), (0, stream_item.routes_without_disturbance)):
                 for route in route_list:
                     h3index_origin.append(route.origin_cell)
                     h3index_destination.append(route.destination_cell)
@@ -98,3 +91,18 @@ class Server:
             "with_disturbance": np.asarray(with_disturbance_list, dtype=np.int),
         }, crs=4326)
         return gdf
+
+
+def _arrowrecordbatch_to_dataframe(response: route3_pb2.ArrowRecordBatch) -> Tuple[str, pd.DataFrame]:
+    object_id = None
+    df = None
+    batches = []
+    for stream_item in response:
+        if object_id is None:
+            object_id = stream_item.object_id
+        reader = pa.ipc.open_file(stream_item.data)
+        for i in range(reader.num_record_batches):
+            batches.append(reader.get_batch(i))
+    if len(batches) > 0:
+        df = pa.Table.from_batches(batches).to_pandas()
+    return object_id, df

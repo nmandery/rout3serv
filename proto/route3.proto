@@ -36,6 +36,12 @@ message DisturbanceOfPopulationMovementRequest {
 
 }
 
+/** A reference to an ID string */
+message IdRef {
+  string id = 1;
+}
+
+/*
 message GetDisturbanceOfPopulationMovementRequest {
   string dopm_id = 1;
 }
@@ -52,6 +58,8 @@ message DisturbanceOfPopulationMovementResponse {
   string dopm_id = 1;
   DisturbanceOfPopulationMovementStats stats = 2;
 }
+
+ */
 
 enum CellInRoutePosition {
   Origin = 0;
@@ -71,6 +79,15 @@ message RouteWKB {
   bytes wkb = 4;
 }
 
+/**
+  A single Arrow RecordBatch in Arrow IPC File format
+ */
+message ArrowRecordBatch {
+  /** id of the object this batch belongs to - if there is any */
+  string object_id = 1;
+
+  bytes data = 2;
+}
 
 message DisturbanceOfPopulationMovementRoutes {
   repeated RouteWKB routes_without_disturbance = 2;
@@ -79,12 +96,22 @@ message DisturbanceOfPopulationMovementRoutes {
 
 
 service Route3 {
+  // general methods -------------------------------------
+
   rpc Version(VersionRequest) returns (VersionResponse) {}
 
-  rpc AnalyzeDisturbanceOfPopulationMovement(DisturbanceOfPopulationMovementRequest) returns (DisturbanceOfPopulationMovementResponse) {}
+
+
+  // Population movement ---------------------------------
+
+  rpc AnalyzeDisturbanceOfPopulationMovement(DisturbanceOfPopulationMovementRequest)
+      returns (stream ArrowRecordBatch) {}
 
   /* get an already computed analysis */
-  rpc GetDisturbanceOfPopulationMovement(GetDisturbanceOfPopulationMovementRequest) returns (DisturbanceOfPopulationMovementResponse) {}
-  rpc GetDisturbanceOfPopulationMovementRoutes(DisturbanceOfPopulationMovementRoutesRequest) returns (stream DisturbanceOfPopulationMovementRoutes) {}
+  rpc GetDisturbanceOfPopulationMovement(IdRef)
+      returns (stream ArrowRecordBatch) {}
+
+  rpc GetDisturbanceOfPopulationMovementRoutes(DisturbanceOfPopulationMovementRoutesRequest)
+      returns (stream DisturbanceOfPopulationMovementRoutes) {}
 
 }

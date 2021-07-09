@@ -27,6 +27,7 @@ toml = "0.5"
 tonic = "0.4"
 wkb = "0.7"
 tokio-stream = "0.1"
+itertools = "0.10"
 
 [dependencies.ordered-float]
 version = "2.5"

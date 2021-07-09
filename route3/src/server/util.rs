@@ -2,6 +2,8 @@
 /// return a `tonic::Status` on error.
 use tonic::Status;
 
+use crate::io::recordbatch_to_bytes;
+use arrow::record_batch::RecordBatch;
 use geo::algorithm::centroid::Centroid;
 use route3_core::gdal::vector::Geometry;
 use route3_core::geo_types::Geometry as GTGeometry;
@@ -50,4 +52,12 @@ where
         log::error!("joining blocking task failed: {:?}", e);
         Status::internal("join error")
     })
+}
+
+pub fn recordbatch_to_bytes_status(recordbatch: &RecordBatch) -> Result<Vec<u8>, Status> {
+    let recordbatch_bytes = recordbatch_to_bytes(&recordbatch).map_err(|e| {
+        log::error!("serializing recordbatch failed: {:?}", e);
+        Status::internal("serializing recordbatch failed")
+    })?;
+    Ok(recordbatch_bytes)
 }

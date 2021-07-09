@@ -20,20 +20,23 @@ use crate::constants::Weight;
 use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
 use crate::server::algo::{
-    disturbance_of_population_movement, DisturbanceOfPopulationMovementOutput, StrId,
+    disturbance_of_population_movement, disturbance_of_population_movement_stats_status,
+    DisturbanceOfPopulationMovementOutput, StrId,
 };
 use crate::server::api::route3::route3_server::{Route3, Route3Server};
 use crate::server::api::route3::{
-    DisturbanceOfPopulationMovementRequest, DisturbanceOfPopulationMovementResponse,
-    DisturbanceOfPopulationMovementRoutes, DisturbanceOfPopulationMovementRoutesRequest,
-    DisturbanceOfPopulationMovementStats, GetDisturbanceOfPopulationMovementRequest, RouteWkb,
-    VersionRequest, VersionResponse,
+    ArrowRecordBatch, DisturbanceOfPopulationMovementRequest,
+    DisturbanceOfPopulationMovementRoutes, DisturbanceOfPopulationMovementRoutesRequest, IdRef,
+    RouteWkb, VersionRequest, VersionResponse,
 };
-use crate::server::util::spawn_blocking_status;
+use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status};
+use arrow::record_batch::RecordBatch;
 
 mod algo;
 mod api;
 mod util;
+
+type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
 
 struct ServerImpl {
     config: ServerConfig,
@@ -178,10 +181,38 @@ impl ServerImpl {
         };
         Ok(found_option)
     }
+
+    async fn respond_recordbatches_stream(
+        &self,
+        id: String,
+        mut recordbatches: Vec<RecordBatch>,
+    ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
+        let (tx, rx) = mpsc::channel(5);
+        tokio::spawn(async move {
+            for recordbatch in recordbatches.drain(..) {
+                let serialization_result =
+                    recordbatch_to_bytes_status(&recordbatch).map(|rb_bytes| ArrowRecordBatch {
+                        object_id: id.clone(),
+                        data: rb_bytes,
+                    });
+                tx.send(serialization_result).await.unwrap();
+            }
+        });
+        Ok(Response::new(ReceiverStream::new(rx)))
+    }
 }
 
 #[tonic::async_trait]
 impl Route3 for ServerImpl {
+    type AnalyzeDisturbanceOfPopulationMovementStream =
+        ReceiverStream<Result<ArrowRecordBatch, Status>>;
+
+    type GetDisturbanceOfPopulationMovementStream =
+        ReceiverStream<Result<ArrowRecordBatch, Status>>;
+
+    type GetDisturbanceOfPopulationMovementRoutesStream =
+        ReceiverStream<Result<DisturbanceOfPopulationMovementRoutes, Status>>;
+
     async fn version(
         &self,
         _request: Request<VersionRequest>,
@@ -194,7 +225,7 @@ impl Route3 for ServerImpl {
     async fn analyze_disturbance_of_population_movement(
         &self,
         request: Request<DisturbanceOfPopulationMovementRequest>,
-    ) -> std::result::Result<Response<DisturbanceOfPopulationMovementResponse>, Status> {
+    ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
         let input = request
             .into_inner()
             .get_input(self.routing_context.h3_resolution())?;
@@ -210,44 +241,40 @@ impl Route3 for ServerImpl {
             Status::internal("calculating routes failed")
         })?;
 
-        let response = DisturbanceOfPopulationMovementResponse {
-            dopm_id: output.dopm_id.clone(),
-            stats: Some(DisturbanceOfPopulationMovementStats::from_output(&output)?),
-        };
-
         // save the output for later
         self.store_output(&output).await?;
 
-        Ok(Response::new(response))
+        self.respond_recordbatches_stream(
+            output.dopm_id.clone(),
+            disturbance_of_population_movement_stats_status(&output)?,
+        )
+        .await
     }
 
     async fn get_disturbance_of_population_movement(
         &self,
-        request: Request<GetDisturbanceOfPopulationMovementRequest>,
-    ) -> std::result::Result<Response<DisturbanceOfPopulationMovementResponse>, Status> {
+        request: Request<IdRef>,
+    ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
         let inner = request.into_inner();
         if let FoundOption::Found(output) = self
-            .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.dopm_id)
+            .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.id.as_str())
             .await?
         {
-            let response = DisturbanceOfPopulationMovementResponse {
-                dopm_id: output.dopm_id.clone(),
-                stats: Some(DisturbanceOfPopulationMovementStats::from_output(&output)?),
-            };
-            Ok(Response::new(response))
+            self.respond_recordbatches_stream(
+                output.dopm_id.clone(),
+                disturbance_of_population_movement_stats_status(&output)?,
+            )
+            .await
         } else {
             Err(Status::not_found("not found"))
         }
     }
 
-    type GetDisturbanceOfPopulationMovementRoutesStream =
-        ReceiverStream<Result<DisturbanceOfPopulationMovementRoutes, Status>>;
-
     async fn get_disturbance_of_population_movement_routes(
         &self,
         request: Request<DisturbanceOfPopulationMovementRoutesRequest>,
     ) -> Result<Response<Self::GetDisturbanceOfPopulationMovementRoutesStream>, Status> {
-        let (tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(20);
         let inner = request.into_inner();
         let output = if let FoundOption::Found(output) = self
             .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.dopm_id.as_str())
