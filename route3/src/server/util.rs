@@ -61,3 +61,7 @@ pub fn recordbatch_to_bytes_status(recordbatch: &RecordBatch) -> Result<Vec<u8>,
     })?;
     Ok(recordbatch_bytes)
 }
+
+pub trait StrId {
+    fn id(&self) -> &str;
+}

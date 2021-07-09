@@ -6,22 +6,32 @@ use serde::{Deserialize, Serialize};
 
 use route3_core::h3ron::{H3Cell, Index};
 use route3_core::routing::{ManyToManyOptions, Route, RoutingContext};
-use route3_core::H3CellMap;
+use route3_core::{H3CellMap, H3CellSet};
 
 use crate::constants::Weight;
-use crate::server::api::DisturbanceOfPopulationMovementInput;
+use crate::server::util::StrId;
 use arrow::array::{Float64Array, UInt64Array};
 use arrow::datatypes::{DataType, Field, Schema};
 use tonic::Status;
 
-pub trait StrId {
-    fn id(&self) -> &str;
+#[derive(Serialize, Deserialize)]
+pub struct Input {
+    /// the cells within the disturbance
+    pub disturbance: H3CellSet,
+
+    /// the cells of the disturbance and within the surrounding buffer
+    pub within_buffer: Vec<H3Cell>,
+
+    /// the destination cells to route to
+    pub destinations: Vec<H3Cell>,
+
+    pub num_destinations_to_reach: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct DisturbanceOfPopulationMovementOutput {
+pub struct Output {
     pub dopm_id: String,
-    pub input: DisturbanceOfPopulationMovementInput,
+    pub input: Input,
 
     pub population_within_disturbance: f64,
     pub population_at_origins: H3CellMap<f64>,
@@ -33,17 +43,17 @@ pub struct DisturbanceOfPopulationMovementOutput {
     pub routes_with_disturbance: H3CellMap<Vec<Route<Weight>>>,
 }
 
-impl StrId for DisturbanceOfPopulationMovementOutput {
+impl StrId for Output {
     fn id(&self) -> &str {
         self.dopm_id.as_ref()
     }
 }
 
-pub fn disturbance_of_population_movement(
+pub fn calculate(
     routing_context: Arc<RoutingContext<Weight>>,
-    input: DisturbanceOfPopulationMovementInput,
+    input: Input,
     population: H3CellMap<f32>,
-) -> Result<DisturbanceOfPopulationMovementOutput> {
+) -> Result<Output> {
     let population_within_disturbance = input
         .disturbance
         .iter()
@@ -79,7 +89,7 @@ pub fn disturbance_of_population_movement(
         },
     )?;
 
-    Ok(DisturbanceOfPopulationMovementOutput {
+    Ok(Output {
         dopm_id: uuid::Uuid::new_v4().to_string(),
         input,
         population_within_disturbance,
@@ -110,9 +120,7 @@ impl Default for DOPMOWeights {
 
 /// build an arrow dataset with some basic stats for each of the origin cells
 /// TODO: improve this method - it is messy
-pub fn disturbance_of_population_movement_stats(
-    output: &DisturbanceOfPopulationMovementOutput,
-) -> Result<Vec<RecordBatch>> {
+pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
     let mut aggregated_weights = {
         let mut aggregated_weights: H3CellMap<DOPMOWeights> = H3CellMap::new();
         for (origin_cell, routes) in output.routes_without_disturbance.iter() {
@@ -239,10 +247,10 @@ pub fn disturbance_of_population_movement_stats(
     Ok(batches)
 }
 
-pub fn disturbance_of_population_movement_stats_status(
-    output: &DisturbanceOfPopulationMovementOutput,
+pub fn disturbance_statistics_status(
+    output: &Output,
 ) -> std::result::Result<Vec<RecordBatch>, Status> {
-    let rbs = disturbance_of_population_movement_stats(output).map_err(|e| {
+    let rbs = disturbance_statistics(output).map_err(|e| {
         log::error!("calculating population movement stats failed: {:?}", e);
         Status::internal("calculating population movement stats failed")
     })?;

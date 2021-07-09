@@ -19,21 +19,17 @@ use route3_core::{H3CellMap, H3CellSet, WithH3Resolution};
 use crate::constants::Weight;
 use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
-use crate::server::algo::{
-    disturbance_of_population_movement, disturbance_of_population_movement_stats_status,
-    DisturbanceOfPopulationMovementOutput, StrId,
-};
 use crate::server::api::route3::route3_server::{Route3, Route3Server};
 use crate::server::api::route3::{
     ArrowRecordBatch, DisturbanceOfPopulationMovementRequest,
     DisturbanceOfPopulationMovementRoutes, DisturbanceOfPopulationMovementRoutesRequest, IdRef,
     RouteWkb, VersionRequest, VersionResponse,
 };
-use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status};
+use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
 use arrow::record_batch::RecordBatch;
 
-mod algo;
 mod api;
+mod population_movement;
 mod util;
 
 type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
@@ -233,7 +229,7 @@ impl Route3 for ServerImpl {
         let population = self.load_population(&input.within_buffer).await?;
         let routing_context = self.routing_context.clone();
         let output = spawn_blocking_status(move || {
-            disturbance_of_population_movement(routing_context, input, population)
+            population_movement::calculate(routing_context, input, population)
         })
         .await?
         .map_err(|e| {
@@ -246,7 +242,7 @@ impl Route3 for ServerImpl {
 
         self.respond_recordbatches_stream(
             output.dopm_id.clone(),
-            disturbance_of_population_movement_stats_status(&output)?,
+            population_movement::disturbance_statistics_status(&output)?,
         )
         .await
     }
@@ -257,12 +253,12 @@ impl Route3 for ServerImpl {
     ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
         let inner = request.into_inner();
         if let FoundOption::Found(output) = self
-            .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.id.as_str())
+            .retrieve_output::<_, population_movement::Output>(inner.id.as_str())
             .await?
         {
             self.respond_recordbatches_stream(
                 output.dopm_id.clone(),
-                disturbance_of_population_movement_stats_status(&output)?,
+                population_movement::disturbance_statistics_status(&output)?,
             )
             .await
         } else {
@@ -277,7 +273,7 @@ impl Route3 for ServerImpl {
         let (tx, rx) = mpsc::channel(20);
         let inner = request.into_inner();
         let output = if let FoundOption::Found(output) = self
-            .retrieve_output::<_, DisturbanceOfPopulationMovementOutput>(inner.dopm_id.as_str())
+            .retrieve_output::<_, population_movement::Output>(inner.dopm_id.as_str())
             .await?
         {
             output
@@ -299,7 +295,7 @@ impl Route3 for ServerImpl {
 }
 
 fn build_routes_response(
-    output: &DisturbanceOfPopulationMovementOutput,
+    output: &population_movement::Output,
     cell: H3Cell,
 ) -> Result<DisturbanceOfPopulationMovementRoutes, Status> {
     let mut response = DisturbanceOfPopulationMovementRoutes {
