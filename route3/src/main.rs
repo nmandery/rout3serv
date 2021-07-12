@@ -35,30 +35,25 @@ fn main() -> Result<()> {
         .version(env!("CARGO_PKG_VERSION"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
-            SubCommand::with_name("graph-stats")
-                .about("Load a graph and print some basic stats")
-                .arg(Arg::with_name("GRAPH").help("graph").required(true)),
-        )
-        .subcommand(
-            SubCommand::with_name("graph-covered-area")
-                .about("Extract the area covered by the graph as geojson")
-                .arg(Arg::with_name("GRAPH").help("graph").required(true))
-                .arg(
-                    Arg::with_name("OUT-GEOJSON")
-                        .help("output file to write the geojson geometry to")
-                        .required(true),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("server")
-                .about("Start the GRPC server")
-                .arg(
-                    Arg::with_name("CONFIG-FILE")
-                        .help("server configuration file")
-                        .required(true),
+            SubCommand::with_name("graph")
+                .about("Commands related to graph creation and export")
+                .subcommand(
+                    SubCommand::with_name("stats")
+                        .about("Load a graph and print some basic stats")
+                        .arg(Arg::with_name("GRAPH").help("graph").required(true)),
                 )
                 .subcommand(
-                    SubCommand::with_name("graph-to-ogr")
+                    SubCommand::with_name("covered-area")
+                        .about("Extract the area covered by the graph as geojson")
+                        .arg(Arg::with_name("GRAPH").help("graph").required(true))
+                        .arg(
+                            Arg::with_name("OUT-GEOJSON")
+                                .help("output file to write the geojson geometry to")
+                                .required(true),
+                        ),
+                )
+                .subcommand(
+                    SubCommand::with_name("to-ogr")
                         .about("Export the input graph to an OGR vector dataset")
                         .arg(Arg::with_name("GRAPH").help("graph").required(true))
                         .arg(
@@ -78,44 +73,58 @@ fn main() -> Result<()> {
                                 .short("l")
                                 .default_value("graph"),
                         ),
+                )
+                .subcommand(
+                    SubCommand::with_name("from-osm-pbf")
+                        .about("Build a routing graph from an OSM PBF file")
+                        .arg(
+                            Arg::with_name("h3_resolution")
+                                .short("r")
+                                .takes_value(true)
+                                .default_value("10"),
+                        )
+                        .arg(
+                            Arg::with_name("OUTPUT-GRAPH")
+                                .help("output file to write the graph to")
+                                .required(true),
+                        )
+                        .arg(
+                            Arg::with_name("OSM-PBF")
+                                .help("input OSM .pbf file")
+                                .required(true)
+                                .min_values(1),
+                        ),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("graph-from-osm-pbf")
-                .about("Build a routing graph from an OSM PBF file")
+            SubCommand::with_name("server")
+                .about("Start the GRPC server")
                 .arg(
-                    Arg::with_name("h3_resolution")
-                        .short("r")
-                        .takes_value(true)
-                        .default_value("10"),
-                )
-                .arg(
-                    Arg::with_name("OUTPUT-GRAPH")
-                        .help("output file to write the graph to")
+                    Arg::with_name("CONFIG-FILE")
+                        .help("server configuration file")
                         .required(true),
-                )
-                .arg(
-                    Arg::with_name("OSM-PBF")
-                        .help("input OSM .pbf file")
-                        .required(true)
-                        .min_values(1),
                 ),
         );
 
     let matches = app.get_matches();
 
     match matches.subcommand() {
-        ("graph-stats", Some(sc_matches)) => {
-            let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-            let graph: H3Graph<Weight> = load_graph(File::open(graph_filename)?)?;
-            println!("{}", toml::to_string(&graph.stats()?)?);
-        }
-        ("graph-to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
-        ("graph-covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
-        ("graph-from-osm-pbf", Some(sc_matches)) => subcommand_from_osm_pbf(sc_matches)?,
+        ("graph", Some(graph_sc_matches)) => match graph_sc_matches.subcommand() {
+            ("stats", Some(sc_matches)) => {
+                let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
+                let graph: H3Graph<Weight> = load_graph(File::open(graph_filename)?)?;
+                println!("{}", toml::to_string(&graph.stats()?)?);
+            }
+            ("to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
+            ("covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
+            ("from-osm-pbf", Some(sc_matches)) => subcommand_from_osm_pbf(sc_matches)?,
+            _ => {
+                println!("unknown subcommand");
+            }
+        },
         ("server", Some(sc_matches)) => subcommand_server(sc_matches)?,
         _ => {
-            println!("unknown command");
+            println!("unknown subcommand");
         }
     }
     Ok(())
