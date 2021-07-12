@@ -5,7 +5,7 @@ use eyre::Result;
 use serde::{Deserialize, Serialize};
 
 use route3_core::h3ron::{H3Cell, Index};
-use route3_core::routing::{ManyToManyOptions, Route, RoutingContext};
+use route3_core::routing::{ManyToManyOptions, Route, RoutingGraph};
 use route3_core::{H3CellMap, H3CellSet};
 
 use crate::constants::Weight;
@@ -50,7 +50,7 @@ impl StrId for Output {
 }
 
 pub fn calculate(
-    routing_context: Arc<RoutingContext<Weight>>,
+    routing_graph: Arc<RoutingGraph<Weight>>,
     input: Input,
     population: H3CellMap<f32>,
 ) -> Result<Output> {
@@ -71,7 +71,7 @@ pub fn calculate(
         }
     }
 
-    let routes_without_disturbance = routing_context.route_many_to_many(
+    let routes_without_disturbance = routing_graph.route_many_to_many(
         &origin_cells,
         &input.destinations,
         &ManyToManyOptions {
@@ -80,7 +80,7 @@ pub fn calculate(
         },
     )?;
 
-    let routes_with_disturbance = routing_context.route_many_to_many(
+    let routes_with_disturbance = routing_graph.route_many_to_many(
         &origin_cells,
         &input.destinations,
         &ManyToManyOptions {

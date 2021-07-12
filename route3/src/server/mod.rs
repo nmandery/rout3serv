@@ -13,7 +13,6 @@ use tonic::{Request, Response, Status};
 use route3_core::graph::H3Graph;
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
-use route3_core::routing::RoutingContext;
 use route3_core::{H3CellMap, H3CellSet, WithH3Resolution};
 
 use crate::constants::Weight;
@@ -27,6 +26,7 @@ use crate::server::api::route3::{
 };
 use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
 use arrow::record_batch::RecordBatch;
+use route3_core::routing::RoutingGraph;
 
 mod api;
 mod population_movement;
@@ -37,7 +37,7 @@ type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
 struct ServerImpl {
     config: ServerConfig,
     s3_client: Arc<S3Client>,
-    routing_context: Arc<RoutingContext<Weight>>,
+    routing_graph: Arc<RoutingGraph<Weight>>,
 }
 
 impl ServerImpl {
@@ -61,7 +61,7 @@ impl ServerImpl {
         Ok(Self {
             config,
             s3_client,
-            routing_context: Arc::new(graph.try_into()?),
+            routing_graph: Arc::new(graph.try_into()?),
         })
     }
 
@@ -80,7 +80,7 @@ impl ServerImpl {
             .load_h3_dataset(
                 self.config.population_dataset.clone(),
                 cells,
-                self.routing_context.h3_resolution(),
+                self.routing_graph.h3_resolution(),
             )
             .await
             .map_err(|e| {
@@ -224,10 +224,10 @@ impl Route3 for ServerImpl {
     ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
         let input = request
             .into_inner()
-            .get_input(self.routing_context.h3_resolution())?;
+            .get_input(self.routing_graph.h3_resolution())?;
 
         let population = self.load_population(&input.within_buffer).await?;
-        let routing_context = self.routing_context.clone();
+        let routing_context = self.routing_graph.clone();
         let output = spawn_blocking_status(move || {
             population_movement::calculate(routing_context, input, population)
         })

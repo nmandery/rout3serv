@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::ops::Add;
 
@@ -12,40 +12,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
 use crate::geo_types::Geometry;
-use crate::graph::{downsample_graph, H3Graph, NodeType};
-use crate::h3ron::{H3Cell, H3Edge, Index, ToCoordinate};
+use crate::graph::{H3Graph, NodeType};
+use crate::h3ron::{H3Cell, H3Edge, ToCoordinate};
 use crate::iter::change_h3_resolution;
 use crate::{H3CellMap, H3CellSet, WithH3Resolution};
-
-pub struct SearchSpace {
-    /// h3 resolution used for the cells of the search space
-    h3_resolution: u8,
-
-    cells: H3CellSet,
-}
-
-/// search space to constrain the area dijkstra is working on
-impl SearchSpace {
-    /// should only be called with cells with a resolution >= self.h3_resolution
-    pub fn contains_parent(&self, cell: &H3Cell) -> bool {
-        self.cells
-            .contains(&cell.get_parent_unchecked(self.h3_resolution))
-    }
-
-    pub fn len(&self) -> usize {
-        self.cells.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.cells.is_empty()
-    }
-}
-
-impl WithH3Resolution for SearchSpace {
-    fn h3_resolution(&self) -> u8 {
-        self.h3_resolution
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct ManyToManyOptions {
@@ -156,7 +126,6 @@ where
         origin_cells: I,
         destination_cells: I,
         options: &ManyToManyOptions,
-        search_space: Option<SearchSpace>,
     ) -> Result<H3CellMap<Vec<Route<T>>>, Error>
     where
         I: IntoIterator,
@@ -194,6 +163,14 @@ where
             return Err(Error::DestinationsNotInGraph);
         }
 
+        let is_excluded = |cell: H3Cell| {
+            options
+                .exclude_cells
+                .as_ref()
+                .map(|exclude| exclude.contains(&cell))
+                .unwrap_or(false)
+        };
+
         log::debug!(
             "routing many-to-many: from {} cells to {} cells at resolution {}",
             filtered_origin_cells.len(),
@@ -217,16 +194,7 @@ where
                             .filter_map(|edge| {
                                 if let Some((edge, weight)) = self.graph.edges.get_key_value(edge) {
                                     let destination_cell = edge.destination_index_unchecked();
-                                    if search_space
-                                        .as_ref()
-                                        .map(|s_space| s_space.contains_parent(&destination_cell))
-                                        .unwrap_or(true)
-                                        && options
-                                            .exclude_cells
-                                            .as_ref()
-                                            .map(|exclude| !exclude.contains(&destination_cell))
-                                            .unwrap_or(true)
-                                    {
+                                    if !is_excluded(destination_cell) {
                                         Some((destination_cell, *weight))
                                     } else {
                                         None
@@ -290,123 +258,5 @@ where
     fn try_from(graph: H3Graph<T>) -> std::result::Result<Self, Self::Error> {
         let graph_nodes = graph.nodes()?;
         Ok(Self { graph, graph_nodes })
-    }
-}
-
-pub struct RoutingContext<T>
-where
-    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero,
-{
-    routing_graph: RoutingGraph<T>,
-
-    /// a downsampled version of the `routing_graph` using a lower h3 resolution.
-    ///
-    /// Allows faster routing queries to collect cells for a `SearchSpace` to
-    /// restrict full-resolution routing
-    downsampled_routing_graph: RoutingGraph<T>,
-}
-
-impl<T> RoutingContext<T>
-where
-    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
-{
-    /// create a constrained search space first to limit the spread of the dijkstra routing
-    /// by prerouting on a lower resolutions (-> less nodes to visit)
-    /// https://i11www.iti.kit.edu/_media/teaching/theses/files/studienarbeit-schuetz-05.pdf
-    fn searchspace_from_routes<I>(&self, routes: I, h3_resolution: u8) -> SearchSpace
-    where
-        I: Iterator,
-        I::Item: Borrow<Route<T>>,
-    {
-        let mut cells = H3CellSet::new();
-        for route in routes {
-            cells.extend(change_h3_resolution(&route.borrow().cells, h3_resolution));
-        }
-        log::debug!(
-            "search space uses {} cells at r={}",
-            cells.len(),
-            h3_resolution
-        );
-        SearchSpace {
-            h3_resolution,
-            cells,
-        }
-    }
-
-    pub fn route_many_to_many(
-        &self,
-        origin_cells: &[H3Cell],
-        destination_cells: &[H3Cell],
-        options: &ManyToManyOptions,
-    ) -> Result<H3CellMap<Vec<Route<T>>>, Error> {
-        let search_space = if options.exclude_cells.is_none() {
-            // TODO: using this method together with `exclude_cells` leads to an overestimation
-            //      of the disturbance. maybe pull the remaining edges
-            //      from the full resolution graph?
-
-            // Possible improvement: spatial clustering the origin cells (DBSCAN?)
-            // to create multiple tighter searchspaces. Would probably lead to a speedup
-            // when the origin cells are spread over a larger area
-            let downsampled_options = ManyToManyOptions {
-                num_destinations_to_reach: options.num_destinations_to_reach,
-
-                exclude_cells: options.exclude_cells.as_ref().map(|cellset| {
-                    change_h3_resolution(cellset, self.downsampled_routing_graph.h3_resolution())
-                        .collect()
-                }),
-            };
-            Some(
-                self.searchspace_from_routes(
-                    self.downsampled_routing_graph
-                        .route_many_to_many(
-                            origin_cells,
-                            destination_cells,
-                            &downsampled_options,
-                            None,
-                        )?
-                        .values()
-                        .flatten(),
-                    self.downsampled_routing_graph.h3_resolution(),
-                ),
-            )
-        } else {
-            None
-        };
-        self.routing_graph.route_many_to_many(
-            origin_cells,
-            destination_cells,
-            options,
-            search_space,
-        )
-    }
-}
-
-impl<T> WithH3Resolution for RoutingContext<T>
-where
-    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero,
-{
-    fn h3_resolution(&self) -> u8 {
-        self.routing_graph.h3_resolution()
-    }
-}
-
-impl<T> TryFrom<H3Graph<T>> for RoutingContext<T>
-where
-    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero,
-{
-    type Error = Error;
-
-    fn try_from(graph: H3Graph<T>) -> std::result::Result<Self, Self::Error> {
-        let routing_graph: RoutingGraph<T> = graph.try_into()?;
-        let downsampled_routing_graph = downsample_graph(
-            routing_graph.graph.clone(),
-            routing_graph.graph.h3_resolution.saturating_sub(4),
-        )?
-        .try_into()?;
-
-        Ok(Self {
-            routing_graph,
-            downsampled_routing_graph,
-        })
     }
 }
