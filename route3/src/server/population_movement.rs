@@ -160,7 +160,7 @@ pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
             DataType::UInt64,
             true,
         ),
-        Field::new("population_origin", DataType::Float64, true), // TODO: should be nullable instead of NAN values
+        Field::new("population_origin", DataType::Float64, true),
         Field::new("num_reached_without_disturbance", DataType::UInt64, false),
         Field::new("num_reached_with_disturbance", DataType::UInt64, false),
         Field::new("avg_cost_without_disturbance", DataType::Float64, true),

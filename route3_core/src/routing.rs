@@ -231,8 +231,9 @@ where
                     while let Some((cell, weight)) = routemap.get(&last_cell) {
                         route_cells.push(*cell);
                         last_cell = *cell;
+                        // the cost is already summed up after routing, so we just need the last
+                        // cost value
                         if cost == T::zero() {
-                            // TODO: check this
                             cost = cost + *weight;
                         }
                     }

@@ -40,7 +40,9 @@ features = ["v4"]
 [dependencies.tokio]
 version = "1.6"
 features = [
-    "full" # TODO: reduce
+    "rt-multi-thread",
+    "macros",
+    "sync"
 ]
 
 [dependencies.serde]
