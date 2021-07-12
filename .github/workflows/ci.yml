@@ -30,6 +30,13 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      # build/test before linting, as some source files are created by prost
+      - name: Test with cargo
+        uses: actions-rs/cargo@v1.0.1
+        with:
+          command: test
+          toolchain: stable
+
       - name: Lint with rustfmt
         uses: actions-rs/cargo@v1
         with:
@@ -41,8 +48,3 @@ jobs:
           command: clippy
           args: --all-targets --all-features
 
-      - name: Test with cargo
-        uses: actions-rs/cargo@v1.0.1
-        with:
-          command: test
-          toolchain: stable
