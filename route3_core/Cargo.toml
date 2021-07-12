@@ -40,7 +40,7 @@ features = ["derive"]
 
 [dependencies.gdal]
 #version = "0.8.0"
-git = "https://github.com/nmandery/gdal.git"
-rev = "167b925"
+git = "https://github.com/georust/gdal.git"
+rev = "6605e62"
 optional = true
 
