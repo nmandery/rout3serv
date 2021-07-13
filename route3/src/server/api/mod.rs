@@ -4,10 +4,10 @@ use route3_core::gdal_util::buffer_meters;
 use route3_core::geo_types::Coordinate;
 use route3_core::h3ron::{H3Cell, Index};
 
-use crate::constants::Weight;
 use crate::server::api::route3::{DisturbanceOfPopulationMovementRequest, RouteWkb};
 use crate::server::population_movement;
 use crate::server::util::{gdal_geom_to_h3, read_wkb_to_gdal};
+use crate::types::Weight;
 use route3_core::routing::Route;
 use route3_core::H3CellSet;
 

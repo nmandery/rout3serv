@@ -2,8 +2,7 @@
 FROM debian:buster-slim as basesystem
 RUN apt-get update && \
     apt-get install --no-install-recommends -y libgdal20 && \
-    rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /usr/local/bin/
+    rm -rf /var/lib/apt/lists/*
 
 FROM rust:1-buster as builder
 RUN apt-get update && \
@@ -16,6 +15,6 @@ RUN cd /build/route3 && \
 FROM basesystem
 COPY --from=builder /usr/local/cargo/bin/route3 /usr/bin/
 COPY ./route3/server-config.example.toml /server-config.toml
-EXPOSE 7888
-USER 7888
+EXPOSE 7088
+USER 7088
 ENTRYPOINT ["/usr/bin/route3"]

@@ -15,7 +15,6 @@ use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
 use route3_core::{H3CellMap, H3CellSet, WithH3Resolution};
 
-use crate::constants::Weight;
 use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
 use crate::server::api::route3::route3_server::{Route3, Route3Server};
@@ -25,6 +24,7 @@ use crate::server::api::route3::{
     RouteWkb, VersionRequest, VersionResponse,
 };
 use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
+use crate::types::Weight;
 use arrow::record_batch::RecordBatch;
 use route3_core::routing::RoutingGraph;
 

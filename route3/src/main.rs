@@ -15,13 +15,13 @@ use route3_core::io::gdal::OgrWrite;
 use route3_core::io::{load_graph, save_graph_to_file};
 use route3_core::osm::OsmPbfGraphBuilder;
 
-use crate::constants::Weight;
 use crate::osm::way_properties;
+use crate::types::Weight;
 
-mod constants;
 mod io;
 mod osm;
 mod server;
+mod types;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;

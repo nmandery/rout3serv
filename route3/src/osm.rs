@@ -1,4 +1,4 @@
-use crate::constants::Weight;
+use crate::types::Weight;
 use route3_core::osm::EdgeProperties;
 use route3_core::osmpbfreader::Tags;
 

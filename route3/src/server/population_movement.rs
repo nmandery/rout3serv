@@ -8,8 +8,8 @@ use route3_core::h3ron::{H3Cell, Index};
 use route3_core::routing::{ManyToManyOptions, Route, RoutingGraph};
 use route3_core::{H3CellMap, H3CellSet};
 
-use crate::constants::Weight;
 use crate::server::util::StrId;
+use crate::types::Weight;
 use arrow::array::{Float64Array, UInt64Array};
 use arrow::datatypes::{DataType, Field, Schema};
 use tonic::Status;

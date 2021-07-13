@@ -17,17 +17,19 @@ geo = "0.18"
 jemallocator = "0.3.0"
 lazy_static = "1.4"
 log = "0.4"
-prost = "0.7"
+prost = "0.8"
 regex = "1.5"
-route3_core = { path = "../route3_core", features = ["with-gdal", "osm"]}
-rusoto_core = { version = "0.46", default_features = false, features = ["rustls", ] }
-rusoto_s3 = { version = "0.46", default_features = false, features = ["rustls", ] }
-rustc-hash = "1.1"
+rusoto_core = { version = "0.47", default_features = false, features = ["rustls", ] }
+rusoto_s3 = { version = "0.47", default_features = false, features = ["rustls", ] }
 toml = "0.5"
-tonic = "0.4"
+tonic = "0.5"
 wkb = "0.7"
 tokio-stream = "0.1"
 itertools = "0.10"
+
+[dependencies.route3_core]
+path = "../route3_core"
+features = ["with-gdal", "osm"]
 
 [dependencies.ordered-float]
 version = "2.5"
@@ -54,4 +56,4 @@ version = "0.22"
 features = ["geo-types"]
 
 [build-dependencies]
-tonic-build = "0.4"
+tonic-build = "0.5"
