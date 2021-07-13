@@ -44,3 +44,9 @@ git = "https://github.com/georust/gdal.git"
 rev = "6605e62"
 optional = true
 
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "route_germany"
+harness = false
