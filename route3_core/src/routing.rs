@@ -4,9 +4,9 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::ops::Add;
 
+use crate::algo::dijkstra::{build_path_with_cost, dijkstra_partial};
 use geo_types::{LineString, Point};
 use num_traits::Zero;
-use pathfinding::directed::dijkstra::dijkstra_partial;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -225,19 +225,7 @@ where
                 // build the routes
                 let mut routes = vec![];
                 for dest in destination_cells_reached.iter() {
-                    let mut last_cell = *dest;
-                    let mut route_cells = vec![*dest];
-                    let mut cost = T::zero();
-                    while let Some((cell, weight)) = routemap.get(&last_cell) {
-                        route_cells.push(*cell);
-                        last_cell = *cell;
-                        // the cost is already summed up after routing, so we just need the last
-                        // cost value
-                        if cost == T::zero() {
-                            cost = cost + *weight;
-                        }
-                    }
-                    route_cells.reverse();
+                    let (route_cells, cost) = build_path_with_cost(dest, &routemap);
                     routes.push(Route {
                         cells: route_cells,
                         cost,

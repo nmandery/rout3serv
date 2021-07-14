@@ -14,7 +14,7 @@ use route3_core::WithH3Resolution;
 fn load_bench_graph() -> RoutingGraph<OrderedFloat<f64>> {
     let graph: H3Graph<OrderedFloat<f64>> = load_graph(
         File::open(format!(
-            "{}/../testdata/graph-germany_r6_f64.bincode",
+            "{}/../testdata/graph-germany_r7_f64.bincode",
             env!("CARGO_MANIFEST_DIR")
         ))
         .unwrap(),

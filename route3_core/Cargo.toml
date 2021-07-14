@@ -16,11 +16,12 @@ geo = "0.18"
 geo-types = "0.7"
 h3ron = "0.11"
 log = "0.4"
-pathfinding = "=2.1.3" # last version without rustc_hash. With rustc_hash things get much slower (example: 38 secs vs 8 secs)
 serde_json = "1"
 toml = "0.5"
 num-traits = "0.2"
 rayon = "1.5"
+indexmap = "1.7"
+ahash = "0.7"
 
 [dependencies.ordered-float]
 version = "2.6"
@@ -44,8 +45,9 @@ git = "https://github.com/georust/gdal.git"
 rev = "6605e62"
 optional = true
 
-[dev-dependencies]
-criterion = "0.3"
+[dev-dependencies.criterion]
+version = "0.3"
+features = ["html_reports"]
 
 [[bench]]
 name = "route_germany"
