@@ -2,6 +2,7 @@ use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
 use arrow::array::{Float32Array, UInt64Array};
+use arrow::record_batch::RecordBatch;
 use eyre::{Report, Result};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -10,10 +11,12 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
+use route3_core::collections::{H3CellMap, H3CellSet};
 use route3_core::graph::H3Graph;
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
-use route3_core::{H3CellMap, H3CellSet, WithH3Resolution};
+use route3_core::routing::RoutingGraph;
+use route3_core::WithH3Resolution;
 
 use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
@@ -25,8 +28,6 @@ use crate::server::api::route3::{
 };
 use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
 use crate::types::Weight;
-use arrow::record_batch::RecordBatch;
-use route3_core::routing::RoutingGraph;
 
 mod api;
 mod population_movement;

@@ -13,17 +13,12 @@
 pub use gdal;
 pub use geo_types;
 pub use h3ron;
-use hashbrown::{HashMap, HashSet};
 
 #[cfg(feature = "osm")]
 pub use osmpbfreader;
 
-use crate::h3ron::{H3Cell, H3Edge};
-use ahash::AHasher;
-use indexmap::map::IndexMap;
-use std::hash::BuildHasherDefault;
-
 mod algo;
+pub mod collections;
 pub mod error;
 #[cfg(feature = "with-gdal")]
 pub mod gdal_util;
@@ -33,11 +28,6 @@ pub mod iter;
 #[cfg(feature = "osm")]
 pub mod osm;
 pub mod routing;
-
-pub type H3EdgeMap<V> = HashMap<H3Edge, V>;
-pub type H3CellMap<V> = HashMap<H3Cell, V>;
-pub type H3CellSet = HashSet<H3Cell>;
-type AIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<AHasher>>;
 
 pub trait WithH3Resolution {
     fn h3_resolution(&self) -> u8;

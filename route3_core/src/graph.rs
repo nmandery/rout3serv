@@ -6,11 +6,12 @@ use h3ron::{H3Cell, H3Edge};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::collections::{H3CellMap, H3CellSet, H3EdgeMap};
 use crate::error::Error;
 use crate::geo_types::Polygon;
 use crate::h3ron::{Index, ToLinkedPolygons};
 use crate::io::serde_support::h3edgemap as h3m_serde;
-use crate::{H3CellMap, H3CellSet, H3EdgeMap, WithH3Resolution};
+use crate::WithH3Resolution;
 
 #[derive(Serialize)]
 pub struct GraphStats {

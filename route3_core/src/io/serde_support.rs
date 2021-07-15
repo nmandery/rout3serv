@@ -9,8 +9,8 @@ pub mod h3edgemap {
     use std::marker::PhantomData;
     use std::result::Result;
 
+    use crate::collections::H3EdgeMap;
     use crate::h3ron::Index;
-    use crate::H3EdgeMap;
     use serde::de::{MapAccess, Visitor};
     use serde::ser::SerializeMap;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};

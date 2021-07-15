@@ -10,12 +10,13 @@ use num_traits::Zero;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::collections::{H3CellMap, H3CellSet};
 use crate::error::Error;
 use crate::geo_types::Geometry;
 use crate::graph::{H3Graph, NodeType};
 use crate::h3ron::{H3Cell, H3Edge, ToCoordinate};
 use crate::iter::change_h3_resolution;
-use crate::{H3CellMap, H3CellSet, WithH3Resolution};
+use crate::WithH3Resolution;
 
 #[derive(Clone, Debug)]
 pub struct ManyToManyOptions {

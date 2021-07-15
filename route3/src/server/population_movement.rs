@@ -1,18 +1,18 @@
 use std::sync::Arc;
 
+use arrow::array::{Float64Array, UInt64Array};
+use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
+use tonic::Status;
 
+use route3_core::collections::{H3CellMap, H3CellSet};
 use route3_core::h3ron::{H3Cell, Index};
 use route3_core::routing::{ManyToManyOptions, Route, RoutingGraph};
-use route3_core::{H3CellMap, H3CellSet};
 
 use crate::server::util::StrId;
 use crate::types::Weight;
-use arrow::array::{Float64Array, UInt64Array};
-use arrow::datatypes::{DataType, Field, Schema};
-use tonic::Status;
 
 #[derive(Serialize, Deserialize)]
 pub struct Input {

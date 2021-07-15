@@ -14,8 +14,8 @@ use std::usize;
 use indexmap::map::Entry::{Occupied, Vacant};
 use num_traits::Zero;
 
-use crate::AIndexMap;
-use crate::HashMap;
+use crate::collections::AIndexMap;
+use crate::collections::HashMap;
 
 /// Determine some reachable nodes from a starting point as well as the minimum cost to
 /// reach them and a possible optimal parent node
@@ -152,7 +152,7 @@ where
         next = parent.clone();
     }
     rev.reverse();
-    (rev, cost.unwrap_or(C::zero()))
+    (rev, cost.unwrap_or_else(C::zero))
 }
 
 struct SmallestHolder<K> {
