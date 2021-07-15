@@ -19,6 +19,7 @@ use tokio::task;
 use crate::io::FoundOption;
 use route3_core::h3ron::H3Cell;
 use route3_core::iter::change_h3_resolution;
+use std::env;
 
 #[derive(Deserialize)]
 pub struct S3Config {
@@ -27,6 +28,20 @@ pub struct S3Config {
     pub access_key: String,
     pub secret_key: String,
     pub retry_seconds: Option<u64>,
+}
+
+impl S3Config {
+    /// get the s3 access key - may be overridden using the `S3_ACCESS_KEY`
+    /// environment variable
+    pub fn get_access_key(&self) -> String {
+        env::var("S3_ACCESS_KEY").unwrap_or_else(|| self.access_key.clone())
+    }
+
+    /// get the s3 secret key - may be overridden using the `S3_SECRET_KEY`
+    /// environment variable
+    pub fn get_secret_key(&self) -> String {
+        env::var("S3_SECRET_KEY").unwrap_or_else(|| self.secret_key.clone())
+    }
 }
 
 pub struct S3Client {
@@ -53,8 +68,8 @@ impl S3Client {
             s3: rusoto_s3::S3Client::new_with(
                 rusoto_core::request::HttpClient::new()?,
                 StaticProvider::from(AwsCredentials::new(
-                    config.access_key.clone(),
-                    config.secret_key.clone(),
+                    config.get_access_key(),
+                    config.get_secret_key(),
                     None,
                     None,
                 )),
