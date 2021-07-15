@@ -1,12 +1,12 @@
 # dockerfile for the route3 server application
-FROM debian:buster-slim as basesystem
+FROM debian:bullseye-slim as basesystem
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y libgdal20 && \
+    apt-get install --no-install-recommends -y libgdal28 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-FROM rust:1-buster as builder
+FROM rust:1-bullseye as builder
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y cmake libgdal20 make clang git libgdal-dev python3-toml && \
+    apt-get install --no-install-recommends -y cmake libgdal28 make clang git libgdal-dev python3-toml && \
     rustup component add rustfmt
 COPY . /build
 RUN cd /build && \
