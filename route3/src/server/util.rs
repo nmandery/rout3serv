@@ -1,13 +1,16 @@
+use std::convert::TryInto;
+
+use arrow::record_batch::RecordBatch;
+use geo::algorithm::centroid::Centroid;
 /// utility functions to use within the server context, most of them
 /// return a `tonic::Status` on error.
 use tonic::Status;
 
-use crate::io::recordbatch_to_bytes;
-use arrow::record_batch::RecordBatch;
-use geo::algorithm::centroid::Centroid;
 use route3_core::gdal::vector::Geometry;
 use route3_core::geo_types::Geometry as GTGeometry;
 use route3_core::h3ron::{H3Cell, ToH3Indexes};
+
+use crate::io::recordbatch_to_bytes;
 
 /// read binary WKB into a gdal `Geometry`
 pub fn read_wkb_to_gdal(wkb_bytes: &[u8]) -> std::result::Result<Geometry, Status> {
@@ -20,7 +23,10 @@ pub fn gdal_geom_to_h3(
     h3_resolution: u8,
     include_centroid: bool,
 ) -> std::result::Result<Vec<H3Cell>, Status> {
-    let gt_geom: GTGeometry<f64> = geom.clone().into(); // TODO: gdal crate 0.7 will panic on converting unsupported geometry types
+    let gt_geom: GTGeometry<f64> = geom.clone().try_into().map_err(|e| {
+        log::error!("Converting GDAL geometry to geo-types failed: {:?}", e);
+        Status::internal("unsupported geometry")
+    })?;
     let mut cells = gt_geom.to_h3_indexes(h3_resolution).map_err(|e| {
         log::error!("could not convert to h3: {:?}", e);
         Status::internal("could not convert to h3")
