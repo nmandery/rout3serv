@@ -6,10 +6,12 @@ RUN apt-get update && \
 
 FROM rust:1-buster as builder
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y cmake libgdal20 make clang git libgdal-dev && \
+    apt-get install --no-install-recommends -y cmake libgdal20 make clang git libgdal-dev python3-toml && \
     rustup component add rustfmt
 COPY . /build
-RUN cd /build/route3 && \
+RUN cd /build && \
+    python3 docker-cargo-profile.py && \
+    cd /build/route3 && \
     cargo install --path .
 
 FROM basesystem
