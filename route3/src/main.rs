@@ -30,9 +30,15 @@ fn main() -> Result<()> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
+    let long_version = format!(
+        "{} (git: {})",
+        env!("CARGO_PKG_VERSION"),
+        env!("VERGEN_GIT_SHA")
+    );
 
     let app = App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
+        .long_version(long_version.as_str())
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
             SubCommand::with_name("graph")

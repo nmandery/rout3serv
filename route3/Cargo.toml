@@ -57,3 +57,4 @@ features = ["geo-types"]
 
 [build-dependencies]
 tonic-build = "0.5"
+vergen = { version = "5", features = ["rustc", "build"] }
