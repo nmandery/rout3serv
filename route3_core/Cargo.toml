@@ -43,6 +43,7 @@ features = ["derive"]
 git = "https://github.com/nmandery/gdal.git"
 rev = "b4794f8" # TryFrom to convert from gdal geometries to geo-types
 optional = true
+features = ["bindgen"]
 
 [dev-dependencies.criterion]
 version = "0.3"

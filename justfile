@@ -12,3 +12,6 @@ extract-sample-data:
 
 generate-testdata:
      cargo run --release --bin route3 -- graph from-osm-pbf -r 7 testdata/graph-germany_r7_f64.bincode data/germany-latest.osm.pbf
+
+build-docker:
+    sudo docker build --pull .

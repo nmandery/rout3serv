@@ -1,21 +1,24 @@
 # dockerfile for the route3 server application
-FROM debian:bullseye-slim as basesystem
-RUN apt-get update && \
-    apt-get install --no-install-recommends -y libgdal28 ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+FROM nmandery/gdal-minimal:3-bullseye as basesystem
 
-FROM rust:1-bullseye as builder
+FROM basesystem as builder
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y cmake libgdal28 make clang git libgdal-dev python3-toml && \
-    rustup component add rustfmt
+    apt-get install --no-install-recommends -y cmake curl make clang git python3-toml pkg-config
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
+        --profile minimal \
+        --default-toolchain stable \
+        --component rustc \
+        --component rust-std \
+        --component cargo \
+        --component rustfmt
 COPY . /build
 RUN cd /build && \
     python3 docker-cargo-profile.py && \
     cd /build/route3 && \
-    cargo install --path .
+    PATH=$PATH:$HOME/.cargo/bin cargo install --path . --root /usr/local
 
 FROM basesystem
-COPY --from=builder /usr/local/cargo/bin/route3 /usr/bin/
+COPY --from=builder /usr/local/bin/route3 /usr/bin/
 COPY ./route3/server-config.example.toml /server-config.toml
 EXPOSE 7088
 USER 7088

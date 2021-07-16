@@ -5,3 +5,4 @@
 /route3_python_client
 **/perf.data*
 # /.git needs to be COPYied to obtain the commit-sha from
+/Dockerfile
