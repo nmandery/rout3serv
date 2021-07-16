@@ -34,13 +34,13 @@ impl S3Config {
     /// get the s3 access key - may be overridden using the `S3_ACCESS_KEY`
     /// environment variable
     pub fn get_access_key(&self) -> String {
-        env::var("S3_ACCESS_KEY").unwrap_or_else(|| self.access_key.clone())
+        env::var("S3_ACCESS_KEY").unwrap_or_else(|_| self.access_key.clone())
     }
 
     /// get the s3 secret key - may be overridden using the `S3_SECRET_KEY`
     /// environment variable
     pub fn get_secret_key(&self) -> String {
-        env::var("S3_SECRET_KEY").unwrap_or_else(|| self.secret_key.clone())
+        env::var("S3_SECRET_KEY").unwrap_or_else(|_| self.secret_key.clone())
     }
 }
 
