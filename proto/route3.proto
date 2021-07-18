@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package route3;
 
-message VersionRequest {
+message Empty {
 }
 
 message VersionResponse {
@@ -74,12 +74,17 @@ message DisturbanceOfPopulationMovementRoutes {
   repeated RouteWKB routes_with_disturbance = 3;
 }
 
+message GraphInfoResponse {
+  uint32 h3_resolution = 1;
+  uint64 num_edges = 2;
+}
+
 
 service Route3 {
   // general methods -------------------------------------
 
-  rpc Version(VersionRequest) returns (VersionResponse) {}
-
+  rpc Version(Empty) returns (VersionResponse) {}
+  rpc GraphInfo(Empty) returns (GraphInfoResponse) {}
 
 
   // Population movement ---------------------------------

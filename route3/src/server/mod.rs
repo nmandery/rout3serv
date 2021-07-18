@@ -23,8 +23,8 @@ use crate::io::{recordbatch_array, FoundOption};
 use crate::server::api::route3::route3_server::{Route3, Route3Server};
 use crate::server::api::route3::{
     ArrowRecordBatch, DisturbanceOfPopulationMovementRequest,
-    DisturbanceOfPopulationMovementRoutes, DisturbanceOfPopulationMovementRoutesRequest, IdRef,
-    RouteWkb, VersionRequest, VersionResponse,
+    DisturbanceOfPopulationMovementRoutes, DisturbanceOfPopulationMovementRoutesRequest, Empty,
+    GraphInfoResponse, IdRef, RouteWkb, VersionResponse,
 };
 use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
 use crate::types::Weight;
@@ -212,7 +212,7 @@ impl Route3 for ServerImpl {
 
     async fn version(
         &self,
-        _request: Request<VersionRequest>,
+        _request: Request<Empty>,
     ) -> std::result::Result<Response<VersionResponse>, Status> {
         Ok(Response::new(VersionResponse {
             version: env!("CARGO_PKG_VERSION").to_string(),
@@ -292,6 +292,16 @@ impl Route3 for ServerImpl {
             }
         });
         Ok(Response::new(ReceiverStream::new(rx)))
+    }
+
+    async fn graph_info(
+        &self,
+        _request: Request<Empty>,
+    ) -> Result<Response<GraphInfoResponse>, Status> {
+        Ok(Response::new(GraphInfoResponse {
+            h3_resolution: self.routing_graph.h3_resolution() as u32,
+            num_edges: self.routing_graph.graph.num_edges() as u64,
+        }))
     }
 }
 

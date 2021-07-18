@@ -36,7 +36,10 @@ class Server:
         self.stub = Route3Stub(self.channel)
 
     def server_version(self) -> str:
-        return self.stub.Version(route3_pb2.VersionRequest()).version
+        return self.stub.Version(route3_pb2.Empty()).version
+
+    def graph_info(self) -> str:
+        return self.stub.GraphInfo(route3_pb2.Empty())
 
     def analyze_disturbance_of_population_movement(self, disturbance_geom: BaseGeometry, radius_meters: float,
                                                    destination_points: Iterable[Point],

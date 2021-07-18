@@ -17,8 +17,13 @@ class Route3Stub(object):
         """
         self.Version = channel.unary_unary(
                 '/route3.Route3/Version',
-                request_serializer=route3__pb2.VersionRequest.SerializeToString,
+                request_serializer=route3__pb2.Empty.SerializeToString,
                 response_deserializer=route3__pb2.VersionResponse.FromString,
+                )
+        self.GraphInfo = channel.unary_unary(
+                '/route3.Route3/GraphInfo',
+                request_serializer=route3__pb2.Empty.SerializeToString,
+                response_deserializer=route3__pb2.GraphInfoResponse.FromString,
                 )
         self.AnalyzeDisturbanceOfPopulationMovement = channel.unary_stream(
                 '/route3.Route3/AnalyzeDisturbanceOfPopulationMovement',
@@ -42,6 +47,12 @@ class Route3Servicer(object):
     """
 
     def Version(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GraphInfo(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -73,8 +84,13 @@ def add_Route3Servicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Version': grpc.unary_unary_rpc_method_handler(
                     servicer.Version,
-                    request_deserializer=route3__pb2.VersionRequest.FromString,
+                    request_deserializer=route3__pb2.Empty.FromString,
                     response_serializer=route3__pb2.VersionResponse.SerializeToString,
+            ),
+            'GraphInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GraphInfo,
+                    request_deserializer=route3__pb2.Empty.FromString,
+                    response_serializer=route3__pb2.GraphInfoResponse.SerializeToString,
             ),
             'AnalyzeDisturbanceOfPopulationMovement': grpc.unary_stream_rpc_method_handler(
                     servicer.AnalyzeDisturbanceOfPopulationMovement,
@@ -114,8 +130,25 @@ class Route3(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/route3.Route3/Version',
-            route3__pb2.VersionRequest.SerializeToString,
+            route3__pb2.Empty.SerializeToString,
             route3__pb2.VersionResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GraphInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/route3.Route3/GraphInfo',
+            route3__pb2.Empty.SerializeToString,
+            route3__pb2.GraphInfoResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
