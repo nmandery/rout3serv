@@ -11,8 +11,8 @@ import shapely.wkb
 from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 
-from . import route3_pb2
-from .route3_pb2_grpc import Route3Stub
+from . import route3_road_pb2
+from .route3_road_pb2_grpc import Route3RoadStub
 
 DEFAULT_PORT = 7088
 
@@ -33,18 +33,18 @@ class Server:
             self.channel = grpc.secure_channel(hostport, credentials)
         else:
             self.channel = grpc.insecure_channel(hostport)
-        self.stub = Route3Stub(self.channel)
+        self.stub = Route3RoadStub(self.channel)
 
     def server_version(self) -> str:
-        return self.stub.Version(route3_pb2.Empty()).version
+        return self.stub.Version(route3_road_pb2.Empty()).version
 
     def graph_info(self) -> str:
-        return self.stub.GraphInfo(route3_pb2.Empty())
+        return self.stub.GraphInfo(route3_road_pb2.Empty())
 
     def analyze_disturbance_of_population_movement(self, disturbance_geom: BaseGeometry, radius_meters: float,
                                                    destination_points: Iterable[Point],
                                                    num_destinations_to_reach: int = 3) -> Tuple[str, pd.DataFrame]:
-        req = route3_pb2.DisturbanceOfPopulationMovementRequest()
+        req = route3_road_pb2.DisturbanceOfPopulationMovementRequest()
         req.disturbance_wkb_geometry = shapely.wkb.dumps(disturbance_geom)
         req.radius_meters = radius_meters
         req.num_destinations_to_reach = num_destinations_to_reach
@@ -58,13 +58,13 @@ class Server:
         return _arrowrecordbatch_to_dataframe(response)
 
     def get_disturbance_of_population_movement(self, dopm_id: str) -> Tuple[str, pd.DataFrame]:
-        req = route3_pb2.IdRef()
+        req = route3_road_pb2.IdRef()
         req.id = dopm_id
         response = self.stub.GetDisturbanceOfPopulationMovement(req)
         return _arrowrecordbatch_to_dataframe(response)
 
     def get_disturbance_of_population_movement_routes(self, dopm_id: str, cells: Iterable[int]) -> gpd.GeoDataFrame:
-        req = route3_pb2.DisturbanceOfPopulationMovementRoutesRequest()
+        req = route3_road_pb2.DisturbanceOfPopulationMovementRoutesRequest()
         req.dopm_id = dopm_id
         for cell in cells:
             req.cells.append(cell)
@@ -96,7 +96,7 @@ class Server:
         return gdf
 
 
-def _arrowrecordbatch_to_dataframe(response: route3_pb2.ArrowRecordBatch) -> Tuple[str, pd.DataFrame]:
+def _arrowrecordbatch_to_dataframe(response: route3_road_pb2.ArrowRecordBatch) -> Tuple[str, pd.DataFrame]:
     object_id = None
     df = None
     batches = []

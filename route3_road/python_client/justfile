@@ -1,0 +1,6 @@
+
+# compile the proto file to python
+protoc:
+    poetry run python -m grpc_tools.protoc -I../proto --python_out=route3_road_client --grpc_python_out=route3_road_client ../proto/route3_road.proto
+    # TODO: the following should not be necessary, but for a quick fix its fine
+    sed -Ei 's/^import route3_road_pb2/from . import route3_road_pb2/g' route3_road_client/route3_road_pb2_grpc.py

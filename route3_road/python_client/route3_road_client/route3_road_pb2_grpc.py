@@ -2,10 +2,10 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-from . import route3_pb2 as route3__pb2
+from . import route3_road_pb2 as route3__road__pb2
 
 
-class Route3Stub(object):
+class Route3RoadStub(object):
     """general methods -------------------------------------
     """
 
@@ -16,33 +16,33 @@ class Route3Stub(object):
             channel: A grpc.Channel.
         """
         self.Version = channel.unary_unary(
-                '/route3.Route3/Version',
-                request_serializer=route3__pb2.Empty.SerializeToString,
-                response_deserializer=route3__pb2.VersionResponse.FromString,
+                '/route3.road.Route3Road/Version',
+                request_serializer=route3__road__pb2.Empty.SerializeToString,
+                response_deserializer=route3__road__pb2.VersionResponse.FromString,
                 )
         self.GraphInfo = channel.unary_unary(
-                '/route3.Route3/GraphInfo',
-                request_serializer=route3__pb2.Empty.SerializeToString,
-                response_deserializer=route3__pb2.GraphInfoResponse.FromString,
+                '/route3.road.Route3Road/GraphInfo',
+                request_serializer=route3__road__pb2.Empty.SerializeToString,
+                response_deserializer=route3__road__pb2.GraphInfoResponse.FromString,
                 )
         self.AnalyzeDisturbanceOfPopulationMovement = channel.unary_stream(
-                '/route3.Route3/AnalyzeDisturbanceOfPopulationMovement',
-                request_serializer=route3__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
-                response_deserializer=route3__pb2.ArrowRecordBatch.FromString,
+                '/route3.road.Route3Road/AnalyzeDisturbanceOfPopulationMovement',
+                request_serializer=route3__road__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
+                response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
                 )
         self.GetDisturbanceOfPopulationMovement = channel.unary_stream(
-                '/route3.Route3/GetDisturbanceOfPopulationMovement',
-                request_serializer=route3__pb2.IdRef.SerializeToString,
-                response_deserializer=route3__pb2.ArrowRecordBatch.FromString,
+                '/route3.road.Route3Road/GetDisturbanceOfPopulationMovement',
+                request_serializer=route3__road__pb2.IdRef.SerializeToString,
+                response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
                 )
         self.GetDisturbanceOfPopulationMovementRoutes = channel.unary_stream(
-                '/route3.Route3/GetDisturbanceOfPopulationMovementRoutes',
-                request_serializer=route3__pb2.DisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
-                response_deserializer=route3__pb2.DisturbanceOfPopulationMovementRoutes.FromString,
+                '/route3.road.Route3Road/GetDisturbanceOfPopulationMovementRoutes',
+                request_serializer=route3__road__pb2.DisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
+                response_deserializer=route3__road__pb2.DisturbanceOfPopulationMovementRoutes.FromString,
                 )
 
 
-class Route3Servicer(object):
+class Route3RoadServicer(object):
     """general methods -------------------------------------
     """
 
@@ -80,41 +80,41 @@ class Route3Servicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_Route3Servicer_to_server(servicer, server):
+def add_Route3RoadServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Version': grpc.unary_unary_rpc_method_handler(
                     servicer.Version,
-                    request_deserializer=route3__pb2.Empty.FromString,
-                    response_serializer=route3__pb2.VersionResponse.SerializeToString,
+                    request_deserializer=route3__road__pb2.Empty.FromString,
+                    response_serializer=route3__road__pb2.VersionResponse.SerializeToString,
             ),
             'GraphInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GraphInfo,
-                    request_deserializer=route3__pb2.Empty.FromString,
-                    response_serializer=route3__pb2.GraphInfoResponse.SerializeToString,
+                    request_deserializer=route3__road__pb2.Empty.FromString,
+                    response_serializer=route3__road__pb2.GraphInfoResponse.SerializeToString,
             ),
             'AnalyzeDisturbanceOfPopulationMovement': grpc.unary_stream_rpc_method_handler(
                     servicer.AnalyzeDisturbanceOfPopulationMovement,
-                    request_deserializer=route3__pb2.DisturbanceOfPopulationMovementRequest.FromString,
-                    response_serializer=route3__pb2.ArrowRecordBatch.SerializeToString,
+                    request_deserializer=route3__road__pb2.DisturbanceOfPopulationMovementRequest.FromString,
+                    response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
             ),
             'GetDisturbanceOfPopulationMovement': grpc.unary_stream_rpc_method_handler(
                     servicer.GetDisturbanceOfPopulationMovement,
-                    request_deserializer=route3__pb2.IdRef.FromString,
-                    response_serializer=route3__pb2.ArrowRecordBatch.SerializeToString,
+                    request_deserializer=route3__road__pb2.IdRef.FromString,
+                    response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
             ),
             'GetDisturbanceOfPopulationMovementRoutes': grpc.unary_stream_rpc_method_handler(
                     servicer.GetDisturbanceOfPopulationMovementRoutes,
-                    request_deserializer=route3__pb2.DisturbanceOfPopulationMovementRoutesRequest.FromString,
-                    response_serializer=route3__pb2.DisturbanceOfPopulationMovementRoutes.SerializeToString,
+                    request_deserializer=route3__road__pb2.DisturbanceOfPopulationMovementRoutesRequest.FromString,
+                    response_serializer=route3__road__pb2.DisturbanceOfPopulationMovementRoutes.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'route3.Route3', rpc_method_handlers)
+            'route3.road.Route3Road', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class Route3(object):
+class Route3Road(object):
     """general methods -------------------------------------
     """
 
@@ -129,9 +129,9 @@ class Route3(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/route3.Route3/Version',
-            route3__pb2.Empty.SerializeToString,
-            route3__pb2.VersionResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/route3.road.Route3Road/Version',
+            route3__road__pb2.Empty.SerializeToString,
+            route3__road__pb2.VersionResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -146,9 +146,9 @@ class Route3(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/route3.Route3/GraphInfo',
-            route3__pb2.Empty.SerializeToString,
-            route3__pb2.GraphInfoResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/route3.road.Route3Road/GraphInfo',
+            route3__road__pb2.Empty.SerializeToString,
+            route3__road__pb2.GraphInfoResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -163,9 +163,9 @@ class Route3(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/route3.Route3/AnalyzeDisturbanceOfPopulationMovement',
-            route3__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
-            route3__pb2.ArrowRecordBatch.FromString,
+        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/AnalyzeDisturbanceOfPopulationMovement',
+            route3__road__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
+            route3__road__pb2.ArrowRecordBatch.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -180,9 +180,9 @@ class Route3(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/route3.Route3/GetDisturbanceOfPopulationMovement',
-            route3__pb2.IdRef.SerializeToString,
-            route3__pb2.ArrowRecordBatch.FromString,
+        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/GetDisturbanceOfPopulationMovement',
+            route3__road__pb2.IdRef.SerializeToString,
+            route3__road__pb2.ArrowRecordBatch.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -197,8 +197,8 @@ class Route3(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/route3.Route3/GetDisturbanceOfPopulationMovementRoutes',
-            route3__pb2.DisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
-            route3__pb2.DisturbanceOfPopulationMovementRoutes.FromString,
+        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/GetDisturbanceOfPopulationMovementRoutes',
+            route3__road__pb2.DisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
+            route3__road__pb2.DisturbanceOfPopulationMovementRoutes.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

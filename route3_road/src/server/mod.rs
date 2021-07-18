@@ -20,8 +20,8 @@ use route3_core::WithH3Resolution;
 
 use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{recordbatch_array, FoundOption};
-use crate::server::api::route3::route3_server::{Route3, Route3Server};
-use crate::server::api::route3::{
+use crate::server::api::route3_road::route3_road_server::{Route3Road, Route3RoadServer};
+use crate::server::api::route3_road::{
     ArrowRecordBatch, DisturbanceOfPopulationMovementRequest,
     DisturbanceOfPopulationMovementRoutes, DisturbanceOfPopulationMovementRoutesRequest, Empty,
     GraphInfoResponse, IdRef, RouteWkb, VersionResponse,
@@ -200,7 +200,7 @@ impl ServerImpl {
 }
 
 #[tonic::async_trait]
-impl Route3 for ServerImpl {
+impl Route3Road for ServerImpl {
     type AnalyzeDisturbanceOfPopulationMovementStream =
         ReceiverStream<Result<ArrowRecordBatch, Status>>;
 
@@ -404,7 +404,7 @@ async fn run_server(server_config: ServerConfig) -> Result<()> {
     log::info!("{} is listening on {}", env!("CARGO_PKG_NAME"), addr);
 
     Server::builder()
-        .add_service(Route3Server::new(server_impl))
+        .add_service(Route3RoadServer::new(server_impl))
         .serve(addr)
         .await?;
 

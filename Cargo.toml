@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "route3_core",
-    "route3",
+    "route3_road",
 ]
 
 [profile.release]
