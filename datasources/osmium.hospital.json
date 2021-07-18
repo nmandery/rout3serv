@@ -1,0 +1,9 @@
+{
+  "attributes":{
+    "id": true
+  },
+  "include_tags": [
+    "amenity",
+    "name",
+  ]
+}
