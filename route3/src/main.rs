@@ -1,4 +1,3 @@
-extern crate jemallocator;
 #[macro_use]
 extern crate lazy_static;
 
@@ -9,6 +8,7 @@ use std::path::Path;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
+use mimalloc::MiMalloc;
 
 use route3_core::graph::{GraphBuilder, H3Graph};
 use route3_core::io::gdal::OgrWrite;
@@ -18,13 +18,13 @@ use route3_core::osm::OsmPbfGraphBuilder;
 use crate::osm::way_properties;
 use crate::types::Weight;
 
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 mod io;
 mod osm;
 mod server;
 mod types;
-
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 fn main() -> Result<()> {
     env_logger::init_from_env(
