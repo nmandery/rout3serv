@@ -18,8 +18,9 @@ RUN cd /build && \
     PATH=$PATH:$HOME/.cargo/bin cargo install --path . --root /usr/local
 
 FROM basesystem
+ENV RUST_BACKTRACE=1
+ENV RUST_LOG="route3=info,route3_core=info"
 COPY --from=builder /usr/local/bin/route3 /usr/bin/
 COPY ./route3/server-config.example.toml /server-config.toml
 EXPOSE 7088
-USER 7088
 ENTRYPOINT ["/usr/bin/route3"]
