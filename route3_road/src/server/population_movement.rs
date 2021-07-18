@@ -126,7 +126,7 @@ pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
         for (origin_cell, routes) in output.routes_without_disturbance.iter() {
             let entry = aggregated_weights.entry(*origin_cell).or_default();
             for route in routes.iter() {
-                if !entry.without_disturbance.iter().any(|w| &route.cost < w) {
+                if !entry.without_disturbance.iter().any(|w| w < &route.cost) {
                     entry.preferred_destination_without_disturbance =
                         Some(route.destination_cell()?.h3index());
                 }
@@ -137,7 +137,7 @@ pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
         for (origin_cell, routes) in output.routes_with_disturbance.iter() {
             let entry = aggregated_weights.entry(*origin_cell).or_default();
             for route in routes.iter() {
-                if !entry.with_disturbance.iter().any(|w| &route.cost < w) {
+                if !entry.with_disturbance.iter().any(|w| w < &route.cost) {
                     entry.preferred_destination_with_disturbance =
                         Some(route.destination_cell()?.h3index());
                 }

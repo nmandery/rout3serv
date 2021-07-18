@@ -11,7 +11,7 @@ extract-sample-data:
     osmium export --geometry-types 'point' -f geojson -o data/fastfood.geojson -c datasources/osmium.fastfood.json --progress --overwrite data/germany-latest.osm.pbf
     # hospitals
     osmium tags-filter data/germany-latest.osm.pbf wnr/amenity=hospital -o data/hospital.osm.pbf --progress --overwrite
-    osmium export --geometry-types 'point' -f geojson -o data/hospital.geojson -c datasources/osmium.hospital.json --progress --overwrite data/hospital.osm.pbf
+    osmium export -f geojson -o data/hospital.geojson -c datasources/osmium.hospital.json --progress --overwrite data/hospital.osm.pbf
 
 generate-testdata:
      cargo run --release --bin route3_road -- graph from-osm-pbf -r 7 testdata/graph-germany_r7_f64.bincode data/germany-latest.osm.pbf
