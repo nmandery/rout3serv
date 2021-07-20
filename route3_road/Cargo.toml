@@ -18,8 +18,8 @@ lazy_static = "1.4"
 log = "0.4"
 prost = "0.8"
 regex = "1.5"
-rusoto_core = { version = "0.47", default_features = false, features = ["rustls", ] }
-rusoto_s3 = { version = "0.47", default_features = false, features = ["rustls", ] }
+rusoto_core = { version = "0.47" }
+rusoto_s3 = { version = "0.47" }
 toml = "0.5"
 tonic = "0.5"
 wkb = "0.7"
@@ -57,6 +57,16 @@ features = ["derive"]
 [dependencies.geojson]
 version = "0.22"
 features = ["geo-types"]
+
+[dependencies.hyper-tls]
+version = "0.5.0"
+
+[dependencies.hyper]
+version = "0.14"
+features = ["client"]
+
+[dependencies.native-tls]
+version = "0.2"
 
 [build-dependencies]
 tonic-build = "0.5"

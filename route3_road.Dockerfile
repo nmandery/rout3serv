@@ -3,7 +3,7 @@ FROM nmandery/gdal-minimal:3-bullseye as basesystem
 
 FROM basesystem as builder
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y cmake curl make clang git python3-toml pkg-config
+    apt-get install --no-install-recommends -y cmake curl make clang git python3-toml pkg-config libssl-dev
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
         --profile minimal \
         --default-toolchain stable

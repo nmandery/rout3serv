@@ -18,8 +18,8 @@ use route3_core::io::load_graph_from_byte_slice;
 use route3_core::routing::RoutingGraph;
 use route3_core::WithH3Resolution;
 
-use crate::io::s3::{S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
-use crate::io::{recordbatch_array, FoundOption};
+use crate::io::recordbatch_array;
+use crate::io::s3::{FoundOption, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::server::api::route3_road::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::route3_road::{
     ArrowRecordBatch, DisturbanceOfPopulationMovementRequest,

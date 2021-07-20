@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::env;
 use std::io::Cursor;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -9,21 +10,29 @@ use arrow::record_batch::RecordBatch;
 use bytesize::ByteSize;
 use eyre::{Report, Result};
 use futures::TryStreamExt;
+use hyper::client::HttpConnector;
+use hyper_tls::HttpsConnector;
+use native_tls::TlsConnector;
 use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
-use rusoto_core::{Region, RusotoError};
+use rusoto_core::{HttpClient, Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
 
-use crate::io::FoundOption;
 use route3_core::h3ron::H3Cell;
 use route3_core::iter::change_h3_resolution;
-use std::env;
+
+/// a minimal option type to indicate if something has been found or not
+pub enum FoundOption<T> {
+    Found(T),
+    NotFound,
+}
 
 #[derive(Deserialize)]
 pub struct S3Config {
     pub endpoint: Option<String>,
+    pub insecure: Option<bool>,
     pub region: Option<String>,
     pub access_key: String,
     pub secret_key: String,
@@ -66,7 +75,7 @@ impl S3Client {
 
         Ok(Self {
             s3: rusoto_s3::S3Client::new_with(
-                rusoto_core::request::HttpClient::new()?,
+                build_http_client(config.insecure.unwrap_or(false))?,
                 StaticProvider::from(AwsCredentials::new(
                     config.get_access_key(),
                     config.get_secret_key(),
@@ -171,6 +180,24 @@ impl S3Client {
             }
         }
     }
+}
+
+fn build_http_client(insecure: bool) -> Result<HttpClient> {
+    let http_client = if insecure {
+        // from https://rusoto.org/disable-ssl-cert-check.html
+        let tls_connector = TlsConnector::builder()
+            .danger_accept_invalid_certs(true)
+            .build()?;
+
+        let mut http_connector = HttpConnector::new();
+        http_connector.enforce_http(false);
+
+        let https_connector = HttpsConnector::from((http_connector, tls_connector.into()));
+        HttpClient::from_connector(https_connector)
+    } else {
+        HttpClient::new()?
+    };
+    Ok(http_client)
 }
 
 pub trait S3H3Dataset {
