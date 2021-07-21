@@ -45,7 +45,7 @@ fn route_across_germany(routing_graph: &RoutingGraph<OrderedFloat<f64>>) {
 
     let options = ManyToManyOptions {
         num_destinations_to_reach: Some(destination_cells.len()),
-        exclude_cells: None,
+        ..Default::default()
     };
 
     let routes_map = routing_graph
