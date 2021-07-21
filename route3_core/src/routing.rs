@@ -39,7 +39,7 @@ impl Default for ManyToManyOptions {
         Self {
             num_destinations_to_reach: None,
             exclude_cells: None,
-            num_gap_cells_to_graph: 1,
+            num_gap_cells_to_graph: 0,
         }
     }
 }
@@ -153,8 +153,6 @@ where
 {
     ///
     /// Returns found routes keyed by the origin cell.
-    ///
-    /// `search_space` limits the routing to child nodes contained in the search space.
     ///
     /// All cells must be in the h3 resolution of the graph.
     pub fn route_many_to_many<I>(
@@ -277,7 +275,7 @@ where
                 );
 
                 // build the routes
-                let mut routes = vec![];
+                let mut routes = Vec::with_capacity(destination_cells_reached.len());
                 for dest in destination_cells_reached.iter() {
                     let (route_cells, cost) = build_path_with_cost(dest, &routemap);
                     routes.push(Route {
