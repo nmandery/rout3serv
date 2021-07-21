@@ -6,8 +6,7 @@ from . import route3_road_pb2 as route3__road__pb2
 
 
 class Route3RoadStub(object):
-    """general methods -------------------------------------
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
         """Constructor.
@@ -43,11 +42,11 @@ class Route3RoadStub(object):
 
 
 class Route3RoadServicer(object):
-    """general methods -------------------------------------
-    """
+    """Missing associated documentation comment in .proto file."""
 
     def Version(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """general methods -------------------------------------
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -60,7 +59,6 @@ class Route3RoadServicer(object):
 
     def AnalyzeDisturbanceOfPopulationMovement(self, request, context):
         """Population movement ---------------------------------
-
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -115,8 +113,7 @@ def add_Route3RoadServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class Route3Road(object):
-    """general methods -------------------------------------
-    """
+    """Missing associated documentation comment in .proto file."""
 
     @staticmethod
     def Version(request,

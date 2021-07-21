@@ -22,7 +22,7 @@ message DisturbanceOfPopulationMovementRequest {
    */
   bytes disturbance_wkb_geometry = 1;
 
-  /* The radius around the wkb_geometry to be analyzed.
+  /** The radius around the wkb_geometry to be analyzed.
       units are meters. */
   double radius_meters = 2;
 
@@ -31,8 +31,13 @@ message DisturbanceOfPopulationMovementRequest {
    */
   uint32 num_destinations_to_reach = 3;
 
-  /* targets to route to */
+  /** targets to route to */
   repeated Point destinations = 4;
+
+  /** Number of cells to be allowed to be missing between
+   a cell and the graph while the cell is still counted as being connected
+   to the graph */
+  uint32 num_gap_cells_to_graph = 5;
 
 }
 

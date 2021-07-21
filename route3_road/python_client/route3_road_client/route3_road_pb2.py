@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x11route3_road.proto\x12\x0broute3.road\"\x07\n\x05\x45mpty\"\"\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"\xae\x01\n&DisturbanceOfPopulationMovementRequest\x12 \n\x18\x64isturbance_wkb_geometry\x18\x01 \x01(\x0c\x12\x15\n\rradius_meters\x18\x02 \x01(\x01\x12!\n\x19num_destinations_to_reach\x18\x03 \x01(\r\x12(\n\x0c\x64\x65stinations\x18\x04 \x03(\x0b\x32\x12.route3.road.Point\"\x13\n\x05IdRef\x12\n\n\x02id\x18\x01 \x01(\t\"N\n,DisturbanceOfPopulationMovementRoutesRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"3\n\x10\x41rrowRecordBatch\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x9a\x01\n%DisturbanceOfPopulationMovementRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.route3.road.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.route3.road.RouteWKB\"=\n\x11GraphInfoResponse\x12\x15\n\rh3_resolution\x18\x01 \x01(\r\x12\x11\n\tnum_edges\x18\x02 \x01(\x04*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\x8e\x04\n\nRoute3Road\x12=\n\x07Version\x12\x12.route3.road.Empty\x1a\x1c.route3.road.VersionResponse\"\x00\x12\x41\n\tGraphInfo\x12\x12.route3.road.Empty\x1a\x1e.route3.road.GraphInfoResponse\"\x00\x12\x80\x01\n&AnalyzeDisturbanceOfPopulationMovement\x12\x33.route3.road.DisturbanceOfPopulationMovementRequest\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12[\n\"GetDisturbanceOfPopulationMovement\x12\x12.route3.road.IdRef\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12\x9d\x01\n(GetDisturbanceOfPopulationMovementRoutes\x12\x39.route3.road.DisturbanceOfPopulationMovementRoutesRequest\x1a\x32.route3.road.DisturbanceOfPopulationMovementRoutes\"\x00\x30\x01\x62\x06proto3'
+  serialized_pb=b'\n\x11route3_road.proto\x12\x0broute3.road\"\x07\n\x05\x45mpty\"\"\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"\xce\x01\n&DisturbanceOfPopulationMovementRequest\x12 \n\x18\x64isturbance_wkb_geometry\x18\x01 \x01(\x0c\x12\x15\n\rradius_meters\x18\x02 \x01(\x01\x12!\n\x19num_destinations_to_reach\x18\x03 \x01(\r\x12(\n\x0c\x64\x65stinations\x18\x04 \x03(\x0b\x32\x12.route3.road.Point\x12\x1e\n\x16num_gap_cells_to_graph\x18\x05 \x01(\r\"\x13\n\x05IdRef\x12\n\n\x02id\x18\x01 \x01(\t\"N\n,DisturbanceOfPopulationMovementRoutesRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"3\n\x10\x41rrowRecordBatch\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x9a\x01\n%DisturbanceOfPopulationMovementRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.route3.road.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.route3.road.RouteWKB\"=\n\x11GraphInfoResponse\x12\x15\n\rh3_resolution\x18\x01 \x01(\r\x12\x11\n\tnum_edges\x18\x02 \x01(\x04*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\x8e\x04\n\nRoute3Road\x12=\n\x07Version\x12\x12.route3.road.Empty\x1a\x1c.route3.road.VersionResponse\"\x00\x12\x41\n\tGraphInfo\x12\x12.route3.road.Empty\x1a\x1e.route3.road.GraphInfoResponse\"\x00\x12\x80\x01\n&AnalyzeDisturbanceOfPopulationMovement\x12\x33.route3.road.DisturbanceOfPopulationMovementRequest\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12[\n\"GetDisturbanceOfPopulationMovement\x12\x12.route3.road.IdRef\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12\x9d\x01\n(GetDisturbanceOfPopulationMovementRoutes\x12\x39.route3.road.DisturbanceOfPopulationMovementRoutesRequest\x1a\x32.route3.road.DisturbanceOfPopulationMovementRoutes\"\x00\x30\x01\x62\x06proto3'
 )
 
 _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
@@ -43,8 +43,8 @@ _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=747,
-  serialized_end=797,
+  serialized_start=779,
+  serialized_end=829,
 )
 _sym_db.RegisterEnumDescriptor(_CELLINROUTEPOSITION)
 
@@ -186,6 +186,13 @@ _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='num_gap_cells_to_graph', full_name='route3.road.DisturbanceOfPopulationMovementRequest.num_gap_cells_to_graph', index=4,
+      number=5, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -199,7 +206,7 @@ _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=111,
-  serialized_end=285,
+  serialized_end=317,
 )
 
 
@@ -230,8 +237,8 @@ _IDREF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=287,
-  serialized_end=306,
+  serialized_start=319,
+  serialized_end=338,
 )
 
 
@@ -269,8 +276,8 @@ _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=308,
-  serialized_end=386,
+  serialized_start=340,
+  serialized_end=418,
 )
 
 
@@ -322,8 +329,8 @@ _ROUTEWKB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=388,
-  serialized_end=472,
+  serialized_start=420,
+  serialized_end=504,
 )
 
 
@@ -361,8 +368,8 @@ _ARROWRECORDBATCH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=474,
-  serialized_end=525,
+  serialized_start=506,
+  serialized_end=557,
 )
 
 
@@ -400,8 +407,8 @@ _DISTURBANCEOFPOPULATIONMOVEMENTROUTES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=528,
-  serialized_end=682,
+  serialized_start=560,
+  serialized_end=714,
 )
 
 
@@ -439,8 +446,8 @@ _GRAPHINFORESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=684,
-  serialized_end=745,
+  serialized_start=716,
+  serialized_end=777,
 )
 
 _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST.fields_by_name['destinations'].message_type = _POINT
@@ -538,8 +545,8 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=800,
-  serialized_end=1326,
+  serialized_start=832,
+  serialized_end=1358,
   methods=[
   _descriptor.MethodDescriptor(
     name='Version',

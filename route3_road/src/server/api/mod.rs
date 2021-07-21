@@ -28,6 +28,7 @@ impl DisturbanceOfPopulationMovementRequest {
             } else {
                 Some(self.num_destinations_to_reach as usize)
             },
+            num_gap_cells_to_graph: self.num_gap_cells_to_graph,
         })
     }
 

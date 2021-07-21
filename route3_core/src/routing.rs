@@ -10,7 +10,7 @@ use num_traits::Zero;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::collections::{H3CellMap, H3CellSet};
+use crate::collections::{H3CellMap, H3CellSet, HashMap};
 use crate::error::Error;
 use crate::geo_types::Geometry;
 use crate::graph::{H3Graph, NodeType};
@@ -27,6 +27,11 @@ pub struct ManyToManyOptions {
 
     /// cells which are not allowed to be used for routing
     pub exclude_cells: Option<H3CellSet>,
+
+    /// Number of cells to be allowed to be missing between
+    /// a cell and the graph while the cell is still counted as being connected
+    /// to the graph
+    pub num_gap_cells_to_graph: u32,
 }
 
 impl Default for ManyToManyOptions {
@@ -34,6 +39,7 @@ impl Default for ManyToManyOptions {
         Self {
             num_destinations_to_reach: None,
             exclude_cells: None,
+            num_gap_cells_to_graph: 1,
         }
     }
 }
@@ -108,6 +114,35 @@ impl<T> WithH3Resolution for RoutingGraph<T> {
     }
 }
 
+enum CellGraphMembership {
+    /// the cell is connected to the graph
+    DirectConnection(H3Cell),
+
+    /// cell `self.0` is not connected to the graph, but the next best neighbor `self.1` is
+    WithGap(H3Cell, H3Cell),
+
+    /// cell is outside of the graph
+    NoConnection(H3Cell),
+}
+
+impl CellGraphMembership {
+    pub fn cell(&self) -> H3Cell {
+        match self {
+            Self::DirectConnection(cell) => *cell,
+            Self::WithGap(cell, _) => *cell,
+            Self::NoConnection(cell) => *cell,
+        }
+    }
+
+    pub fn corresponding_cell_in_graph(&self) -> Option<H3Cell> {
+        match self {
+            Self::DirectConnection(cell) => Some(*cell),
+            Self::WithGap(_, cell) => Some(*cell),
+            _ => None,
+        }
+    }
+}
+
 ///
 ///
 /// All routing methods will silently ignore origin and destination cells which are not
@@ -132,33 +167,50 @@ where
         I: IntoIterator,
         I::Item: Borrow<H3Cell>,
     {
-        let filtered_origin_cells = {
-            let mut o_cells = change_h3_resolution(origin_cells, self.h3_resolution())
-                .filter(|cell| {
-                    self.graph_nodes
-                        .get(&cell)
-                        .map(|node_type| node_type.is_origin())
-                        .unwrap_or(false)
-                })
-                .collect::<Vec<_>>();
-            o_cells.sort_unstable();
-            o_cells.dedup();
-            o_cells
+        let filtered_origin_cells: Vec<_> = {
+            // maps cells to their closest found neighbors in the graph
+            let mut origin_cell_map = H3CellMap::new();
+            for gm in self
+                .filtered_graph_membership::<Vec<_>, _>(
+                    change_h3_resolution(origin_cells, self.h3_resolution()).collect(),
+                    |node_type| node_type.is_origin(),
+                    options.num_gap_cells_to_graph,
+                )
+                .drain(..)
+            {
+                if let Some(corr_cell) = gm.corresponding_cell_in_graph() {
+                    origin_cell_map
+                        .entry(corr_cell)
+                        .and_modify(|ccs: &mut Vec<H3Cell>| ccs.push(gm.cell()))
+                        .or_insert_with(|| vec![gm.cell()]);
+                }
+            }
+            origin_cell_map.drain().collect()
         };
 
         if filtered_origin_cells.is_empty() {
             return Ok(Default::default());
         }
 
-        let filtered_destination_cells =
-            change_h3_resolution(destination_cells, self.h3_resolution())
-                .filter(|cell| {
-                    self.graph_nodes
-                        .get(&cell)
-                        .map(|node_type| node_type.is_destination())
-                        .unwrap_or(false)
-                })
-                .collect::<H3CellSet>();
+        // maps directly to the graph connected cells to the cells outside the
+        // graph where they are used as a substitute. For direct graph members
+        // both cells are the same
+        // TODO: this shoud be a 1:n relationship in case multiple cells map to
+        //      the same cell in the graph
+        let filtered_destination_cells: HashMap<_, _> = self
+            .filtered_graph_membership::<Vec<_>, _>(
+                change_h3_resolution(destination_cells, self.h3_resolution()).collect(),
+                |node_type| node_type.is_destination(),
+                options.num_gap_cells_to_graph,
+            )
+            .drain(..)
+            .filter_map(|connected_cell| {
+                // ignore all non-connected destinations
+                connected_cell
+                    .corresponding_cell_in_graph()
+                    .map(|cor_cell| (cor_cell, connected_cell.cell()))
+            })
+            .collect();
 
         if filtered_destination_cells.is_empty() {
             return Err(Error::DestinationsNotInGraph);
@@ -173,14 +225,15 @@ where
         };
 
         log::debug!(
-            "routing many-to-many: from {} cells to {} cells at resolution {}",
+            "routing many-to-many: from {} cells to {} cells at resolution {} with num_gap_cells_to_graph = {}",
             filtered_origin_cells.len(),
             filtered_destination_cells.len(),
-            self.h3_resolution()
+            self.h3_resolution(),
+            options.num_gap_cells_to_graph
         );
         let routes = filtered_origin_cells
             .par_iter()
-            .map(|origin_cell| {
+            .map(|(origin_cell, output_origin_cells)| {
                 let mut destination_cells_reached = H3CellSet::new();
 
                 // Possible improvement: add timeout to avoid continuing routing forever
@@ -208,8 +261,8 @@ where
                         neighbors
                     },
                     // stop condition
-                    |cell| {
-                        if filtered_destination_cells.contains(cell) {
+                    |graph_cell| {
+                        if let Some(cell) = filtered_destination_cells.get(graph_cell) {
                             destination_cells_reached.insert(*cell);
 
                             // stop when enough destination cells are reached
@@ -232,10 +285,66 @@ where
                         cost,
                     })
                 }
-                (*origin_cell, routes)
+                output_origin_cells
+                    .iter()
+                    .map(|out_cell| (*out_cell, routes.clone()))
+                    .collect::<Vec<_>>()
             })
+            .flatten()
             .collect::<H3CellMap<_>>();
         Ok(routes)
+    }
+
+    fn filtered_graph_membership<B, F>(
+        &self,
+        mut cells: Vec<H3Cell>,
+        nodetype_filter_fn: F,
+        num_gap_cells_to_graph: u32,
+    ) -> B
+    where
+        B: FromParallelIterator<CellGraphMembership>,
+        F: Fn(&NodeType) -> bool + Send + Sync + Copy,
+    {
+        // TODO: This function should probably take an iterator instead of a vec
+        cells.sort_unstable();
+        cells.dedup();
+        cells
+            .par_iter()
+            .map(|cell: &H3Cell| {
+                if self
+                    .graph_nodes
+                    .get(cell)
+                    .map(nodetype_filter_fn)
+                    .unwrap_or(false)
+                {
+                    CellGraphMembership::DirectConnection(*cell)
+                } else if num_gap_cells_to_graph > 0 {
+                    // attempt to find the next neighboring cell which is part of the graph
+                    let mut neighbors = cell.k_ring_distances(1, num_gap_cells_to_graph.max(1));
+                    neighbors.sort_unstable_by_key(|neighbor| neighbor.0);
+
+                    // possible improvement: choose the neighbor with the best connectivity or
+                    // the edge with the smallest weight
+                    let mut selected_neighbor: Option<H3Cell> = None;
+                    for neighbor in neighbors {
+                        if self
+                            .graph_nodes
+                            .get(&neighbor.1)
+                            .map(nodetype_filter_fn)
+                            .unwrap_or(false)
+                        {
+                            selected_neighbor = Some(neighbor.1);
+                            break;
+                        }
+                    }
+                    selected_neighbor
+                        .map(|neighbor| CellGraphMembership::WithGap(*cell, neighbor))
+                        .unwrap_or_else(|| CellGraphMembership::NoConnection(*cell))
+                } else {
+                    CellGraphMembership::NoConnection(*cell)
+                }
+            })
+            .collect()
     }
 }
 

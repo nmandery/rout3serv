@@ -4,9 +4,9 @@ from typing import Optional, Iterable, Tuple
 
 import geopandas as gpd
 import grpc
+import numpy as np
 import pandas as pd
 import pyarrow as pa
-import numpy as np
 import shapely.wkb
 from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
@@ -43,11 +43,14 @@ class Server:
 
     def analyze_disturbance_of_population_movement(self, disturbance_geom: BaseGeometry, radius_meters: float,
                                                    destination_points: Iterable[Point],
-                                                   num_destinations_to_reach: int = 3) -> Tuple[str, pd.DataFrame]:
+                                                   num_destinations_to_reach: int = 3,
+                                                   num_gap_cells_to_graph: int = 1
+                                                   ) -> Tuple[str, pd.DataFrame]:
         req = route3_road_pb2.DisturbanceOfPopulationMovementRequest()
         req.disturbance_wkb_geometry = shapely.wkb.dumps(disturbance_geom)
         req.radius_meters = radius_meters
         req.num_destinations_to_reach = num_destinations_to_reach
+        req.num_gap_cells_to_graph = num_gap_cells_to_graph
 
         for destination_point in destination_points:
             pt = req.destinations.add()

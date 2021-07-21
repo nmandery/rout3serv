@@ -26,6 +26,8 @@ pub struct Input {
     pub destinations: Vec<H3Cell>,
 
     pub num_destinations_to_reach: Option<usize>,
+
+    pub num_gap_cells_to_graph: u32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -76,6 +78,7 @@ pub fn calculate(
         &input.destinations,
         &ManyToManyOptions {
             num_destinations_to_reach: input.num_destinations_to_reach,
+            num_gap_cells_to_graph: input.num_gap_cells_to_graph,
             ..Default::default()
         },
     )?;
@@ -86,6 +89,7 @@ pub fn calculate(
         &ManyToManyOptions {
             num_destinations_to_reach: input.num_destinations_to_reach,
             exclude_cells: Some(input.disturbance.clone()),
+            num_gap_cells_to_graph: input.num_gap_cells_to_graph,
         },
     )?;
 
