@@ -232,9 +232,18 @@ where
         .or_insert(weight);
 }
 
-pub fn downsample_graph<T>(graph: H3Graph<T>, target_h3_resolution: u8) -> Result<H3Graph<T>, Error>
+/// change the resolution of a graph to a lower resolution
+///
+/// the `weight_selector_fn` decides which weight is assigned to a downsampled edge
+/// by selecting a weight from all edges between full-resolution childcells.
+pub fn downsample_graph<T, F>(
+    graph: H3Graph<T>,
+    target_h3_resolution: u8,
+    weight_selector_fn: F,
+) -> Result<H3Graph<T>, Error>
 where
     T: Send + Copy,
+    F: Fn(T, T) -> T,
 {
     if target_h3_resolution >= graph.h3_resolution {
         return Err(Error::TooHighH3Resolution(target_h3_resolution));
@@ -244,7 +253,7 @@ where
         graph.h3_resolution(),
         target_h3_resolution
     );
-    let downsampled_edges = graph
+    let cross_cell_edges = graph
         .edges
         .into_iter()
         .par_bridge()
@@ -265,7 +274,15 @@ where
                 )
             }
         })
-        .collect::<Result<H3EdgeMap<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut downsampled_edges = H3EdgeMap::new();
+    for (edge, weight) in cross_cell_edges {
+        downsampled_edges
+            .entry(edge)
+            .and_modify(|w| *w = weight_selector_fn(*w, weight))
+            .or_insert(weight);
+    }
 
     Ok(H3Graph {
         edges: downsampled_edges,
@@ -282,6 +299,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::cmp::min;
+
     use geo_types::{Coordinate, LineString};
     use h3ron::H3Cell;
 
@@ -308,7 +327,12 @@ mod tests {
                 .unwrap();
         }
         assert!(graph.num_edges() > 50);
-        let downsampled_graph = downsample_graph(graph, full_h3_res.saturating_sub(3)).unwrap();
+        let downsampled_graph = downsample_graph(
+            graph,
+            full_h3_res.saturating_sub(3),
+            |weight_a, weight_b| min(weight_a, weight_b),
+        )
+        .unwrap();
         assert!(downsampled_graph.num_edges() > 0);
         assert!(downsampled_graph.num_edges() < 20);
     }
