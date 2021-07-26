@@ -237,12 +237,12 @@ where
 /// the `weight_selector_fn` decides which weight is assigned to a downsampled edge
 /// by selecting a weight from all edges between full-resolution childcells.
 pub fn downsample_graph<T, F>(
-    graph: H3Graph<T>,
+    graph: &H3Graph<T>,
     target_h3_resolution: u8,
     weight_selector_fn: F,
 ) -> Result<H3Graph<T>, Error>
 where
-    T: Send + Copy,
+    T: Sync + Send + Copy,
     F: Fn(T, T) -> T,
 {
     if target_h3_resolution >= graph.h3_resolution {
@@ -255,8 +255,7 @@ where
     );
     let cross_cell_edges = graph
         .edges
-        .into_iter()
-        .par_bridge()
+        .par_iter()
         .filter_map(|(edge, weight)| {
             let cell_from = edge
                 .origin_index_unchecked()
@@ -270,7 +269,7 @@ where
                 Some(
                     cell_from
                         .unidirectional_edge_to(&cell_to)
-                        .map(|downsamled_edge| (downsamled_edge, weight)),
+                        .map(|downsamled_edge| (downsamled_edge, *weight)),
                 )
             }
         })
@@ -328,7 +327,7 @@ mod tests {
         }
         assert!(graph.num_edges() > 50);
         let downsampled_graph = downsample_graph(
-            graph,
+            &graph,
             full_h3_res.saturating_sub(3),
             |weight_a, weight_b| min(weight_a, weight_b),
         )
