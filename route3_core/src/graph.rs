@@ -236,6 +236,10 @@ where
 ///
 /// the `weight_selector_fn` decides which weight is assigned to a downsampled edge
 /// by selecting a weight from all edges between full-resolution childcells.
+///
+/// This has the potential to change the graphs topology as multiple edges get condensed into one.
+/// So for example routing results may differ in parts, but the computation time will be reduced by
+/// the reduced number of nodes and edges.
 pub fn downsample_graph<T, F>(
     graph: &H3Graph<T>,
     target_h3_resolution: u8,
