@@ -252,14 +252,14 @@ impl Route3Road for ServerImpl {
             Status::internal("calculating routes failed")
         })?;
 
-        // save the output for later
-        self.store_output(&output).await?;
-
-        self.respond_recordbatches_stream(
-            output.dopm_id.clone(),
-            population_movement::disturbance_statistics_status(&output)?,
-        )
-        .await
+        let (_, response) = tokio::try_join!(
+            self.store_output(&output), // save the output for later
+            self.respond_recordbatches_stream(
+                output.dopm_id.clone(),
+                population_movement::disturbance_statistics_status(&output)?,
+            )
+        )?;
+        Ok(response)
     }
 
     async fn get_disturbance_of_population_movement(
