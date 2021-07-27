@@ -12,7 +12,7 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use route3_core::collections::{H3CellMap, H3CellSet};
-use route3_core::graph::H3Graph;
+use route3_core::graph::{downsample_graph, H3Graph};
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph_from_byte_slice;
 use route3_core::routing::RoutingGraph;
@@ -28,6 +28,7 @@ use crate::server::api::route3_road::{
 };
 use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
 use crate::types::Weight;
+use std::cmp::min;
 
 mod api;
 mod population_movement;
@@ -39,6 +40,9 @@ struct ServerImpl {
     config: ServerConfig,
     s3_client: Arc<S3Client>,
     routing_graph: Arc<RoutingGraph<Weight>>,
+
+    /// downsampled routing graph
+    ds_routing_graph: Arc<RoutingGraph<Weight>>,
 }
 
 impl ServerImpl {
@@ -59,10 +63,15 @@ impl ServerImpl {
             ));
         }
 
+        // create the downsampled routing graph. the reduced resolution should be only a bit less than
+        // the main graphs resolution to avoid skewing results too much by bridging non-connected nodes.
+        let ds_graph = downsample_graph(&graph, graph.h3_resolution.saturating_sub(2), min)?;
+
         Ok(Self {
             config,
             s3_client,
             routing_graph: Arc::new(graph.try_into()?),
+            ds_routing_graph: Arc::new(ds_graph.try_into()?),
         })
     }
 
@@ -228,9 +237,10 @@ impl Route3Road for ServerImpl {
             .get_input(self.routing_graph.h3_resolution())?;
 
         let population = self.load_population(&input.within_buffer).await?;
-        let routing_context = self.routing_graph.clone();
+        let routing_graph = self.routing_graph.clone();
+        let ds_routing_graph = Some(self.ds_routing_graph.clone());
         let output = spawn_blocking_status(move || {
-            population_movement::calculate(routing_context, input, population)
+            population_movement::calculate(routing_graph, input, population, ds_routing_graph)
         })
         .await?
         .map_err(|e| {

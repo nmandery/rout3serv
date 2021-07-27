@@ -13,6 +13,9 @@ use route3_core::routing::{ManyToManyOptions, Route, RoutingGraph};
 
 use crate::server::util::StrId;
 use crate::types::Weight;
+use route3_core::error::Error;
+use route3_core::iter::change_h3_resolution;
+use route3_core::WithH3Resolution;
 
 #[derive(Serialize, Deserialize)]
 pub struct Input {
@@ -51,10 +54,17 @@ impl StrId for Output {
     }
 }
 
+///
+///
+/// Setting a `downsampled_routing_graph` will allow performing an initial routing at a lower resolution
+/// to reduce the number of routings to perform on the full-resolution graph. This has the potential
+/// to skew the results as a reduction in resolution may change the graph topology. The reduction should be
+/// no more than two resolutions.
 pub fn calculate(
     routing_graph: Arc<RoutingGraph<Weight>>,
     input: Input,
     population: H3CellMap<f32>,
+    downsampled_routing_graph: Option<Arc<RoutingGraph<Weight>>>,
 ) -> Result<Output> {
     let population_within_disturbance = input
         .disturbance
@@ -63,15 +73,90 @@ pub fn calculate(
         .sum::<f32>() as f64;
 
     let mut population_at_origins: H3CellMap<f64> = H3CellMap::new();
-    let mut origin_cells: Vec<H3Cell> = vec![];
-    for cell in input.within_buffer.iter() {
-        // exclude the cells of the disturbance itself as well as all origin cells without
-        // any population from routing
-        if let (Some(pop), false) = (population.get(cell), input.disturbance.contains(cell)) {
-            population_at_origins.insert(*cell, *pop as f64);
-            origin_cells.push(*cell);
+
+    let origin_cells: Vec<H3Cell> = {
+        let mut origin_cells: Vec<H3Cell> = vec![];
+        for cell in input.within_buffer.iter() {
+            // exclude the cells of the disturbance itself as well as all origin cells without
+            // any population from routing
+            if let (Some(pop), false) = (population.get(cell), input.disturbance.contains(cell)) {
+                population_at_origins.insert(*cell, *pop as f64);
+                origin_cells.push(*cell);
+            }
         }
-    }
+        if let Some(ds_routing_graph) = downsampled_routing_graph {
+            if ds_routing_graph.h3_resolution() >= routing_graph.h3_resolution() {
+                return Err(Error::TooHighH3Resolution(ds_routing_graph.h3_resolution()).into());
+            }
+
+            // perform a routing at a reduced resolution to get a reduced subset for the origin cells at the
+            // full resolution without most unaffected cells. This will reduce the number of full resolution
+            // routings to be performed later.
+            // This overestimates the number of affected cells a bit due to the reduced resolution.
+            //
+            // Gep bridging is set to 0 as this is already accomplished by the reduction in resolution.
+            let mut downsampled_origins: Vec<_> =
+                change_h3_resolution(&origin_cells, ds_routing_graph.h3_resolution()).collect();
+            downsampled_origins.sort_unstable();
+            downsampled_origins.dedup();
+
+            let mut downsampled_destinations: Vec<_> =
+                change_h3_resolution(&input.destinations, ds_routing_graph.h3_resolution())
+                    .collect();
+            downsampled_destinations.sort_unstable();
+            downsampled_destinations.dedup();
+
+            let without_disturbance = ds_routing_graph.route_many_to_many(
+                &downsampled_origins,
+                &downsampled_destinations,
+                &ManyToManyOptions {
+                    num_destinations_to_reach: input.num_destinations_to_reach,
+                    num_gap_cells_to_graph: 0,
+                    ..Default::default()
+                },
+            )?;
+            let disturbance_downsampled: H3CellSet =
+                change_h3_resolution(input.disturbance.clone(), ds_routing_graph.h3_resolution())
+                    .collect();
+            let with_disturbance = ds_routing_graph.route_many_to_many(
+                &downsampled_origins,
+                &downsampled_destinations,
+                &ManyToManyOptions {
+                    num_destinations_to_reach: input.num_destinations_to_reach,
+                    exclude_cells: Some(disturbance_downsampled.clone()),
+                    num_gap_cells_to_graph: 0,
+                },
+            )?;
+
+            let affected_downsampled: H3CellSet = without_disturbance
+                .keys()
+                .filter(|cell| {
+                    // the k_ring creates essentially a buffer so the skew-effects of the
+                    // reduction of the resolution at the borders of the disturbance effect
+                    // are reduced. The result is a larger number of full-resolution routing runs
+                    // is performed.
+                    !cell.k_ring(5).iter().all(|ring_cell| {
+                        with_disturbance.get(ring_cell) == without_disturbance.get(ring_cell)
+                    })
+                })
+                .copied()
+                .collect();
+
+            origin_cells
+                .iter()
+                .filter(|cell| {
+                    let parent_cell = cell.get_parent_unchecked(ds_routing_graph.h3_resolution());
+                    // always add cells within the downsampled disturbance to avoid ignoring cells directly
+                    // bordering to the disturbance.
+                    affected_downsampled.contains(&parent_cell)
+                        || disturbance_downsampled.contains(&parent_cell)
+                })
+                .copied()
+                .collect()
+        } else {
+            origin_cells
+        }
+    };
 
     let routes_without_disturbance = routing_graph.route_many_to_many(
         &origin_cells,
@@ -148,6 +233,7 @@ pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
                 entry.with_disturbance.push(route.cost);
             }
         }
+        //aggregated_weights.drain_filter(|_, v| v.without_disturbance == v.with_disturbance);
 
         aggregated_weights
     };

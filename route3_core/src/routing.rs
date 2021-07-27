@@ -4,17 +4,17 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::ops::Add;
 
-use crate::algo::dijkstra::{build_path_with_cost, dijkstra_partial};
 use geo_types::{LineString, Point};
 use num_traits::Zero;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::algo::dijkstra::{build_path_with_cost, dijkstra_partial};
 use crate::collections::{H3CellMap, H3CellSet, HashMap};
 use crate::error::Error;
 use crate::geo_types::Geometry;
 use crate::graph::{H3Graph, NodeType};
-use crate::h3ron::{H3Cell, H3Edge, ToCoordinate};
+use crate::h3ron::{H3Cell, H3Edge, Index, ToCoordinate};
 use crate::iter::change_h3_resolution;
 use crate::WithH3Resolution;
 
@@ -44,7 +44,7 @@ impl Default for ManyToManyOptions {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Route<T> {
     /// cells of the route in the order origin -> destination
     pub cells: Vec<H3Cell>,
@@ -54,10 +54,7 @@ pub struct Route<T> {
     pub cost: T,
 }
 
-impl<T> Route<T>
-where
-    T: Debug,
-{
+impl<T> Route<T> {
     pub fn is_empty(&self) -> bool {
         self.cells.is_empty()
     }
@@ -93,14 +90,42 @@ where
     }
 }
 
-/// order simply by cost
+/// order by cost, origin index and destination_index.
+///
+/// This ordering can used to bring `Vec`s of routes in a deterministic order to make them
+/// comparable
+impl<T> Ord for Route<T>
+where
+    T: Ord,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        let cmp_cost = self.cost.cmp(&other.cost);
+        if cmp_cost == Ordering::Equal {
+            let cmp_origin =
+                index_or_zero(self.origin_cell()).cmp(&index_or_zero(other.origin_cell()));
+            if cmp_origin == Ordering::Equal {
+                index_or_zero(self.destination_cell()).cmp(&index_or_zero(other.destination_cell()))
+            } else {
+                cmp_origin
+            }
+        } else {
+            cmp_cost
+        }
+    }
+}
+
 impl<T> PartialOrd for Route<T>
 where
-    T: PartialOrd,
+    T: Ord,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.cost.partial_cmp(&other.cost)
+        Some(self.cmp(other))
     }
+}
+
+#[inline]
+fn index_or_zero(cell: Result<H3Cell, Error>) -> u64 {
+    cell.map(|c| c.h3index()).unwrap_or(0)
 }
 
 pub struct RoutingGraph<T> {
@@ -149,7 +174,7 @@ impl CellGraphMembership {
 /// part of the graph.
 impl<T> RoutingGraph<T>
 where
-    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
+    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync + Debug,
 {
     ///
     /// Returns found routes keyed by the origin cell.
@@ -283,6 +308,10 @@ where
                         cost,
                     })
                 }
+                // return sorted from lowest to highest cost, use destination cell as second criteria
+                // to make route vecs directly comparable using this deterministic order
+                routes.sort_unstable();
+
                 output_origin_cells
                     .iter()
                     .map(|out_cell| (*out_cell, routes.clone()))
@@ -355,5 +384,34 @@ where
     fn try_from(graph: H3Graph<T>) -> std::result::Result<Self, Self::Error> {
         let graph_nodes = graph.nodes()?;
         Ok(Self { graph, graph_nodes })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use h3ron::H3Cell;
+
+    use crate::h3ron::Index;
+    use crate::routing::Route;
+
+    #[test]
+    fn route_deterministic_ordering() {
+        let r1 = Route {
+            cells: vec![H3Cell::new(0), H3Cell::new(5)],
+            cost: 1,
+        };
+        let r2 = Route {
+            cells: vec![H3Cell::new(1), H3Cell::new(2)],
+            cost: 3,
+        };
+        let r3 = Route {
+            cells: vec![H3Cell::new(1), H3Cell::new(3)],
+            cost: 3,
+        };
+        let mut routes = vec![r3.clone(), r1.clone(), r2.clone()];
+        routes.sort_unstable();
+        assert_eq!(routes[0], r1);
+        assert_eq!(routes[1], r2);
+        assert_eq!(routes[2], r3);
     }
 }
