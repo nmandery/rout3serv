@@ -238,7 +238,11 @@ impl Route3Road for ServerImpl {
 
         let population = self.load_population(&input.within_buffer).await?;
         let routing_graph = self.routing_graph.clone();
-        let ds_routing_graph = Some(self.ds_routing_graph.clone());
+        let ds_routing_graph = if input.downsampled_prerouting {
+            Some(self.ds_routing_graph.clone())
+        } else {
+            None
+        };
         let output = spawn_blocking_status(move || {
             population_movement::calculate(routing_graph, input, population, ds_routing_graph)
         })

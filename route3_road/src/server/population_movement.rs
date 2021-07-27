@@ -29,8 +29,8 @@ pub struct Input {
     pub destinations: Vec<H3Cell>,
 
     pub num_destinations_to_reach: Option<usize>,
-
     pub num_gap_cells_to_graph: u32,
+    pub downsampled_prerouting: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -58,8 +58,9 @@ impl StrId for Output {
 ///
 /// Setting a `downsampled_routing_graph` will allow performing an initial routing at a lower resolution
 /// to reduce the number of routings to perform on the full-resolution graph. This has the potential
-/// to skew the results as a reduction in resolution may change the graph topology. The reduction should be
-/// no more than two resolutions.
+/// to skew the results as a reduction in resolution may change the graph topology, but decreases the
+/// running time in most cases.
+/// The reduction should be no more than two resolutions.
 pub fn calculate(
     routing_graph: Arc<RoutingGraph<Weight>>,
     input: Input,

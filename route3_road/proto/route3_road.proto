@@ -39,6 +39,13 @@ message DisturbanceOfPopulationMovementRequest {
    to the graph */
   uint32 num_gap_cells_to_graph = 5;
 
+  /** Setting a `downsampled_prerouting` will allow performing an initial routing at a lower resolution
+  to reduce the number of routings to perform on the full-resolution graph. This has the potential
+   to skew the results as a reduction in resolution may change the graph topology, but decreases the
+   running time in most cases.
+   */
+  bool downsampled_prerouting = 6;
+
 }
 
 /** A reference to an ID string */
