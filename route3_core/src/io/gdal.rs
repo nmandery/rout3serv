@@ -27,7 +27,7 @@ pub const WEIGHT_FIELD_NAME: &str = "weight";
 impl WeightFeatureField for u64 {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let weight_field_defn = FieldDefn::new(WEIGHT_FIELD_NAME, OGRFieldType::OFTInteger64)?;
-        weight_field_defn.add_to_layer(&layer)?;
+        weight_field_defn.add_to_layer(layer)?;
         Ok(())
     }
 
@@ -40,7 +40,7 @@ impl WeightFeatureField for u64 {
 impl WeightFeatureField for i64 {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let weight_field_defn = FieldDefn::new(WEIGHT_FIELD_NAME, OGRFieldType::OFTInteger64)?;
-        weight_field_defn.add_to_layer(&layer)?;
+        weight_field_defn.add_to_layer(layer)?;
         Ok(())
     }
 
@@ -53,7 +53,7 @@ impl WeightFeatureField for i64 {
 impl WeightFeatureField for OrderedFloat<f64> {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let weight_field_defn = FieldDefn::new(WEIGHT_FIELD_NAME, OGRFieldType::OFTReal)?;
-        weight_field_defn.add_to_layer(&layer)?;
+        weight_field_defn.add_to_layer(layer)?;
         Ok(())
     }
 
@@ -66,7 +66,7 @@ impl WeightFeatureField for OrderedFloat<f64> {
 impl WeightFeatureField for OrderedFloat<f32> {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let weight_field_defn = FieldDefn::new(WEIGHT_FIELD_NAME, OGRFieldType::OFTReal)?;
-        weight_field_defn.add_to_layer(&layer)?;
+        weight_field_defn.add_to_layer(layer)?;
         Ok(())
     }
 
@@ -79,7 +79,7 @@ impl WeightFeatureField for OrderedFloat<f32> {
 impl WeightFeatureField for i32 {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let weight_field_defn = FieldDefn::new(WEIGHT_FIELD_NAME, OGRFieldType::OFTInteger)?;
-        weight_field_defn.add_to_layer(&layer)?;
+        weight_field_defn.add_to_layer(layer)?;
         Ok(())
     }
 
@@ -92,7 +92,7 @@ impl WeightFeatureField for i32 {
 impl WeightFeatureField for u32 {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let weight_field_defn = FieldDefn::new(WEIGHT_FIELD_NAME, OGRFieldType::OFTInteger)?;
-        weight_field_defn.add_to_layer(&layer)?;
+        weight_field_defn.add_to_layer(layer)?;
         Ok(())
     }
 

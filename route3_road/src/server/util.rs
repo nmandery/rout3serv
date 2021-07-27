@@ -1,9 +1,10 @@
+//! utility functions to use within the server context, most of them
+//! return a `tonic::Status` on error.
+
 use std::convert::TryInto;
 
 use arrow::record_batch::RecordBatch;
 use geo::algorithm::centroid::Centroid;
-/// utility functions to use within the server context, most of them
-/// return a `tonic::Status` on error.
 use tonic::Status;
 
 use route3_core::gdal::vector::Geometry;
@@ -61,7 +62,7 @@ where
 }
 
 pub fn recordbatch_to_bytes_status(recordbatch: &RecordBatch) -> Result<Vec<u8>, Status> {
-    let recordbatch_bytes = recordbatch_to_bytes(&recordbatch).map_err(|e| {
+    let recordbatch_bytes = recordbatch_to_bytes(recordbatch).map_err(|e| {
         log::error!("serializing recordbatch failed: {:?}", e);
         Status::internal("serializing recordbatch failed")
     })?;

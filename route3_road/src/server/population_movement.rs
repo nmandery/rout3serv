@@ -270,7 +270,7 @@ pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
         let mut preferred_destination_with_disturbance = Vec::with_capacity(chunk.len());
         for (cell, agg_weight) in chunk {
             cell_h3indexes.push(cell.h3index() as u64);
-            population.push(output.population_at_origins.get(&cell).cloned());
+            population.push(output.population_at_origins.get(cell).cloned());
 
             let num_reached_wo_d = agg_weight.without_disturbance.len() as u64;
             num_reached_without_disturbance.push(num_reached_wo_d);
