@@ -8,14 +8,16 @@ use serde::{Deserialize, Serialize};
 use tonic::Status;
 
 use route3_core::collections::{H3CellMap, H3CellSet};
-use route3_core::h3ron::{H3Cell, Index};
+use route3_core::h3ron::{H3Cell, H3Edge, Index};
 use route3_core::routing::{ManyToManyOptions, Route, RoutingGraph};
 
 use crate::server::util::StrId;
 use crate::types::Weight;
 use route3_core::error::Error;
+use route3_core::graph::downsample_graph;
 use route3_core::iter::change_h3_resolution;
 use route3_core::WithH3Resolution;
+use std::cmp::max;
 
 #[derive(Serialize, Deserialize)]
 pub struct Input {
@@ -129,6 +131,10 @@ pub fn calculate(
                 },
             )?;
 
+            let k_affected = max(
+                1,
+                (1500.0 / H3Edge::edge_length_m(ds_routing_graph.h3_resolution())).ceil() as u32,
+            );
             let affected_downsampled: H3CellSet = without_disturbance
                 .keys()
                 .filter(|cell| {
@@ -136,7 +142,7 @@ pub fn calculate(
                     // reduction of the resolution at the borders of the disturbance effect
                     // are reduced. The result is a larger number of full-resolution routing runs
                     // is performed.
-                    !cell.k_ring(5).iter().all(|ring_cell| {
+                    !cell.k_ring(k_affected).iter().all(|ring_cell| {
                         with_disturbance.get(ring_cell) == without_disturbance.get(ring_cell)
                     })
                 })
