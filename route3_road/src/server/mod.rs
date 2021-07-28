@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 
@@ -28,7 +29,6 @@ use crate::server::api::route3_road::{
 };
 use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
 use crate::types::Weight;
-use std::cmp::min;
 
 mod api;
 mod population_movement;
@@ -65,7 +65,14 @@ impl ServerImpl {
 
         // create the downsampled routing graph. the reduced resolution should be only a bit less than
         // the main graphs resolution to avoid skewing results too much by bridging non-connected nodes.
-        let ds_graph = downsample_graph(&graph, graph.h3_resolution.saturating_sub(2), min)?;
+        let ds_graph_resolution = graph
+            .h3_resolution
+            .saturating_sub(config.graph.downsample_resolution_difference.unwrap_or(2));
+        log::debug!(
+            "using h3 resolution = {} for the downsampled graph",
+            ds_graph_resolution
+        );
+        let ds_graph = downsample_graph(&graph, ds_graph_resolution, min)?;
 
         Ok(Self {
             config,
@@ -348,6 +355,10 @@ fn build_routes_response(
 pub struct GraphConfig {
     key: String,
     bucket: String,
+
+    /// number of resolution to downsample the graph to for the
+    /// internal downsampled graph
+    downsample_resolution_difference: Option<u8>,
 }
 
 #[derive(Deserialize)]

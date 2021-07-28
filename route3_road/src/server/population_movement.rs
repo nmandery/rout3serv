@@ -1,3 +1,4 @@
+use std::cmp::max;
 use std::sync::Arc;
 
 use arrow::array::{Float64Array, UInt64Array};
@@ -8,16 +9,14 @@ use serde::{Deserialize, Serialize};
 use tonic::Status;
 
 use route3_core::collections::{H3CellMap, H3CellSet};
+use route3_core::error::Error;
 use route3_core::h3ron::{H3Cell, H3Edge, Index};
+use route3_core::iter::change_h3_resolution;
 use route3_core::routing::{ManyToManyOptions, Route, RoutingGraph};
+use route3_core::WithH3Resolution;
 
 use crate::server::util::StrId;
 use crate::types::Weight;
-use route3_core::error::Error;
-use route3_core::graph::downsample_graph;
-use route3_core::iter::change_h3_resolution;
-use route3_core::WithH3Resolution;
-use std::cmp::max;
 
 #[derive(Serialize, Deserialize)]
 pub struct Input {

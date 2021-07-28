@@ -279,7 +279,7 @@ where
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut downsampled_edges = H3EdgeMap::new();
+    let mut downsampled_edges = H3EdgeMap::with_capacity(cross_cell_edges.len() / 2);
     for (edge, weight) in cross_cell_edges {
         downsampled_edges
             .entry(edge)
