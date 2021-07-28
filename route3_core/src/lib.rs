@@ -14,19 +14,15 @@ pub use gdal;
 pub use geo_types;
 pub use h3ron;
 
-#[cfg(feature = "osm")]
-pub use osmpbfreader;
-
 mod algo;
 pub mod collections;
 pub mod error;
+pub mod formats;
 #[cfg(feature = "with-gdal")]
 pub mod gdal_util;
 pub mod graph;
 pub mod io;
 pub mod iter;
-#[cfg(feature = "osm")]
-pub mod osm;
 pub mod routing;
 
 pub trait WithH3Resolution {

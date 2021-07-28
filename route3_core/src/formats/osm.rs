@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 use std::ops::Add;
 use std::path::Path;
 
+pub use osmpbfreader;
 use osmpbfreader::{OsmPbfReader, Tags};
 
 use crate::error::Error;

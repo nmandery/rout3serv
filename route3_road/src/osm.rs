@@ -1,6 +1,7 @@
+use route3_core::formats::osm::osmpbfreader::Tags;
+use route3_core::formats::osm::EdgeProperties;
+
 use crate::types::Weight;
-use route3_core::osm::EdgeProperties;
-use route3_core::osmpbfreader::Tags;
 
 pub fn way_properties(tags: &Tags) -> Option<EdgeProperties<Weight>> {
     // https://wiki.openstreetmap.org/wiki/Key:highway or https://wiki.openstreetmap.org/wiki/DE:Key:highway
@@ -16,7 +17,6 @@ pub fn way_properties(tags: &Tags) -> Option<EdgeProperties<Weight>> {
             "road" => Some(Weight::from(9.0)),
             // "track" => Some(Weight::from(200.0)), // mostly non-public agriculture/forestry roads
             "pedestrian" => Some(Weight::from(50.0)), // fussgängerzone
-            "service" => Some(Weight::from(30.0)),
             _ => None,
         }
         .map(|weight| {

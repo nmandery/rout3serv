@@ -10,10 +10,10 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
 use mimalloc::MiMalloc;
 
+use route3_core::formats::osm::OsmPbfGraphBuilder;
 use route3_core::graph::{GraphBuilder, H3Graph};
 use route3_core::io::gdal::OgrWrite;
 use route3_core::io::{load_graph, save_graph_to_file};
-use route3_core::osm::OsmPbfGraphBuilder;
 
 use crate::osm::way_properties;
 use crate::types::Weight;
