@@ -95,7 +95,7 @@ pub fn calculate(
             // routings to be performed later.
             // This overestimates the number of affected cells a bit due to the reduced resolution.
             //
-            // Gep bridging is set to 0 as this is already accomplished by the reduction in resolution.
+            // Gap bridging is set to 0 as this is already accomplished by the reduction in resolution.
             let mut downsampled_origins: Vec<_> =
                 change_h3_resolution(&origin_cells, ds_routing_graph.h3_resolution()).collect();
             downsampled_origins.sort_unstable();
