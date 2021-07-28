@@ -3,7 +3,7 @@ use route3_core::osm::EdgeProperties;
 use route3_core::osmpbfreader::Tags;
 
 pub fn way_properties(tags: &Tags) -> Option<EdgeProperties<Weight>> {
-    // https://wiki.openstreetmap.org/wiki/Key:highway
+    // https://wiki.openstreetmap.org/wiki/Key:highway or https://wiki.openstreetmap.org/wiki/DE:Key:highway
     // TODO: make use of `access` tag: https://wiki.openstreetmap.org/wiki/Key:access
     if let Some(highway_value) = tags.get("highway") {
         match highway_value.to_lowercase().as_str() {
@@ -15,6 +15,8 @@ pub fn way_properties(tags: &Tags) -> Option<EdgeProperties<Weight>> {
             "unclassified" | "residential" | "living_street" | "service" => Some(Weight::from(8.0)),
             "road" => Some(Weight::from(9.0)),
             // "track" => Some(Weight::from(200.0)), // mostly non-public agriculture/forestry roads
+            "pedestrian" => Some(Weight::from(50.0)), // fussgängerzone
+            "service" => Some(Weight::from(30.0)),
             _ => None,
         }
         .map(|weight| {
