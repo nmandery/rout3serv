@@ -231,7 +231,9 @@ impl Route3Road for ServerImpl {
         _request: Request<Empty>,
     ) -> std::result::Result<Response<VersionResponse>, Status> {
         Ok(Response::new(VersionResponse {
-            version: env!("CARGO_PKG_VERSION").to_string(),
+            version: crate::build_info::version().to_string(),
+            git_commit_sha: crate::build_info::git_comit_sha().to_string(),
+            build_timestamp: crate::build_info::build_timestamp().to_string(),
         }))
     }
 

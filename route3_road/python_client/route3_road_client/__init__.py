@@ -35,8 +35,8 @@ class Server:
             self.channel = grpc.insecure_channel(hostport)
         self.stub = Route3RoadStub(self.channel)
 
-    def server_version(self) -> str:
-        return self.stub.Version(route3_road_pb2.Empty()).version
+    def version(self) -> route3_road_pb2.VersionResponse:
+        return self.stub.Version(route3_road_pb2.Empty())
 
     def graph_info(self) -> str:
         return self.stub.GraphInfo(route3_road_pb2.Empty())

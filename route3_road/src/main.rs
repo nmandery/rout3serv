@@ -21,6 +21,7 @@ use crate::types::Weight;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+mod build_info;
 mod io;
 mod osm;
 mod server;
@@ -31,13 +32,14 @@ fn main() -> Result<()> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
     let long_version = format!(
-        "{} (git: {})",
-        env!("CARGO_PKG_VERSION"),
-        env!("VERGEN_GIT_SHA")
+        "{} (git: {}, build on {})",
+        crate::build_info::version(),
+        crate::build_info::git_comit_sha(),
+        crate::build_info::build_timestamp()
     );
 
     let app = App::new(env!("CARGO_PKG_NAME"))
-        .version(env!("CARGO_PKG_VERSION"))
+        .version(crate::build_info::version())
         .long_version(long_version.as_str())
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(

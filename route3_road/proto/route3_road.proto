@@ -7,6 +7,8 @@ message Empty {
 
 message VersionResponse {
   string version = 1;
+  string git_commit_sha = 2;
+  string build_timestamp = 3;
 }
 
 /** A point in WGS84 coordinates */
