@@ -128,7 +128,7 @@ impl S3Client {
                     }
                     Err(e) => match e {
                         RusotoError::Service(_get_object_error) => {
-                            log::info!(
+                            log::warn!(
                                 "get_object_bytes: bucket={}, key={} -> not found",
                                 bucket,
                                 key
