@@ -48,6 +48,9 @@ message DisturbanceOfPopulationMovementRequest {
    */
   bool downsampled_prerouting = 6;
 
+  /** store output on s3 */
+  bool store_output = 7;
+
 }
 
 /** A reference to an ID string */

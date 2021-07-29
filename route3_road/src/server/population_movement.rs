@@ -32,6 +32,7 @@ pub struct Input {
     pub num_destinations_to_reach: Option<usize>,
     pub num_gap_cells_to_graph: u32,
     pub downsampled_prerouting: bool,
+    pub store_output: bool,
 }
 
 #[derive(Serialize, Deserialize)]

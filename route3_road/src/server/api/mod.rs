@@ -30,6 +30,7 @@ impl DisturbanceOfPopulationMovementRequest {
             },
             num_gap_cells_to_graph: self.num_gap_cells_to_graph,
             downsampled_prerouting: self.downsampled_prerouting,
+            store_output: self.store_output,
         })
     }
 

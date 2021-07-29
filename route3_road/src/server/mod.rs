@@ -245,6 +245,7 @@ impl Route3Road for ServerImpl {
             .into_inner()
             .get_input(self.routing_graph.h3_resolution())?;
 
+        let do_store_output = input.store_output;
         let population = self.load_population(&input.within_buffer).await?;
         let routing_graph = self.routing_graph.clone();
         let ds_routing_graph = if input.downsampled_prerouting {
@@ -261,13 +262,20 @@ impl Route3Road for ServerImpl {
             Status::internal("calculating routes failed")
         })?;
 
-        let (_, response) = tokio::try_join!(
-            self.store_output(&output), // save the output for later
-            self.respond_recordbatches_stream(
-                output.dopm_id.clone(),
-                population_movement::disturbance_statistics_status(&output)?,
-            )
-        )?;
+        let response_fut = self.respond_recordbatches_stream(
+            output.dopm_id.clone(),
+            population_movement::disturbance_statistics_status(&output)?,
+        );
+
+        let response = if do_store_output {
+            let (_, response) = tokio::try_join!(
+                self.store_output(&output), // save the output for later
+                response_fut
+            )?;
+            response
+        } else {
+            response_fut.await?
+        };
         Ok(response)
     }
 

@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use arrow::ipc::reader::FileReader;
 use arrow::record_batch::RecordBatch;
+use bytes::Bytes;
 use bytesize::ByteSize;
 use eyre::{Report, Result};
 use futures::TryStreamExt;
@@ -15,7 +16,7 @@ use hyper_tls::HttpsConnector;
 use native_tls::TlsConnector;
 use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
-use rusoto_core::{HttpClient, Region, RusotoError};
+use rusoto_core::{ByteStream, HttpClient, Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
@@ -159,26 +160,42 @@ impl S3Client {
             data.len()
         );
 
-        // TODO: add backoff
+        let data_bytes = Bytes::from(data);
 
-        let put_object_req = PutObjectRequest {
-            bucket: bucket.clone(),
-            key: key.clone(),
-            body: Some(data.into()),
-            ..Default::default()
-        };
-        match self.s3.put_object(put_object_req).await {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                log::error!(
-                    "put_object_bytes: bucket={}, key={} -> {}",
-                    bucket,
-                    key,
-                    e.to_string()
+        let ob = backoff::future::retry(
+            backoff::ExponentialBackoff {
+                max_elapsed_time: Some(self.retry_duration),
+                ..Default::default()
+            },
+            || async {
+                let data_bytes_this_try = data_bytes.clone();
+                let byte_stream = ByteStream::new_with_size(
+                    futures::stream::once(async move { Ok(data_bytes_this_try) }),
+                    data_bytes.len(),
                 );
-                Err(Report::from(e))
-            }
-        }
+
+                let put_object_req = PutObjectRequest {
+                    bucket: bucket.clone(),
+                    key: key.clone(),
+                    body: Some(byte_stream),
+                    ..Default::default()
+                };
+                match self.s3.put_object(put_object_req).await {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        log::error!(
+                            "put_object_bytes: bucket={}, key={} -> {}",
+                            bucket,
+                            key,
+                            e.to_string()
+                        );
+                        Err(e.into())
+                    }
+                }
+            },
+        )
+        .await?;
+        Ok(ob)
     }
 }
 
