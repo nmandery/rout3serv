@@ -8,7 +8,7 @@ secret_key = "password"
 
 [graph]
 bucket = "graph"
-key = "germany_r10_f64.bc"
+key = "germany_r10.arrow"
 downsample_resolution_difference = 2
 
 [population_dataset]

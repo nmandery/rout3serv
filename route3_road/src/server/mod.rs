@@ -15,12 +15,11 @@ use tonic::{Request, Response, Status};
 use route3_core::collections::{H3CellMap, H3CellSet};
 use route3_core::graph::{downsample_graph, H3Graph};
 use route3_core::h3ron::H3Cell;
-use route3_core::io::load_graph_from_byte_slice;
 use route3_core::routing::RoutingGraph;
 use route3_core::WithH3Resolution;
 
-use crate::io::recordbatch_array;
 use crate::io::s3::{FoundOption, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
+use crate::io::{arrow_load_graph, recordbatch_array};
 use crate::server::api::route3_road::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::route3_road::{
     ArrowRecordBatch, DisturbanceOfPopulationMovementRequest,
@@ -29,6 +28,7 @@ use crate::server::api::route3_road::{
 };
 use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
 use crate::types::Weight;
+use std::io::Cursor;
 
 mod api;
 mod population_movement;
@@ -53,7 +53,7 @@ impl ServerImpl {
             .get_object_bytes(config.graph.bucket.clone(), config.graph.key.clone())
             .await?
         {
-            FoundOption::Found(graph_bytes) => load_graph_from_byte_slice(&graph_bytes)?,
+            FoundOption::Found(graph_bytes) => arrow_load_graph(Cursor::new(graph_bytes))?,
             FoundOption::NotFound => return Err(Report::msg("could not find graph")),
         };
 

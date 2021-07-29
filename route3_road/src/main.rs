@@ -13,8 +13,8 @@ use mimalloc::MiMalloc;
 use route3_core::formats::osm::OsmPbfGraphBuilder;
 use route3_core::graph::{GraphBuilder, H3Graph};
 use route3_core::io::gdal::OgrWrite;
-use route3_core::io::{load_graph, save_graph_to_file};
 
+use crate::io::{arrow_load_graph, arrow_save_graph};
 use crate::osm::way_properties;
 use crate::types::Weight;
 
@@ -120,7 +120,7 @@ fn main() -> Result<()> {
         ("graph", Some(graph_sc_matches)) => match graph_sc_matches.subcommand() {
             ("stats", Some(sc_matches)) => {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-                let graph: H3Graph<Weight> = load_graph(File::open(graph_filename)?)?;
+                let graph: H3Graph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
                 println!("{}", toml::to_string(&graph.stats()?)?);
             }
             ("to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
@@ -140,7 +140,7 @@ fn main() -> Result<()> {
 
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3Graph<Weight> = load_graph(File::open(graph_filename)?)?;
+    let graph: H3Graph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
     graph.ogr_write(
         sc_matches.value_of("driver").unwrap(),
         sc_matches.value_of("OUTPUT").unwrap(),
@@ -151,7 +151,7 @@ fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3Graph<Weight> = load_graph(File::open(graph_filename)?)?;
+    let graph: H3Graph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
 
     let mut outfile = File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?;
     let multi_poly = graph.covered_area()?;
@@ -185,6 +185,6 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
         graph.num_edges()
     );
     let mut out_file = File::create(graph_output)?;
-    save_graph_to_file(&graph, &mut out_file)?;
+    arrow_save_graph(&graph, &mut out_file)?;
     Ok(())
 }

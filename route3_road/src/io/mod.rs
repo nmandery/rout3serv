@@ -1,9 +1,21 @@
 use std::any::type_name;
 use std::any::Any;
+use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::io::{Read, Seek, Write};
+use std::sync::Arc;
 
+use arrow::array::{Float64Array, UInt64Array};
+use arrow::datatypes::{DataType, Field, Schema};
+use arrow::ipc::reader::FileReader;
 use arrow::ipc::writer::FileWriter;
 use arrow::record_batch::RecordBatch;
 use eyre::{Report, Result};
+
+use route3_core::graph::H3Graph;
+use route3_core::h3ron::{H3Edge, Index, H3_MAX_RESOLUTION};
+
+use crate::types::Weight;
 
 pub mod s3;
 
@@ -33,4 +45,106 @@ pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>> {
         filewriter.finish()?;
     }
     Ok(buf)
+}
+
+static ARROW_GRAPH_FIELD_EDGE: &str = "h3edge";
+static ARROW_GRAPH_FIELD_WEIGHT: &str = "weight";
+static ARROW_GRAPH_MD_RESOLUTION: &str = "h3_resolution";
+
+pub fn arrow_save_graph<W>(graph: &H3Graph<Weight>, writer: W) -> Result<()>
+where
+    W: Write,
+{
+    let mut metadata = HashMap::new();
+    metadata.insert(
+        ARROW_GRAPH_MD_RESOLUTION.to_string(),
+        graph.h3_resolution.to_string(),
+    );
+
+    let schema = Arc::new(Schema::new_with_metadata(
+        vec![
+            Field::new(ARROW_GRAPH_FIELD_EDGE, DataType::UInt64, false),
+            Field::new(ARROW_GRAPH_FIELD_WEIGHT, DataType::Float64, false),
+        ],
+        metadata,
+    ));
+    let mut h3edges = Vec::with_capacity(graph.edges.len());
+    let mut weights = Vec::with_capacity(graph.edges.len());
+    for (h3edge, weight) in graph.edges.iter() {
+        h3edges.push(h3edge.h3index() as u64);
+        weights.push(**weight);
+    }
+
+    let recordbatch = RecordBatch::try_new(
+        schema,
+        vec![
+            Arc::new(UInt64Array::from(h3edges)),
+            Arc::new(Float64Array::from(weights)),
+        ],
+    )?;
+
+    let mut filewriter = FileWriter::try_new(writer, &recordbatch.schema())?;
+    filewriter.write(&recordbatch)?;
+    filewriter.finish()?;
+    Ok(())
+}
+
+#[allow(dead_code)]
+pub fn arrow_save_graph_bytes(graph: &H3Graph<Weight>) -> Result<Vec<u8>> {
+    let mut buf: Vec<u8> = vec![];
+    arrow_save_graph(graph, &mut buf)?;
+    Ok(buf)
+}
+
+pub fn arrow_load_graph<R>(reader: R) -> Result<H3Graph<Weight>>
+where
+    R: Read + Seek,
+{
+    let filereader = FileReader::try_new(reader)?;
+    let schema = filereader.schema();
+    let h3_resolution = if let Some(h3res_string) = schema.metadata().get(ARROW_GRAPH_MD_RESOLUTION)
+    {
+        let h3_resolution = h3res_string.parse::<u8>().map_err(|_e| {
+            Report::msg(format!(
+                "Arrow file has invalid value for {}: '{}'",
+                ARROW_GRAPH_MD_RESOLUTION, h3res_string
+            ))
+        })?;
+        if h3_resolution > H3_MAX_RESOLUTION {
+            return Err(Report::msg(format!(
+                "Arrow file has an invalid h3 resolution ({})",
+                h3res_string
+            )));
+        } else {
+            h3_resolution
+        }
+    } else {
+        return Err(Report::msg(format!(
+            "Arrow file is missing the {} metadata field",
+            ARROW_GRAPH_MD_RESOLUTION
+        )));
+    };
+
+    let mut graph = H3Graph::new(h3_resolution);
+    for recordbatch_result in filereader {
+        let recordbatch = recordbatch_result?;
+        let edges = recordbatch_array::<UInt64Array>(&recordbatch, ARROW_GRAPH_FIELD_EDGE)?;
+        let weights = recordbatch_array::<Float64Array>(&recordbatch, ARROW_GRAPH_FIELD_WEIGHT)?;
+        graph.edges.reserve(edges.len());
+        for option_tuple in edges.iter().zip(weights.iter()) {
+            if let (Some(edge), Some(weight)) = option_tuple {
+                let h3edge = H3Edge::try_from(edge)?;
+                if h3edge.resolution() != h3_resolution {
+                    return Err(Report::msg(format!(
+                        "Encountered h3edge with unexpected resolution {}. Expected was {}",
+                        h3edge.resolution(),
+                        h3_resolution
+                    )));
+                }
+                // improve: inserting into the hashmap is the slow part here
+                graph.edges.insert(h3edge, Weight::from(weight));
+            }
+        }
+    }
+    Ok(graph)
 }
