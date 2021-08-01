@@ -192,7 +192,7 @@ where
     {
         let filtered_origin_cells: Vec<_> = {
             // maps cells to their closest found neighbors in the graph
-            let mut origin_cell_map = H3CellMap::new();
+            let mut origin_cell_map = H3CellMap::default();
             for gm in self
                 .filtered_graph_membership::<Vec<_>, _>(
                     change_h3_resolution(origin_cells, self.h3_resolution()).collect(),
@@ -257,7 +257,7 @@ where
         let routes = filtered_origin_cells
             .par_iter()
             .map(|(origin_cell, output_origin_cells)| {
-                let mut destination_cells_reached = H3CellSet::new();
+                let mut destination_cells_reached = H3CellSet::default();
 
                 // Possible improvement: add timeout to avoid continuing routing forever
                 let (routemap, _) = dijkstra_partial(

@@ -128,7 +128,7 @@ where
     /// covered by the graph.
     pub fn covered_area(&self) -> Result<MultiPolygon<f64>, Error> {
         let t_res = self.h3_resolution.saturating_sub(3);
-        let mut cells = H3CellSet::new();
+        let mut cells = H3CellSet::default();
         for (edge, _) in self.edges.iter() {
             cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
             cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
@@ -279,7 +279,7 @@ where
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut downsampled_edges = H3EdgeMap::with_capacity(cross_cell_edges.len() / 2);
+    let mut downsampled_edges = H3EdgeMap::default(); //with_capacity(cross_cell_edges.len() / 2);
     for (edge, weight) in cross_cell_edges {
         downsampled_edges
             .entry(edge)

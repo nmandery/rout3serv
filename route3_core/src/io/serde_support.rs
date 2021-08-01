@@ -41,7 +41,13 @@ pub mod h3edgemap {
         where
             M: MapAccess<'de>,
         {
-            let mut map = H3EdgeMap::with_capacity(access.size_hint().unwrap_or(4096));
+            let mut map = H3EdgeMap::default();
+            map.reserve(
+                access
+                    .size_hint()
+                    .unwrap_or(4096)
+                    .saturating_sub(map.capacity()),
+            );
             while let Some((k, v)) = access.next_entry::<u64, V>()? {
                 map.insert(h3ron::H3Edge::new(k), v);
             }

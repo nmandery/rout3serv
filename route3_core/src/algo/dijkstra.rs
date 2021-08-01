@@ -14,8 +14,8 @@ use std::usize;
 use indexmap::map::Entry::{Occupied, Vacant};
 use num_traits::Zero;
 
-use crate::collections::AIndexMap;
 use crate::collections::HashMap;
+use crate::collections::IndexMap;
 
 /// Determine some reachable nodes from a starting point as well as the minimum cost to
 /// reach them and a possible optimal parent node
@@ -60,7 +60,7 @@ fn run_dijkstra<N, C, FN, IN, FS>(
     start: &N,
     successors: &mut FN,
     stop: &mut FS,
-) -> (AIndexMap<N, (usize, C)>, Option<usize>)
+) -> (IndexMap<N, (usize, C)>, Option<usize>)
 where
     N: Eq + Hash + Clone,
     C: Zero + Ord + Copy,
@@ -73,7 +73,7 @@ where
         cost: Zero::zero(),
         index: 0,
     });
-    let mut parents: AIndexMap<N, (usize, C)> = AIndexMap::default();
+    let mut parents: IndexMap<N, (usize, C)> = IndexMap::default();
     parents.insert(start.clone(), (usize::max_value(), Zero::zero()));
     let mut target_reached = None;
     while let Some(SmallestHolder { cost, index }) = to_see.pop() {
