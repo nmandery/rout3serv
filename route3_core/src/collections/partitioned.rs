@@ -1,5 +1,4 @@
 use std::borrow::BorrowMut;
-use std::cmp::max;
 use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::iter::FromIterator;
@@ -12,7 +11,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::RandomState;
 
-/// goal: populating the map faster from serialized data
+/// A Map consisting of multiple hashmaps (partitions) each handled by its own thread. The purpose is
+/// acceleration of batch operations by splitting them across multiple threads. Like populating the
+/// map faster from serialized data.
+///
+/// Inspired by the [vector hasher](https://github.com/pola-rs/polars/blob/0b145967533691249d094614c5315fa03a693fd9/polars/polars-core/src/vector_hasher.rs)
+/// of the `polars` crate.
 pub struct ThreadPartitionedMap<K, V, S = RandomState> {
     build_hasher: S,
     partitions: Vec<hashbrown::HashMap<K, V, S>>,
@@ -30,7 +34,7 @@ where
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
-        let num_partitions = max(num_cpus::get().saturating_sub(1), 4);
+        let num_partitions = num_cpus::get();
         let partition_capacity = if capacity > 0 {
             // expecting an equal distribution of keys over all partitions
             1 + capacity / num_partitions
@@ -111,15 +115,9 @@ where
         self.partitions = new_partitions;
     }
 
-    fn hash_and_partition(&self, key: &K) -> (u64, usize) {
-        let mut hasher = self.build_hasher.build_hasher();
-        key.hash(&mut hasher);
-        let h = hasher.finish();
-        (h, h_partition(h, self.num_partitions() as u64) as usize)
-    }
-
     pub fn get(&self, key: &K) -> Option<&V> {
-        let (h, partition) = self.hash_and_partition(key);
+        let (h, partition) =
+            hash_and_partition(key, self.num_partitions(), self.build_hasher.build_hasher());
         self.partitions[partition]
             .raw_entry()
             .from_key_hashed_nocheck(h, key)
@@ -195,31 +193,31 @@ where
     S: BuildHasher,
     I: Iterator<Item = (K, V)>,
 {
-    let iter_ = iter.into_iter();
     let mut out_vecs: Vec<_> = (0..num_partitions)
-        .map(|_| Vec::with_capacity(iter_.size_hint().0 / num_partitions))
+        .map(|_| Vec::with_capacity(iter.size_hint().0 / num_partitions))
         .collect();
 
-    iter_.for_each(|(k, v)| {
-        let mut hasher = build_hasher.build_hasher();
-        k.hash(&mut hasher);
-        let h = hasher.finish();
-        out_vecs[h_partition(h, num_partitions as u64) as usize].push((h, (k, v)));
+    iter.for_each(|(k, v)| {
+        let (h, partition) = hash_and_partition(&k, num_partitions, build_hasher.build_hasher());
+        out_vecs[partition].push((h, (k, v)));
     });
     out_vecs
 }
 
-/*
 #[inline]
-fn this_partition(h: u64, partition_number: u64, num_partitions: u64) -> bool {
-    h_partition(h, num_partitions) == partition_number
+fn hash_and_partition<K, H>(key: &K, num_partitions: usize, mut hasher: H) -> (u64, usize)
+where
+    H: Hasher,
+    K: Hash,
+{
+    key.hash(&mut hasher);
+    let h = hasher.finish();
+    (h, h_partition(h, num_partitions as u64) as usize)
 }
-
- */
 
 #[inline]
 fn h_partition(h: u64, num_partitions: u64) -> u64 {
-    // based on https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+    // Based on https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
     // and used instead of modulo (`h % num_partitions`)
     ((h as u128 * num_partitions as u128) >> 64) as u64
 }
