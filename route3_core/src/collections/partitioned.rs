@@ -3,14 +3,14 @@ use std::cmp::max;
 use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::iter::FromIterator;
+use std::marker::PhantomData;
 
 use rayon::prelude::*;
-
-use super::RandomState;
 use serde::de::{MapAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::marker::PhantomData;
+
+use super::RandomState;
 
 /// goal: populating the map faster from serialized data
 pub struct ThreadPartitionedMap<K, V, S = RandomState> {
@@ -20,8 +20,8 @@ pub struct ThreadPartitionedMap<K, V, S = RandomState> {
 
 impl<K, V, S> ThreadPartitionedMap<K, V, S>
 where
-    K: Hash + Eq + Send + Sync + Copy,
-    V: Send + Sync + Copy,
+    K: Hash + Eq + Send + Sync,
+    V: Send + Sync,
     S: BuildHasher + Default + Send + Clone,
 {
     #[inline]
@@ -71,7 +71,9 @@ where
     where
         I: Iterator<Item = (K, V)>,
     {
-        self.insert_or_modify_many(iter, |_old, new| new);
+        self.insert_or_modify_many(iter, |old, new| {
+            *old = new;
+        });
     }
 
     ///
@@ -80,26 +82,26 @@ where
     pub fn insert_or_modify_many<I, F>(&mut self, iter: I, modify_fn: F)
     where
         I: Iterator<Item = (K, V)>,
-        F: Fn(V, V) -> V + Sync,
+        F: Fn(&mut V, V) + Sync,
     {
         let num_partitions = self.num_partitions() as u64;
         let hashed_kv = hash_vectorized(iter, &self.build_hasher, num_partitions as usize);
         let new_partitions = std::mem::take(&mut self.partitions)
             .par_drain(..)
             .zip(hashed_kv)
-            .map(|(mut partition, partition_hashed_kv)| {
-                for (h, (k, v)) in partition_hashed_kv.iter() {
+            .map(|(mut partition, mut partition_hashed_kv)| {
+                for (h, (k, v)) in partition_hashed_kv.drain(..) {
                     // raw_entry_mut in `std` requires nightly. in hashbrown it is already stable
                     // https://github.com/rust-lang/rust/issues/56167
-                    let raw_entry = partition.raw_entry_mut().from_key_hashed_nocheck(*h, k);
+                    let raw_entry = partition.raw_entry_mut().from_key_hashed_nocheck(h, &k);
 
                     match raw_entry {
                         hashbrown::hash_map::RawEntryMut::Occupied(mut entry) => {
                             let (_occupied_key, occupied_value) = entry.get_key_value_mut();
-                            *occupied_value = modify_fn(*occupied_value, *v)
+                            modify_fn(occupied_value, v)
                         }
                         hashbrown::hash_map::RawEntryMut::Vacant(entry) => {
-                            entry.insert_hashed_nocheck(*h, *k, *v);
+                            entry.insert_hashed_nocheck(h, k, v);
                         }
                     }
                 }
@@ -109,7 +111,7 @@ where
         self.partitions = new_partitions;
     }
 
-    fn key_partition(&self, key: &K) -> (u64, usize) {
+    fn hash_and_partition(&self, key: &K) -> (u64, usize) {
         let mut hasher = self.build_hasher.build_hasher();
         key.hash(&mut hasher);
         let h = hasher.finish();
@@ -117,7 +119,7 @@ where
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        let (h, partition) = self.key_partition(key);
+        let (h, partition) = self.hash_and_partition(key);
         self.partitions[partition]
             .raw_entry()
             .from_key_hashed_nocheck(h, key)
@@ -161,8 +163,8 @@ where
 
 impl<K, V, S> Default for ThreadPartitionedMap<K, V, S>
 where
-    K: Hash + Eq + Send + Sync + Copy,
-    V: Send + Sync + Copy,
+    K: Hash + Eq + Send + Sync,
+    V: Send + Sync,
     S: BuildHasher + Default + Send + Clone,
 {
     fn default() -> Self {
@@ -172,8 +174,8 @@ where
 
 impl<K, V> FromIterator<(K, V)> for ThreadPartitionedMap<K, V, RandomState>
 where
-    K: Hash + Eq + Send + Sync + Copy,
-    V: Send + Sync + Copy,
+    K: Hash + Eq + Send + Sync,
+    V: Send + Sync,
 {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let it = iter.into_iter();
@@ -230,8 +232,8 @@ pub struct TPMKeys<'a, K, V, S> {
 
 impl<'a, K, V, S> Iterator for TPMKeys<'a, K, V, S>
 where
-    K: Hash + Eq + Send + Sync + Copy,
-    V: Send + Sync + Copy,
+    K: Hash + Eq + Send + Sync,
+    V: Send + Sync,
     S: BuildHasher + Default + Send + Clone,
 {
     type Item = &'a K;
@@ -266,8 +268,8 @@ pub struct TPMIter<'a, K, V, S> {
 
 impl<'a, K, V, S> Iterator for TPMIter<'a, K, V, S>
 where
-    K: Hash + Eq + Send + Sync + Copy,
-    V: Send + Sync + Copy,
+    K: Hash + Eq + Send + Sync,
+    V: Send + Sync,
     S: BuildHasher + Default + Send + Clone,
 {
     type Item = (&'a K, &'a V);
@@ -302,8 +304,8 @@ pub struct TPMDrain<'a, K, V> {
 
 impl<'a, K, V> Iterator for TPMDrain<'a, K, V>
 where
-    K: Hash + Eq + Send + Sync + Copy,
-    V: Send + Sync + Copy,
+    K: Hash + Eq + Send + Sync,
+    V: Send + Sync,
 {
     type Item = (K, V);
 
@@ -326,8 +328,8 @@ where
 
 impl<K, V, S> Serialize for ThreadPartitionedMap<K, V, S>
 where
-    K: Hash + Eq + Send + Sync + Copy + Serialize,
-    V: Send + Sync + Copy + Serialize,
+    K: Hash + Eq + Send + Sync + Serialize,
+    V: Send + Sync + Serialize,
     S: BuildHasher + Default + Send + Clone,
 {
     fn serialize<SER>(&self, serializer: SER) -> Result<SER::Ok, SER::Error>
@@ -350,8 +352,8 @@ struct ThreadPartitionedMapVisitor<K, V> {
 
 impl<'de, K, V> Visitor<'de> for ThreadPartitionedMapVisitor<K, V>
 where
-    K: Hash + Eq + Send + Sync + Copy + Deserialize<'de>,
-    V: Send + Sync + Copy + Deserialize<'de>,
+    K: Hash + Eq + Send + Sync + Deserialize<'de>,
+    V: Send + Sync + Deserialize<'de>,
 {
     type Value = ThreadPartitionedMap<K, V, RandomState>;
 
@@ -373,8 +375,8 @@ where
 
 impl<'de, K, V> Deserialize<'de> for ThreadPartitionedMap<K, V, RandomState>
 where
-    K: Hash + Eq + Send + Sync + Copy + Deserialize<'de>,
-    V: Send + Sync + Copy + Deserialize<'de>,
+    K: Hash + Eq + Send + Sync + Deserialize<'de>,
+    V: Send + Sync + Deserialize<'de>,
 {
     fn deserialize<DES>(deserializer: DES) -> Result<Self, DES::Error>
     where
