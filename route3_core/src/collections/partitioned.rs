@@ -17,6 +17,7 @@ use super::RandomState;
 ///
 /// Inspired by the [vector hasher](https://github.com/pola-rs/polars/blob/0b145967533691249d094614c5315fa03a693fd9/polars/polars-core/src/vector_hasher.rs)
 /// of the `polars` crate.
+#[derive(Clone)]
 pub struct ThreadPartitionedMap<K, V, S = RandomState> {
     build_hasher: S,
     partitions: Vec<hashbrown::HashMap<K, V, S>>,
@@ -71,6 +72,40 @@ where
         self.partitions.iter().all(|p| p.is_empty())
     }
 
+    /// `modify_fn` takes two values and creates the value to be stored. The first value
+    /// is the one which was previously in the map, the second one is the new one.
+    pub fn insert_or_modify<F>(&mut self, key: K, value: V, modify_fn: F) -> Option<V>
+    where
+        F: Fn(&V, V) -> V,
+    {
+        let (h, partition) = hash_and_partition(
+            &key,
+            self.num_partitions(),
+            self.build_hasher.build_hasher(),
+        );
+        let raw_entry = self.partitions[partition]
+            .raw_entry_mut()
+            .from_key_hashed_nocheck(h, &key);
+
+        match raw_entry {
+            hashbrown::hash_map::RawEntryMut::Occupied(mut entry) => {
+                let (_occupied_key, occupied_value) = entry.get_key_value_mut();
+                Some(std::mem::replace(
+                    occupied_value,
+                    modify_fn(occupied_value, value),
+                ))
+            }
+            hashbrown::hash_map::RawEntryMut::Vacant(entry) => {
+                entry.insert_hashed_nocheck(h, key, value);
+                None
+            }
+        }
+    }
+
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.insert_or_modify(key, value, |_old, new| new)
+    }
+
     pub fn insert_many<I>(&mut self, iter: I)
     where
         I: Iterator<Item = (K, V)>,
@@ -88,8 +123,7 @@ where
         I: Iterator<Item = (K, V)>,
         F: Fn(&mut V, V) + Sync,
     {
-        let num_partitions = self.num_partitions() as u64;
-        let hashed_kv = hash_vectorized(iter, &self.build_hasher, num_partitions as usize);
+        let hashed_kv = hash_vectorized(iter, &self.build_hasher, self.num_partitions());
         let new_partitions = std::mem::take(&mut self.partitions)
             .par_drain(..)
             .zip(hashed_kv)
@@ -420,5 +454,17 @@ mod tests {
         let mut out_vec: Vec<_> = tpm_de.drain().collect();
         out_vec.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         assert_eq!(in_vec, out_vec);
+    }
+
+    #[test]
+    fn insert_single() {
+        let mut tpm: ThreadPartitionedMap<u64, u64> = Default::default();
+        assert_eq!(tpm.insert(4, 1), None);
+        assert_eq!(tpm.insert(4, 2), Some(1));
+        assert_eq!(tpm.insert(5, 1), None);
+        assert_eq!(tpm.len(), 2);
+        assert_eq!(tpm.insert_or_modify(5, 2, |old, new| new + *old), Some(1));
+        assert_eq!(tpm.get(&5), Some(&3));
+        assert_eq!(tpm.len(), 2);
     }
 }
