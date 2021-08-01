@@ -1,14 +1,15 @@
 use std::borrow::BorrowMut;
+use std::cmp::max;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::iter::FromIterator;
 
 use rayon::prelude::*;
 
 use super::RandomState;
-use std::cmp::max;
 
 /// goal: populating the map faster from serialized data
 pub struct ThreadPartitionedMap<K, V, S = RandomState> {
+    build_hasher: S,
     partitions: Vec<hashbrown::HashMap<K, V, S>>,
 }
 
@@ -16,7 +17,7 @@ impl<K, V, S> ThreadPartitionedMap<K, V, S>
 where
     K: Hash + Eq + Send + Sync + Copy,
     V: Send + Sync + Copy,
-    S: BuildHasher + Default + Send,
+    S: BuildHasher + Default + Send + Clone,
 {
     #[inline]
     pub fn new() -> Self {
@@ -25,19 +26,27 @@ where
 
     pub fn with_capacity(capacity: usize) -> Self {
         let num_partitions = max(num_cpus::get().saturating_sub(1), 4);
-        dbg!(num_partitions);
         let partition_capacity = if capacity > 0 {
             // expecting an equal distribution of keys over all partitions
             1 + capacity / num_partitions
         } else {
             0
         };
+        let build_hasher = S::default();
+        let partitions = (0..num_partitions)
+            .map(|_| {
+                hashbrown::HashMap::with_capacity_and_hasher(
+                    partition_capacity,
+                    // all partitions must use the hasher with the same seed to generate the same
+                    // hashes
+                    build_hasher.clone(),
+                )
+            })
+            .collect();
+
         Self {
-            partitions: (0..num_partitions)
-                .map(|_| {
-                    hashbrown::HashMap::with_capacity_and_hasher(partition_capacity, S::default())
-                })
-                .collect(),
+            build_hasher,
+            partitions,
         }
     }
 
@@ -69,28 +78,23 @@ where
         F: Fn(V, V) -> V + Sync,
     {
         let num_partitions = self.num_partitions() as u64;
-        let hashed_kv = hash_vectorized(iter, S::default(), num_partitions as usize);
+        let hashed_kv = hash_vectorized(iter, &self.build_hasher, num_partitions as usize);
         let new_partitions = std::mem::take(&mut self.partitions)
             .par_drain(..)
-            .enumerate()
-            .map(|(partition_number, mut partition)| {
-                let hashed_kv = &hashed_kv;
-                for hkv in hashed_kv.iter() {
-                    if hkv.parttition == partition_number {
-                        // raw_entry_mut in `std` requires nightly. in hashbrown it is already stable
-                        // https://github.com/rust-lang/rust/issues/56167
-                        let raw_entry = partition
-                            .raw_entry_mut()
-                            .from_key_hashed_nocheck(hkv.hash, &hkv.key);
+            .zip(hashed_kv)
+            .map(|(mut partition, partition_hashed_kv)| {
+                for (h, (k, v)) in partition_hashed_kv.iter() {
+                    // raw_entry_mut in `std` requires nightly. in hashbrown it is already stable
+                    // https://github.com/rust-lang/rust/issues/56167
+                    let raw_entry = partition.raw_entry_mut().from_key_hashed_nocheck(*h, k);
 
-                        match raw_entry {
-                            hashbrown::hash_map::RawEntryMut::Occupied(mut entry) => {
-                                let (_occupied_key, occupied_value) = entry.get_key_value_mut();
-                                *occupied_value = modify_fn(*occupied_value, hkv.value)
-                            }
-                            hashbrown::hash_map::RawEntryMut::Vacant(entry) => {
-                                entry.insert_hashed_nocheck(hkv.hash, hkv.key, hkv.value);
-                            }
+                    match raw_entry {
+                        hashbrown::hash_map::RawEntryMut::Occupied(mut entry) => {
+                            let (_occupied_key, occupied_value) = entry.get_key_value_mut();
+                            *occupied_value = modify_fn(*occupied_value, *v)
+                        }
+                        hashbrown::hash_map::RawEntryMut::Vacant(entry) => {
+                            entry.insert_hashed_nocheck(*h, *k, *v);
                         }
                     }
                 }
@@ -100,20 +104,28 @@ where
         self.partitions = new_partitions;
     }
 
-    fn key_partition(&self, key: &K) -> usize {
-        let mut hasher = S::default().build_hasher();
+    fn key_partition(&self, key: &K) -> (u64, usize) {
+        let mut hasher = self.build_hasher.build_hasher();
         key.hash(&mut hasher);
-        h_partition(hasher.finish(), self.num_partitions() as u64) as usize
+        let h = hasher.finish();
+        (h, h_partition(h, self.num_partitions() as u64) as usize)
     }
 
     pub fn get(&self, key: &K) -> Option<&V> {
-        self.partitions[self.key_partition(key)].get(key)
+        let (h, partition) = self.key_partition(key);
+        self.partitions[partition]
+            .raw_entry()
+            .from_key_hashed_nocheck(h, key)
+            .map(|(_, v)| v)
     }
 
+    /*
     pub fn entry(&mut self, key: K) -> hashbrown::hash_map::Entry<K, V, S> {
         let partition = self.key_partition(&key);
         self.partitions[partition].entry(key)
     }
+
+     */
 
     pub fn keys(&self) -> TPMKeys<K, V, S> {
         TPMKeys {
@@ -146,7 +158,7 @@ impl<K, V, S> Default for ThreadPartitionedMap<K, V, S>
 where
     K: Hash + Eq + Send + Sync + Copy,
     V: Send + Sync + Copy,
-    S: BuildHasher + Default + Send,
+    S: BuildHasher + Default + Send + Clone,
 {
     fn default() -> Self {
         Self::new()
@@ -166,42 +178,37 @@ where
     }
 }
 
-struct HashedKV<K, V> {
-    key: K,
-    value: V,
-    hash: u64,
-    parttition: usize,
-}
-
 fn hash_vectorized<K, V, S, I>(
     iter: I,
-    build_hasher: S,
+    build_hasher: &S,
     num_partitions: usize,
-) -> Vec<HashedKV<K, V>>
+) -> Vec<Vec<(u64, (K, V))>>
 where
     K: Hash,
     S: BuildHasher,
     I: Iterator<Item = (K, V)>,
 {
-    iter.into_iter()
-        .map(|(k, v)| {
-            let mut hasher = build_hasher.build_hasher();
-            k.hash(&mut hasher);
-            let h = hasher.finish();
-            HashedKV {
-                key: k,
-                value: v,
-                hash: h,
-                parttition: h_partition(h, num_partitions as u64) as usize,
-            }
-        })
-        .collect()
+    let iter_ = iter.into_iter();
+    let mut out_vecs: Vec<_> = (0..num_partitions)
+        .map(|_| Vec::with_capacity(iter_.size_hint().0 / num_partitions))
+        .collect();
+
+    iter_.for_each(|(k, v)| {
+        let mut hasher = build_hasher.build_hasher();
+        k.hash(&mut hasher);
+        let h = hasher.finish();
+        out_vecs[h_partition(h, num_partitions as u64) as usize].push((h, (k, v)));
+    });
+    out_vecs
 }
 
+/*
 #[inline]
 fn this_partition(h: u64, partition_number: u64, num_partitions: u64) -> bool {
     h_partition(h, num_partitions) == partition_number
 }
+
+ */
 
 #[inline]
 fn h_partition(h: u64, num_partitions: u64) -> u64 {
@@ -220,7 +227,7 @@ impl<'a, K, V, S> Iterator for TPMKeys<'a, K, V, S>
 where
     K: Hash + Eq + Send + Sync + Copy,
     V: Send + Sync + Copy,
-    S: BuildHasher + Default + Send,
+    S: BuildHasher + Default + Send + Clone,
 {
     type Item = &'a K;
 
@@ -256,7 +263,7 @@ impl<'a, K, V, S> Iterator for TPMIter<'a, K, V, S>
 where
     K: Hash + Eq + Send + Sync + Copy,
     V: Send + Sync + Copy,
-    S: BuildHasher + Default + Send,
+    S: BuildHasher + Default + Send + Clone,
 {
     type Item = (&'a K, &'a V);
 
@@ -316,16 +323,17 @@ where
 mod tests {
     use std::iter::FromIterator;
 
-    use crate::collections::{HashMap, ThreadPartitionedMap};
-    use crate::h3ron::Index;
     use h3ron::H3Edge;
+
+    use crate::collections::ThreadPartitionedMap;
+    use crate::h3ron::Index;
 
     #[test]
     fn from_and_to_vec() {
-        let in_vec: Vec<_> = (0_u64..100_000_000).map(|i| (H3Edge::new(i), i)).collect();
+        let in_vec: Vec<_> = (0_u64..1_000_000).map(|i| (H3Edge::new(i), i)).collect();
         let mut tpm = ThreadPartitionedMap::from_iter(in_vec.clone());
-        //let mut tpm = HashMap::from_iter(in_vec.clone());
-        assert_eq!(tpm.len(), 100_000_000);
+        assert_eq!(tpm.len(), 1_000_000);
+        assert_eq!(tpm.get(&H3Edge::new(613777)), Some(&613777));
         let mut out_vec: Vec<_> = tpm.drain().collect();
         out_vec.sort_unstable_by(|a, b| a.0.cmp(&b.0));
         assert_eq!(in_vec, out_vec);
