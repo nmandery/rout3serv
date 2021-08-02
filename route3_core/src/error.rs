@@ -15,9 +15,6 @@ pub enum Error {
     #[error("io error: {0}")]
     IOError(#[from] std::io::Error),
 
-    #[error("json error: {0}")]
-    JSONError(#[from] serde_json::Error),
-
     #[error("mixed h3 resolutions: {0} <> {1}")]
     MixedH3Resolutions(u8, u8),
 
