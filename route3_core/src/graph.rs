@@ -96,7 +96,8 @@ where
     }
 
     pub fn add_edge(&mut self, edge: H3Edge, weight: T) -> Result<(), Error> {
-        tpm_add_edge(&mut self.edges, edge, weight);
+        self.edges
+            .insert_or_modify(edge, weight, edge_weight_selector);
         Ok(())
     }
 
@@ -243,14 +244,6 @@ fn edge_weight_selector<T: PartialOrd + Copy>(old: &T, new: T) -> T {
     } else {
         new
     }
-}
-
-#[inline]
-fn tpm_add_edge<T>(tpm: &mut ThreadPartitionedMap<H3Edge, T>, edge: H3Edge, weight: T)
-where
-    T: Copy + Send + Sync + PartialOrd,
-{
-    tpm.insert_or_modify(edge, weight, edge_weight_selector);
 }
 
 /// change the resolution of a graph to a lower resolution
