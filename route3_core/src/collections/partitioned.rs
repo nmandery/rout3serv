@@ -60,8 +60,19 @@ where
         }
     }
 
+    pub fn reserve(&mut self, additional: usize) {
+        let partition_additional = additional / self.num_partitions();
+        for partition in self.partitions.iter_mut() {
+            partition.reserve(partition_additional);
+        }
+    }
+
     pub fn num_partitions(&self) -> usize {
         self.partitions.len()
+    }
+
+    pub fn partitions(&self) -> &[hashbrown::HashMap<K, V, S>] {
+        &self.partitions
     }
 
     pub fn len(&self) -> usize {
@@ -121,12 +132,18 @@ where
     pub fn insert_or_modify_many<I, F>(&mut self, iter: I, modify_fn: F)
     where
         I: Iterator<Item = (K, V)>,
-        F: Fn(&mut V, V) + Sync,
+        F: Fn(&mut V, V) + Send + Sync,
     {
-        let hashed_kv = hash_vectorized(iter, &self.build_hasher, self.num_partitions());
-        let new_partitions = std::mem::take(&mut self.partitions)
+        let mut hashed_kv = hash_vectorized(iter, &self.build_hasher, self.num_partitions());
+        if self.partitions.len() != hashed_kv.len() {
+            panic!("differing length of partitions");
+        }
+        self.reserve(hashed_kv.len()); // not taking modifications into account
+        self.partitions = std::mem::take(&mut self.partitions)
+            .drain(..)
+            .zip(hashed_kv.drain(..))
+            .collect::<Vec<_>>()
             .par_drain(..)
-            .zip(hashed_kv)
             .map(|(mut partition, mut partition_hashed_kv)| {
                 for (h, (k, v)) in partition_hashed_kv.drain(..) {
                     // raw_entry_mut in `std` requires nightly. in hashbrown it is already stable
@@ -136,7 +153,7 @@ where
                     match raw_entry {
                         hashbrown::hash_map::RawEntryMut::Occupied(mut entry) => {
                             let (_occupied_key, occupied_value) = entry.get_key_value_mut();
-                            modify_fn(occupied_value, v)
+                            modify_fn(occupied_value, v);
                         }
                         hashbrown::hash_map::RawEntryMut::Vacant(entry) => {
                             entry.insert_hashed_nocheck(h, k, v);
@@ -146,25 +163,19 @@ where
                 partition
             })
             .collect();
-        self.partitions = new_partitions;
     }
 
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get_key_value(&self, key: &K) -> Option<(&K, &V)> {
         let (h, partition) =
             hash_and_partition(key, self.num_partitions(), self.build_hasher.build_hasher());
         self.partitions[partition]
             .raw_entry()
             .from_key_hashed_nocheck(h, key)
-            .map(|(_, v)| v)
     }
 
-    /*
-    pub fn entry(&mut self, key: K) -> hashbrown::hash_map::Entry<K, V, S> {
-        let partition = self.key_partition(&key);
-        self.partitions[partition].entry(key)
+    pub fn get(&self, key: &K) -> Option<&V> {
+        self.get_key_value(key).map(|(_, v)| v)
     }
-
-     */
 
     pub fn keys(&self) -> TPMKeys<K, V, S> {
         TPMKeys {
@@ -379,6 +390,7 @@ where
 }
 
 struct ThreadPartitionedMapVisitor<K, V> {
+    #[allow(clippy::type_complexity)]
     marker: PhantomData<fn() -> ThreadPartitionedMap<K, V, RandomState>>,
 }
 

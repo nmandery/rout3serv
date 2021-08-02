@@ -121,7 +121,7 @@ fn main() -> Result<()> {
             ("stats", Some(sc_matches)) => {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
                 let graph: H3Graph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
-                println!("{}", toml::to_string(&graph.stats()?)?);
+                println!("{}", toml::to_string(&graph.stats())?);
             }
             ("to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
             ("covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
@@ -181,7 +181,7 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
 
     log::info!(
         "Created graph ({} nodes, {} edges)",
-        graph.num_nodes()?,
+        graph.num_nodes(),
         graph.num_edges()
     );
     let mut out_file = File::create(graph_output)?;

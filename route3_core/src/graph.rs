@@ -6,11 +6,10 @@ use h3ron::{H3Cell, H3Edge};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::collections::{H3CellMap, H3CellSet, H3EdgeMap};
+use crate::collections::{H3CellMap, H3CellSet, ThreadPartitionedMap};
 use crate::error::Error;
 use crate::geo_types::Polygon;
 use crate::h3ron::{Index, ToLinkedPolygons};
-use crate::io::serde_support::h3edgemap as h3m_serde;
 use crate::WithH3Resolution;
 
 #[derive(Serialize)]
@@ -21,20 +20,15 @@ pub struct GraphStats {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-#[serde(bound(serialize = "T: Serialize", deserialize = "T: Deserialize<'de>"))]
-pub struct H3Graph<T> {
-    // flexbuffers can only handle maps with string keys
-    #[serde(
-        deserialize_with = "h3m_serde::deserialize",
-        serialize_with = "h3m_serde::serialize"
-    )]
-    pub edges: H3EdgeMap<T>,
+pub struct H3Graph<T: Send + Sync> {
+    // flexbuffers can only handle maps with  string keys
+    pub edges: ThreadPartitionedMap<H3Edge, T>,
     pub h3_resolution: u8,
 }
 
 impl<T> H3Graph<T>
 where
-    T: PartialOrd + PartialEq + Add + Copy + Send,
+    T: PartialOrd + PartialEq + Add + Copy + Send + Sync,
 {
     pub fn new(h3_resolution: u8) -> Self {
         Self {
@@ -43,8 +37,11 @@ where
         }
     }
 
-    pub fn num_nodes(&self) -> Result<usize, Error> {
-        Ok(self.nodes()?.len())
+    ///
+    /// This has to generate the node list first, so its rather
+    /// expensive to call.
+    pub fn num_nodes(&self) -> usize {
+        self.nodes().len()
     }
 
     pub fn num_edges(&self) -> usize {
@@ -99,7 +96,7 @@ where
     }
 
     pub fn add_edge(&mut self, edge: H3Edge, weight: T) -> Result<(), Error> {
-        edgemap_add_edge(&mut self.edges, edge, weight);
+        tpm_add_edge(&mut self.edges, edge, weight);
         Ok(())
     }
 
@@ -110,18 +107,20 @@ where
                 other.h3_resolution,
             ));
         }
+
+        // TODO: parallelize
         for (edge, weight) in other.edges.drain() {
             self.add_edge(edge, weight)?;
         }
         Ok(())
     }
 
-    pub fn stats(&self) -> Result<GraphStats, Error> {
-        Ok(GraphStats {
+    pub fn stats(&self) -> GraphStats {
+        GraphStats {
             h3_resolution: self.h3_resolution,
-            num_nodes: self.num_nodes()?,
+            num_nodes: self.num_nodes(),
             num_edges: self.num_edges(),
-        })
+        }
     }
 
     /// generate a - simplified and overestimating - multipolygon of the area
@@ -147,26 +146,44 @@ where
     }
 
     /// cells which are valid targets to route to
-    pub fn nodes(&self) -> Result<H3CellMap<NodeType>, Error> {
-        let mut graph_nodes: H3CellMap<NodeType> = Default::default();
-        for edge in self.edges.keys() {
-            let cell_from = edge.origin_index()?;
-            graph_nodes
-                .entry(cell_from)
-                .and_modify(|node_type| *node_type += NodeType::Origin)
-                .or_insert(NodeType::Origin);
-
-            let cell_to = edge.destination_index()?;
-            graph_nodes
-                .entry(cell_to)
-                .and_modify(|node_type| *node_type += NodeType::Destination)
-                .or_insert(NodeType::Destination);
+    ///
+    /// This is a rather expensive operation.
+    pub fn nodes(&self) -> ThreadPartitionedMap<H3Cell, NodeType> {
+        let mut partition_cells: Vec<_> = self
+            .edges
+            .partitions()
+            .par_iter()
+            .map(|partition| {
+                let mut cells = H3CellMap::with_capacity(partition.len());
+                for edge in partition.keys() {
+                    if let Ok(cell_from) = edge.origin_index() {
+                        cells
+                            .entry(cell_from)
+                            .and_modify(|node_type| *node_type += NodeType::Origin)
+                            .or_insert(NodeType::Origin);
+                    }
+                    if let Ok(cell_to) = edge.origin_index() {
+                        cells
+                            .entry(cell_to)
+                            .and_modify(|node_type| *node_type += NodeType::Destination)
+                            .or_insert(NodeType::Destination);
+                    }
+                }
+                cells
+            })
+            .collect();
+        let mut tpm = ThreadPartitionedMap::new();
+        for mut pcs in partition_cells.drain(..) {
+            tpm.insert_or_modify_many(pcs.drain(), |old, new| *old += new);
         }
-        Ok(graph_nodes)
+        tpm
     }
 }
 
-impl<T> WithH3Resolution for H3Graph<T> {
+impl<T> WithH3Resolution for H3Graph<T>
+where
+    T: Send + Sync,
+{
     fn h3_resolution(&self) -> u8 {
         self.h3_resolution
     }
@@ -217,19 +234,18 @@ impl AddAssign<NodeType> for NodeType {
     }
 }
 
-fn edgemap_add_edge<T>(edgemap: &mut H3EdgeMap<T>, edge: H3Edge, weight: T)
+fn tpm_add_edge<T>(tpm: &mut ThreadPartitionedMap<H3Edge, T>, edge: H3Edge, weight: T)
 where
-    T: Copy + PartialOrd,
+    T: Copy + Send + Sync + PartialOrd,
 {
-    edgemap
-        .entry(edge)
-        .and_modify(|self_weight| {
-            // lower weight takes precedence
-            if weight < *self_weight {
-                *self_weight = weight
-            }
-        })
-        .or_insert(weight);
+    tpm.insert_or_modify(edge, weight, |old, new| {
+        // lower weight takes precedence
+        if *old < new {
+            *old
+        } else {
+            new
+        }
+    });
 }
 
 /// change the resolution of a graph to a lower resolution
@@ -247,7 +263,7 @@ pub fn downsample_graph<T, F>(
 ) -> Result<H3Graph<T>, Error>
 where
     T: Sync + Send + Copy,
-    F: Fn(T, T) -> T,
+    F: Fn(T, T) -> T + Sync + Send,
 {
     if target_h3_resolution >= graph.h3_resolution {
         return Err(Error::TooHighH3Resolution(target_h3_resolution));
@@ -257,35 +273,39 @@ where
         graph.h3_resolution(),
         target_h3_resolution
     );
-    let cross_cell_edges = graph
+    let mut cross_cell_edges = graph
         .edges
+        .partitions()
         .par_iter()
-        .filter_map(|(edge, weight)| {
-            let cell_from = edge
-                .origin_index_unchecked()
-                .get_parent_unchecked(target_h3_resolution);
-            let cell_to = edge
-                .destination_index_unchecked()
-                .get_parent_unchecked(target_h3_resolution);
-            if cell_from == cell_to {
-                None
-            } else {
-                Some(
-                    cell_from
-                        .unidirectional_edge_to(&cell_to)
-                        .map(|downsamled_edge| (downsamled_edge, *weight)),
-                )
-            }
+        .map(|partition| {
+            partition
+                .iter()
+                .filter_map(|(edge, weight)| {
+                    let cell_from = edge
+                        .origin_index_unchecked()
+                        .get_parent_unchecked(target_h3_resolution);
+                    let cell_to = edge
+                        .destination_index_unchecked()
+                        .get_parent_unchecked(target_h3_resolution);
+                    if cell_from == cell_to {
+                        None
+                    } else {
+                        Some(
+                            cell_from
+                                .unidirectional_edge_to(&cell_to)
+                                .map(|downsamled_edge| (downsamled_edge, *weight)),
+                        )
+                    }
+                })
+                .collect::<Vec<_>>()
         })
+        .flatten()
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut downsampled_edges = H3EdgeMap::default(); //with_capacity(cross_cell_edges.len() / 2);
-    for (edge, weight) in cross_cell_edges {
-        downsampled_edges
-            .entry(edge)
-            .and_modify(|w| *w = weight_selector_fn(*w, weight))
-            .or_insert(weight);
-    }
+    let mut downsampled_edges = ThreadPartitionedMap::with_capacity(cross_cell_edges.len() / 2);
+    downsampled_edges.insert_or_modify_many(cross_cell_edges.drain(..), |old, new| {
+        *old = weight_selector_fn(*old, new)
+    });
 
     Ok(H3Graph {
         edges: downsampled_edges,
@@ -295,7 +315,7 @@ where
 
 pub trait GraphBuilder<T>
 where
-    T: PartialOrd + PartialEq + Add + Copy,
+    T: PartialOrd + PartialEq + Add + Copy + Send + Sync,
 {
     fn build_graph(self) -> Result<H3Graph<T>, Error>;
 }

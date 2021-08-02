@@ -130,7 +130,7 @@ where
         let recordbatch = recordbatch_result?;
         let edges = recordbatch_array::<UInt64Array>(&recordbatch, ARROW_GRAPH_FIELD_EDGE)?;
         let weights = recordbatch_array::<Float64Array>(&recordbatch, ARROW_GRAPH_FIELD_WEIGHT)?;
-        graph.edges.reserve(edges.len());
+        let mut validated_edges = Vec::with_capacity(edges.len());
         for option_tuple in edges.iter().zip(weights.iter()) {
             if let (Some(edge), Some(weight)) = option_tuple {
                 let h3edge = H3Edge::try_from(edge)?;
@@ -141,10 +141,10 @@ where
                         h3_resolution
                     )));
                 }
-                // improve: inserting into the hashmap is the slow part here
-                graph.edges.insert(h3edge, Weight::from(weight));
+                validated_edges.push((h3edge, Weight::from(weight)));
             }
         }
+        graph.edges.insert_many(validated_edges.drain(..))
     }
     Ok(graph)
 }

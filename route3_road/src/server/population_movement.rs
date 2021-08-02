@@ -75,7 +75,7 @@ pub fn calculate(
         .filter_map(|cell| population.get(cell))
         .sum::<f32>() as f64;
 
-    let mut population_at_origins: H3CellMap<f64> = H3CellMap::new();
+    let mut population_at_origins: H3CellMap<f64> = H3CellMap::default();
 
     let origin_cells: Vec<H3Cell> = {
         let mut origin_cells: Vec<H3Cell> = vec![];
@@ -218,7 +218,7 @@ impl Default for DOPMOWeights {
 /// TODO: improve this method - it is messy
 pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
     let mut aggregated_weights = {
-        let mut aggregated_weights: H3CellMap<DOPMOWeights> = H3CellMap::new();
+        let mut aggregated_weights: H3CellMap<DOPMOWeights> = H3CellMap::default();
         for (origin_cell, routes) in output.routes_without_disturbance.iter() {
             let entry = aggregated_weights.entry(*origin_cell).or_default();
             for route in routes.iter() {

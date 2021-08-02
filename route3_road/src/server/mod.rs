@@ -104,7 +104,7 @@ impl ServerImpl {
                 log::error!("loading population from s3 failed: {:?}", e);
                 Status::internal("population data inaccessible")
             })?;
-        let mut population_cells = H3CellMap::new();
+        let mut population_cells = H3CellMap::default();
         for pop in population.iter() {
             let h3index_array = recordbatch_array::<UInt64Array>(pop, &h3index_column_name)
                 .map_err(|report| {

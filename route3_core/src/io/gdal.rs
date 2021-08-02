@@ -104,7 +104,7 @@ impl WeightFeatureField for u32 {
 
 impl<T> OgrWrite for H3Graph<T>
 where
-    T: WeightFeatureField,
+    T: WeightFeatureField + Send + Sync,
 {
     fn ogr_write<S: AsRef<str>>(
         &self,

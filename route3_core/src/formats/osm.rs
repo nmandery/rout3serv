@@ -17,7 +17,7 @@ pub struct EdgeProperties<T> {
 }
 
 pub struct OsmPbfGraphBuilder<
-    T: PartialOrd + PartialEq + Add + Copy,
+    T: PartialOrd + PartialEq + Add + Copy + Sync + Send,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
 > {
     h3_resolution: u8,
@@ -27,7 +27,7 @@ pub struct OsmPbfGraphBuilder<
 
 impl<T, F> OsmPbfGraphBuilder<T, F>
 where
-    T: PartialOrd + PartialEq + Add + Copy + Send,
+    T: PartialOrd + PartialEq + Add + Copy + Send + Sync,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
 {
     pub fn new(h3_resolution: u8, edge_properties_fn: F) -> Self {
@@ -94,7 +94,7 @@ where
 
 impl<T, F> GraphBuilder<T> for OsmPbfGraphBuilder<T, F>
 where
-    T: PartialOrd + PartialEq + Add + Copy + Send,
+    T: PartialOrd + PartialEq + Add + Copy + Send + Sync,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
 {
     fn build_graph(self) -> std::result::Result<H3Graph<T>, Error> {

@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::algo::dijkstra::{build_path_with_cost, dijkstra_partial};
-use crate::collections::{H3CellMap, H3CellSet, HashMap};
+use crate::collections::{H3CellMap, H3CellSet, HashMap, ThreadPartitionedMap};
 use crate::error::Error;
 use crate::geo_types::Geometry;
 use crate::graph::{H3Graph, NodeType};
@@ -128,12 +128,15 @@ fn index_or_zero(cell: Result<H3Cell, Error>) -> u64 {
     cell.map(|c| c.h3index()).unwrap_or(0)
 }
 
-pub struct RoutingGraph<T> {
+pub struct RoutingGraph<T: Send + Sync> {
     pub graph: H3Graph<T>,
-    graph_nodes: H3CellMap<NodeType>,
+    graph_nodes: ThreadPartitionedMap<H3Cell, NodeType>,
 }
 
-impl<T> WithH3Resolution for RoutingGraph<T> {
+impl<T> WithH3Resolution for RoutingGraph<T>
+where
+    T: Send + Sync,
+{
     fn h3_resolution(&self) -> u8 {
         self.graph.h3_resolution()
     }
@@ -377,12 +380,12 @@ where
 
 impl<T> TryFrom<H3Graph<T>> for RoutingGraph<T>
 where
-    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero,
+    T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
 {
     type Error = Error;
 
     fn try_from(graph: H3Graph<T>) -> std::result::Result<Self, Self::Error> {
-        let graph_nodes = graph.nodes()?;
+        let graph_nodes = graph.nodes();
         Ok(Self { graph, graph_nodes })
     }
 }
