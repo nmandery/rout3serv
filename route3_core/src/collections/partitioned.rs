@@ -20,7 +20,7 @@ use super::RandomState;
 #[derive(Clone)]
 pub struct ThreadPartitionedMap<K, V, S = RandomState> {
     build_hasher: S,
-    partitions: Vec<hashbrown::HashMap<K, V, S>>,
+    pub(crate) partitions: Vec<hashbrown::HashMap<K, V, S>>,
 }
 
 impl<K, V, S> ThreadPartitionedMap<K, V, S>

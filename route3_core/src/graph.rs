@@ -107,10 +107,11 @@ where
                 other.h3_resolution,
             ));
         }
-
-        // TODO: parallelize
-        for (edge, weight) in other.edges.drain() {
-            self.add_edge(edge, weight)?;
+        for mut partition in other.edges.partitions.drain(..) {
+            self.edges
+                .insert_or_modify_many(partition.drain(), |old, new| {
+                    *old = edge_weight_selector(old, new)
+                });
         }
         Ok(())
     }
@@ -234,18 +235,22 @@ impl AddAssign<NodeType> for NodeType {
     }
 }
 
+#[inline]
+fn edge_weight_selector<T: PartialOrd + Copy>(old: &T, new: T) -> T {
+    // lower weight takes precedence
+    if *old < new {
+        *old
+    } else {
+        new
+    }
+}
+
+#[inline]
 fn tpm_add_edge<T>(tpm: &mut ThreadPartitionedMap<H3Edge, T>, edge: H3Edge, weight: T)
 where
     T: Copy + Send + Sync + PartialOrd,
 {
-    tpm.insert_or_modify(edge, weight, |old, new| {
-        // lower weight takes precedence
-        if *old < new {
-            *old
-        } else {
-            new
-        }
-    });
+    tpm.insert_or_modify(edge, weight, edge_weight_selector);
 }
 
 /// change the resolution of a graph to a lower resolution
