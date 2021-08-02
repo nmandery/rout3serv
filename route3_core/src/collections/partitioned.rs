@@ -20,7 +20,7 @@ use super::RandomState;
 #[derive(Clone)]
 pub struct ThreadPartitionedMap<K, V, S = RandomState> {
     build_hasher: S,
-    pub(crate) partitions: Vec<hashbrown::HashMap<K, V, S>>,
+    partitions: Vec<hashbrown::HashMap<K, V, S>>,
 }
 
 impl<K, V, S> ThreadPartitionedMap<K, V, S>
@@ -43,17 +43,8 @@ where
             0
         };
         let build_hasher = S::default();
-        let partitions = (0..num_partitions)
-            .map(|_| {
-                hashbrown::HashMap::with_capacity_and_hasher(
-                    partition_capacity,
-                    // all partitions must use the hasher with the same seed to generate the same
-                    // hashes
-                    build_hasher.clone(),
-                )
-            })
-            .collect();
-
+        let partitions =
+            create_partitions(num_partitions, partition_capacity, build_hasher.clone());
         Self {
             build_hasher,
             partitions,
@@ -61,9 +52,13 @@ where
     }
 
     pub fn reserve(&mut self, additional: usize) {
-        let partition_additional = additional / self.num_partitions();
+        let additional_avg = additional / self.num_partitions();
         for partition in self.partitions.iter_mut() {
-            partition.reserve(partition_additional);
+            let partition_additional =
+                additional_avg.saturating_sub(partition.capacity() - partition.len());
+            if partition_additional > 0 {
+                partition.reserve(partition_additional);
+            }
         }
     }
 
@@ -73,6 +68,11 @@ where
 
     pub fn partitions(&self) -> &[hashbrown::HashMap<K, V, S>] {
         &self.partitions
+    }
+
+    pub fn take_partitions(&mut self) -> Vec<hashbrown::HashMap<K, V, S>> {
+        let new_partitions = create_partitions(self.partitions.len(), 0, self.build_hasher.clone());
+        std::mem::replace(&mut self.partitions, new_partitions)
     }
 
     pub fn len(&self) -> usize {
@@ -136,6 +136,7 @@ where
     {
         let mut hashed_kv = hash_vectorized(iter, &self.build_hasher, self.num_partitions());
         if self.partitions.len() != hashed_kv.len() {
+            // should not be reachable
             panic!("differing length of partitions");
         }
         self.reserve(hashed_kv.len()); // not taking modifications into account
@@ -222,10 +223,31 @@ where
 {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let it = iter.into_iter();
-        let mut tpm = Self::with_capacity(it.size_hint().0); // TODO: use upper or lower bound?
+        let mut tpm = Self::with_capacity(it.size_hint().0);
         tpm.insert_many(it);
         tpm
     }
+}
+
+fn create_partitions<K, V, S>(
+    num_partitions: usize,
+    partition_capacity: usize,
+    build_hasher: S,
+) -> Vec<hashbrown::HashMap<K, V, S>>
+where
+    K: Hash + Eq,
+    S: BuildHasher + Clone,
+{
+    (0..num_partitions)
+        .map(|_| {
+            hashbrown::HashMap::with_capacity_and_hasher(
+                partition_capacity,
+                // all partitions must use the hasher with the same seed to generate the same
+                // hashes
+                build_hasher.clone(),
+            )
+        })
+        .collect()
 }
 
 fn hash_vectorized<K, V, S, I>(

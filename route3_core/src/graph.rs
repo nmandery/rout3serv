@@ -108,7 +108,7 @@ where
                 other.h3_resolution,
             ));
         }
-        for mut partition in other.edges.partitions.drain(..) {
+        for mut partition in other.edges.take_partitions().drain(..) {
             self.edges
                 .insert_or_modify_many(partition.drain(), |old, new| {
                     *old = edge_weight_selector(old, new)
@@ -130,9 +130,8 @@ where
     pub fn covered_area(&self) -> Result<MultiPolygon<f64>, Error> {
         let t_res = self.h3_resolution.saturating_sub(3);
         let mut cells = H3CellSet::default();
-        for (edge, _) in self.edges.iter() {
-            cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
-            cells.insert(edge.origin_index_unchecked().get_parent(t_res)?);
+        for cell in self.nodes().keys() {
+            cells.insert(cell.get_parent(t_res)?);
         }
         let cell_vec: Vec<_> = cells.drain().collect();
         let mp = MultiPolygon::from(

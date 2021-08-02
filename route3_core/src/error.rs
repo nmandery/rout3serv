@@ -27,7 +27,7 @@ pub enum Error {
     #[error("empty route")]
     EmptyRoute,
 
-    #[error("none of the routing destinatons is part of the routing graph")]
+    #[error("none of the routing destinations is part of the routing graph")]
     DestinationsNotInGraph,
 
     #[cfg(feature = "osm")]

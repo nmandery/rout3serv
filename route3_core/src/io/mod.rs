@@ -23,10 +23,6 @@ where
         ByteSize(slice.len() as u64)
     );
     let graph: H3Graph<T> = bincode::deserialize(slice)?;
-    log::debug!(
-        "Stats of the deserialized graph: {}",
-        serde_json::to_string(&graph.stats())?
-    );
     Ok(graph)
 }
 
