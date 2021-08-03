@@ -163,7 +163,7 @@ where
                             .and_modify(|node_type| *node_type += NodeType::Origin)
                             .or_insert(NodeType::Origin);
                     }
-                    if let Ok(cell_to) = edge.origin_index() {
+                    if let Ok(cell_to) = edge.destination_index() {
                         cells
                             .entry(cell_to)
                             .and_modify(|node_type| *node_type += NodeType::Destination)
@@ -395,5 +395,38 @@ mod tests {
         let mut n4 = NodeType::Destination;
         n4 += NodeType::Origin;
         assert_eq!(n4, NodeType::OriginAndDestination);
+    }
+
+    #[test]
+    fn test_graph_nodes() {
+        let res = 8;
+        let origin = H3Cell::from_coordinate(&Coordinate::from((23.3, 12.3)), res).unwrap();
+        let edges: Vec<_> = origin
+            .unidirectional_edges()
+            .drain(0..2)
+            .map(|edge| (edge, edge.destination_index_unchecked()))
+            .collect();
+
+        let mut graph = H3Graph::new(res);
+        graph.add_edge(edges[0].0, 1).unwrap();
+        graph.add_edge(edges[1].0, 1).unwrap();
+
+        let edges2: Vec<_> = edges[1]
+            .1
+            .unidirectional_edges()
+            .drain(0..1)
+            .map(|edge| (edge, edge.destination_index_unchecked()))
+            .collect();
+        graph.add_edge(edges2[0].0, 1).unwrap();
+
+        let nodes = graph.nodes();
+        assert_eq!(nodes.len(), 4);
+        assert_eq!(nodes.get(&origin), Some(&NodeType::Origin));
+        assert_eq!(nodes.get(&edges[0].1), Some(&NodeType::Destination));
+        assert_eq!(
+            nodes.get(&edges[1].1),
+            Some(&NodeType::OriginAndDestination)
+        );
+        assert_eq!(nodes.get(&edges2[0].1), Some(&NodeType::Destination));
     }
 }
