@@ -1,7 +1,7 @@
+pub use ahash::RandomState;
 use hashbrown;
 use indexmap;
 
-pub use ahash::RandomState;
 pub use partitioned::ThreadPartitionedMap;
 
 use crate::h3ron::{H3Cell, H3Edge};
