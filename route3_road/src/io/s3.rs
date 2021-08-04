@@ -21,8 +21,8 @@ use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
 
+use route3_core::h3ron::iter::change_cell_resolution;
 use route3_core::h3ron::H3Cell;
-use route3_core::iter::change_h3_resolution;
 
 /// a minimal option type to indicate if something has been found or not
 pub enum FoundOption<T> {
@@ -249,7 +249,7 @@ impl S3RecordBatchLoader {
         if cells.is_empty() {
             return Ok(Default::default());
         }
-        let file_cells = change_h3_resolution(cells.iter(), dataset.file_h3_resolution())
+        let file_cells = change_cell_resolution(cells.iter(), dataset.file_h3_resolution())
             .collect::<HashSet<_>>();
 
         let mut task_results = futures::future::try_join_all(file_cells.iter().map(|cell| {

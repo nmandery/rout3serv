@@ -22,7 +22,6 @@ pub mod formats;
 pub mod gdal_util;
 pub mod graph;
 pub mod io;
-pub mod iter;
 pub mod routing;
 
 pub trait WithH3Resolution {

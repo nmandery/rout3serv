@@ -10,8 +10,8 @@ use tonic::Status;
 
 use route3_core::collections::{H3CellMap, H3CellSet};
 use route3_core::error::Error;
+use route3_core::h3ron::iter::change_cell_resolution;
 use route3_core::h3ron::{H3Cell, H3Edge, Index};
-use route3_core::iter::change_h3_resolution;
 use route3_core::routing::{ManyToManyOptions, Route, RoutingGraph};
 use route3_core::WithH3Resolution;
 
@@ -99,12 +99,12 @@ pub fn calculate(
             //
             // Gap bridging is set to 0 as this is already accomplished by the reduction in resolution.
             let mut downsampled_origins: Vec<_> =
-                change_h3_resolution(&origin_cells, ds_routing_graph.h3_resolution()).collect();
+                change_cell_resolution(&origin_cells, ds_routing_graph.h3_resolution()).collect();
             downsampled_origins.sort_unstable();
             downsampled_origins.dedup();
 
             let mut downsampled_destinations: Vec<_> =
-                change_h3_resolution(&input.destinations, ds_routing_graph.h3_resolution())
+                change_cell_resolution(&input.destinations, ds_routing_graph.h3_resolution())
                     .collect();
             downsampled_destinations.sort_unstable();
             downsampled_destinations.dedup();
@@ -119,7 +119,7 @@ pub fn calculate(
                 },
             )?;
             let disturbance_downsampled: H3CellSet =
-                change_h3_resolution(input.disturbance.clone(), ds_routing_graph.h3_resolution())
+                change_cell_resolution(input.disturbance.clone(), ds_routing_graph.h3_resolution())
                     .collect();
             let with_disturbance = ds_routing_graph.route_many_to_many(
                 &downsampled_origins,

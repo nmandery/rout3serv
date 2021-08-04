@@ -14,8 +14,8 @@ use crate::collections::{H3CellMap, H3CellSet, HashMap, ThreadPartitionedMap};
 use crate::error::Error;
 use crate::geo_types::Geometry;
 use crate::graph::{H3Graph, NodeType};
+use crate::h3ron::iter::change_cell_resolution;
 use crate::h3ron::{H3Cell, H3Edge, Index, ToCoordinate};
-use crate::iter::change_h3_resolution;
 use crate::WithH3Resolution;
 
 #[derive(Clone, Debug)]
@@ -198,7 +198,7 @@ where
             let mut origin_cell_map = H3CellMap::default();
             for gm in self
                 .filtered_graph_membership::<Vec<_>, _>(
-                    change_h3_resolution(origin_cells, self.h3_resolution()).collect(),
+                    change_cell_resolution(origin_cells, self.h3_resolution()).collect(),
                     |node_type| node_type.is_origin(),
                     options.num_gap_cells_to_graph,
                 )
@@ -225,7 +225,7 @@ where
         //      the same cell in the graph
         let filtered_destination_cells: HashMap<_, _> = self
             .filtered_graph_membership::<Vec<_>, _>(
-                change_h3_resolution(destination_cells, self.h3_resolution()).collect(),
+                change_cell_resolution(destination_cells, self.h3_resolution()).collect(),
                 |node_type| node_type.is_destination(),
                 options.num_gap_cells_to_graph,
             )
