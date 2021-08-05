@@ -148,8 +148,13 @@ where
 
     /// cells which are valid targets to route to
     ///
-    /// This is a rather expensive operation.
+    /// This is a rather expensive operation as nodes are not stored anywhere
+    /// and need to be extracted from the edges.
     pub fn nodes(&self) -> ThreadPartitionedMap<H3Cell, NodeType> {
+        log::debug!(
+            "extracting nodes from the graph edges @ r={}",
+            self.h3_resolution
+        );
         let mut partition_cells: Vec<_> = self
             .edges
             .partitions()

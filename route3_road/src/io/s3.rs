@@ -40,17 +40,27 @@ pub struct S3Config {
     pub retry_seconds: Option<u64>,
 }
 
+fn env_override<K: AsRef<str>, F: FnOnce() -> String>(key: K, default_value: F) -> String {
+    match env::var(key.as_ref()) {
+        Ok(value) => {
+            log::info!("Using override from environment variable {}", key.as_ref());
+            value
+        }
+        Err(_) => default_value(),
+    }
+}
+
 impl S3Config {
     /// get the s3 access key - may be overridden using the `S3_ACCESS_KEY`
     /// environment variable
     pub fn get_access_key(&self) -> String {
-        env::var("S3_ACCESS_KEY").unwrap_or_else(|_| self.access_key.clone())
+        env_override("S3_ACCESS_KEY", || self.access_key.clone())
     }
 
     /// get the s3 secret key - may be overridden using the `S3_SECRET_KEY`
     /// environment variable
     pub fn get_secret_key(&self) -> String {
-        env::var("S3_SECRET_KEY").unwrap_or_else(|_| self.secret_key.clone())
+        env_override("S3_SECRET_KEY", || self.secret_key.clone())
     }
 }
 
