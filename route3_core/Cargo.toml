@@ -44,8 +44,7 @@ version = "1"
 features = ["derive"]
 
 [dependencies.gdal]
-git = "https://github.com/georust/gdal.git"
-rev = "a18e46b0bfa72be62ed872d87dca55309a6859e6" # TryFrom to convert from gdal geometries to geo-types
+version = "0.9.0"
 optional = true
 features = ["bindgen"]
 
