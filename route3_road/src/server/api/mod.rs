@@ -1,10 +1,10 @@
 use tonic::Status;
 
+use route3_core::algo::path::Path;
 use route3_core::collections::H3CellSet;
 use route3_core::gdal_util::buffer_meters;
 use route3_core::geo_types::Coordinate;
 use route3_core::h3ron::{H3Cell, Index};
-use route3_core::routing::Route;
 
 use crate::server::api::route3_road::{DisturbanceOfPopulationMovementRequest, RouteWkb};
 use crate::server::population_movement;
@@ -72,15 +72,15 @@ impl DisturbanceOfPopulationMovementRequest {
 }
 
 impl RouteWkb {
-    pub fn from_route(route: &Route<Weight>) -> Result<Self, Status> {
-        let wkb_bytes = wkb::geom_to_wkb(&route.geometry()).map_err(|e| {
+    pub fn from_path(path: &Path<Weight>) -> Result<Self, Status> {
+        let wkb_bytes = wkb::geom_to_wkb(&path.geometry()).map_err(|e| {
             log::error!("can not encode route to wkb: {:?}", e);
             Status::internal("can not encode wkb")
         })?;
         Ok(Self {
-            origin_cell: route.origin_cell().map(|c| c.h3index()).unwrap_or(0),
-            destination_cell: route.destination_cell().map(|c| c.h3index()).unwrap_or(0),
-            cost: f64::from(route.cost),
+            origin_cell: path.origin_cell().map(|c| c.h3index()).unwrap_or(0),
+            destination_cell: path.destination_cell().map(|c| c.h3index()).unwrap_or(0),
+            cost: f64::from(path.cost),
             wkb: wkb_bytes,
         })
     }

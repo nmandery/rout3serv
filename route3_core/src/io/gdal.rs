@@ -3,10 +3,10 @@ use gdal::vector::{Defn, Feature, FieldDefn, Layer, OGRFieldType, OGRwkbGeometry
 use gdal::{Driver, LayerOptions};
 use geo_types::LineString;
 use h3ron::ToCoordinate;
+use ordered_float::OrderedFloat;
 
 use crate::error::Error;
 use crate::graph::H3Graph;
-use ordered_float::OrderedFloat;
 
 pub trait OgrWrite {
     fn ogr_write<S: AsRef<str>>(

@@ -9,11 +9,12 @@ pub mod h3edgemap {
     use std::marker::PhantomData;
     use std::result::Result;
 
-    use crate::collections::H3EdgeMap;
-    use crate::h3ron::Index;
     use serde::de::{MapAccess, Visitor};
     use serde::ser::SerializeMap;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    use crate::collections::H3EdgeMap;
+    use crate::h3ron::Index;
 
     struct CapacityMapVisitor<V> {
         marker: PhantomData<fn() -> H3EdgeMap<V>>,

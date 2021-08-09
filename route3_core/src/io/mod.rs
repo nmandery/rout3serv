@@ -2,7 +2,6 @@ use std::fs::File;
 use std::ops::Add;
 
 use bytesize::ByteSize;
-
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 

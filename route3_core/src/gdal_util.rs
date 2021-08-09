@@ -1,6 +1,7 @@
-use crate::error::Error;
 use gdal::spatial_ref::SpatialRef;
 use gdal::vector::Geometry;
+
+use crate::error::Error;
 
 /// buffer a geometry in meters
 ///

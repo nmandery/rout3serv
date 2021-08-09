@@ -21,8 +21,8 @@ pub enum Error {
     #[error("too high h3 resolution: {0}")]
     TooHighH3Resolution(u8),
 
-    #[error("empty route")]
-    EmptyRoute,
+    #[error("empty path")]
+    EmptyPath,
 
     #[error("none of the routing destinations is part of the routing graph")]
     DestinationsNotInGraph,
@@ -30,4 +30,7 @@ pub enum Error {
     #[cfg(feature = "osm")]
     #[error("osmpbfreader error: {0}")]
     OSMPbfReaderError(#[from] osmpbfreader::Error),
+
+    #[error("parameter error: {0}")]
+    ParameterError(String),
 }

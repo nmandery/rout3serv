@@ -4,11 +4,12 @@ use std::fs::File;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use ordered_float::OrderedFloat;
 
+use route3_core::algo::shortest_path::{ManyToManyOptions, ShortestPath};
 use route3_core::geo_types::Coordinate;
 use route3_core::graph::H3Graph;
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph;
-use route3_core::routing::{ManyToManyOptions, RoutingGraph};
+use route3_core::routing::RoutingGraph;
 use route3_core::WithH3Resolution;
 
 fn load_bench_graph() -> RoutingGraph<OrderedFloat<f64>> {
@@ -49,7 +50,7 @@ fn route_across_germany(routing_graph: &RoutingGraph<OrderedFloat<f64>>) {
     };
 
     let routes_map = routing_graph
-        .route_many_to_many(vec![origin_cell], destination_cells, &options)
+        .shortest_path_many_to_many(vec![origin_cell], destination_cells, &options)
         .unwrap();
     assert_eq!(
         routes_map.get(&origin_cell).map(|routes| routes.len()),

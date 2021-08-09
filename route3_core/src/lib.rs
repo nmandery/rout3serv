@@ -14,7 +14,7 @@ pub use gdal;
 pub use geo_types;
 pub use h3ron;
 
-mod algo;
+pub mod algo;
 pub mod collections;
 pub mod error;
 pub mod formats;

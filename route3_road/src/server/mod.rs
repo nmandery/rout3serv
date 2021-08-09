@@ -1,5 +1,6 @@
 use std::cmp::min;
 use std::convert::{TryFrom, TryInto};
+use std::io::Cursor;
 use std::sync::Arc;
 
 use arrow::array::{Float32Array, UInt64Array};
@@ -12,6 +13,8 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
+use route3_core::algo::differential_shortest_path::DifferentialShortestPath;
+use route3_core::algo::path::Path;
 use route3_core::collections::{H3CellMap, H3CellSet};
 use route3_core::graph::{downsample_graph, H3Graph};
 use route3_core::h3ron::H3Cell;
@@ -28,7 +31,6 @@ use crate::server::api::route3_road::{
 };
 use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
 use crate::types::Weight;
-use std::io::Cursor;
 
 mod api;
 mod population_movement;
@@ -314,11 +316,23 @@ impl Route3Road for ServerImpl {
         };
 
         tokio::spawn(async move {
-            for h3index in inner.cells.iter() {
-                if let Ok(cell) = H3Cell::try_from(*h3index) {
-                    tx.send(build_routes_response(&output, cell)).await.unwrap();
-                } else {
-                    log::warn!("recieved invalid h3index: {}", h3index);
+            let cell_lookup: H3CellSet = inner
+                .cells
+                .iter()
+                .filter_map(|h3index| match H3Cell::try_from(*h3index) {
+                    Ok(cell) => Some(cell),
+                    Err(_) => {
+                        log::warn!("recieved invalid h3index: {}", h3index);
+                        None
+                    }
+                })
+                .collect();
+
+            for differential_shortest_path in output.differential_shortest_paths.iter() {
+                if cell_lookup.contains(&differential_shortest_path.origin_cell) {
+                    tx.send(build_routes_response(differential_shortest_path))
+                        .await
+                        .unwrap();
                 }
             }
         });
@@ -337,26 +351,21 @@ impl Route3Road for ServerImpl {
 }
 
 fn build_routes_response(
-    output: &population_movement::Output,
-    cell: H3Cell,
+    differential_shortest_path: &DifferentialShortestPath<Path<Weight>>,
 ) -> Result<DisturbanceOfPopulationMovementRoutes, Status> {
     let mut response = DisturbanceOfPopulationMovementRoutes {
         routes_without_disturbance: vec![],
         routes_with_disturbance: vec![],
     };
-    if let Some(routes) = output.routes_without_disturbance.get(&cell) {
-        for route in routes {
-            response
-                .routes_without_disturbance
-                .push(RouteWkb::from_route(route)?)
-        }
+    for path in differential_shortest_path.without_disturbance.iter() {
+        response
+            .routes_without_disturbance
+            .push(RouteWkb::from_path(path)?);
     }
-    if let Some(routes) = output.routes_with_disturbance.get(&cell) {
-        for route in routes {
-            response
-                .routes_with_disturbance
-                .push(RouteWkb::from_route(route)?)
-        }
+    for path in differential_shortest_path.with_disturbance.iter() {
+        response
+            .routes_with_disturbance
+            .push(RouteWkb::from_path(path)?);
     }
     Ok(response)
 }
