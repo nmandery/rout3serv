@@ -52,6 +52,13 @@ features = ["bindgen"]
 version = "0.3"
 features = ["html_reports"]
 
+[dev-dependencies.clap]
+version = "^2.33"
+
 [[bench]]
 name = "route_germany"
 harness = false
+
+[[example]]
+name = "graph_from_osm"
+required-features = ["osm"]
