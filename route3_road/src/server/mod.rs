@@ -322,7 +322,7 @@ impl Route3Road for ServerImpl {
                 .filter_map(|h3index| match H3Cell::try_from(*h3index) {
                     Ok(cell) => Some(cell),
                     Err(_) => {
-                        log::warn!("recieved invalid h3index: {}", h3index);
+                        log::warn!("received invalid h3index: {}", h3index);
                         None
                     }
                 })
