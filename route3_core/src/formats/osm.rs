@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use std::ops::Add;
 use std::path::Path;
 
@@ -9,7 +8,6 @@ use osmpbfreader::{OsmPbfReader, Tags};
 use crate::error::Error;
 use crate::geo_types::{Coordinate, LineString};
 use crate::graph::{GraphBuilder, H3Graph};
-use crate::h3ron::H3Cell;
 
 pub struct EdgeProperties<T> {
     pub is_bidirectional: bool,
@@ -65,19 +63,16 @@ where
                             h3indexes.dedup();
 
                             for window in h3indexes.windows(2) {
-                                let cell1 = H3Cell::try_from(window[0])?;
-                                let cell2 = H3Cell::try_from(window[1])?;
-
                                 if edge_props.is_bidirectional {
                                     self.graph.add_edge_using_cells_bidirectional(
-                                        cell1,
-                                        cell2,
+                                        window[0],
+                                        window[1],
                                         edge_props.weight,
                                     )?;
                                 } else {
                                     self.graph.add_edge_using_cells(
-                                        cell1,
-                                        cell2,
+                                        window[0],
+                                        window[1],
                                         edge_props.weight,
                                     )?;
                                 }

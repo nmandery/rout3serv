@@ -330,7 +330,6 @@ mod tests {
     use h3ron::H3Cell;
 
     use crate::graph::{downsample_graph, H3Graph, NodeType};
-    use crate::h3ron::Index;
 
     #[test]
     fn test_downsample() {
@@ -347,9 +346,7 @@ mod tests {
 
         let mut graph = H3Graph::new(full_h3_res);
         for w in cells.windows(2) {
-            graph
-                .add_edge_using_cells(H3Cell::new(w[0]), H3Cell::new(w[1]), 20)
-                .unwrap();
+            graph.add_edge_using_cells(w[0], w[1], 20).unwrap();
         }
         assert!(graph.num_edges() > 50);
         let downsampled_graph = downsample_graph(

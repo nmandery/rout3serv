@@ -9,7 +9,7 @@ use tonic::Status;
 
 use route3_core::gdal::vector::Geometry;
 use route3_core::geo_types::Geometry as GTGeometry;
-use route3_core::h3ron::{H3Cell, ToH3Indexes};
+use route3_core::h3ron::{H3Cell, ToH3Cells};
 
 use crate::io::recordbatch_to_bytes;
 
@@ -28,7 +28,7 @@ pub fn gdal_geom_to_h3(
         log::error!("Converting GDAL geometry to geo-types failed: {:?}", e);
         Status::internal("unsupported geometry")
     })?;
-    let mut cells = gt_geom.to_h3_indexes(h3_resolution).map_err(|e| {
+    let mut cells = gt_geom.to_h3_cells(h3_resolution).map_err(|e| {
         log::error!("could not convert to h3: {:?}", e);
         Status::internal("could not convert to h3")
     })?;
