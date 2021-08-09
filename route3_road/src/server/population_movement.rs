@@ -40,11 +40,8 @@ pub struct Input {
 #[derive(Serialize, Deserialize)]
 pub struct Output {
     pub dopm_id: String,
-    pub input: Input,
-
     pub population_within_disturbance: f64,
     pub population_at_origins: H3CellMap<f64>,
-
     pub differential_shortest_paths: Vec<DifferentialShortestPath<Path<Weight>>>,
 }
 
@@ -102,7 +99,6 @@ pub fn calculate(
 
     Ok(Output {
         dopm_id: uuid::Uuid::new_v4().to_string(),
-        input,
         population_within_disturbance,
         population_at_origins,
         differential_shortest_paths,
