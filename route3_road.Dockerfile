@@ -18,5 +18,6 @@ ENV RUST_BACKTRACE=1
 ENV RUST_LOG="route3_road=info,route3_core=info"
 COPY --from=builder /usr/local/bin/route3_road /usr/bin/
 COPY ./route3_road/server-config.example.toml /server-config.toml
+COPY ./route3_road/proto /
 EXPOSE 7088
 ENTRYPOINT ["/usr/bin/route3_road"]
