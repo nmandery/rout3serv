@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::ops::Add;
 use std::path::Path;
 
 pub use osmpbfreader;
 use osmpbfreader::{OsmPbfReader, Tags};
 
+use crate::collections::HashMap;
 use crate::error::Error;
 use crate::geo_types::{Coordinate, LineString};
 use crate::graph::{H3EdgeGraph, H3EdgeGraphBuilder};
