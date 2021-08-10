@@ -7,8 +7,8 @@ use clap::{App, Arg};
 use ordered_float::OrderedFloat;
 
 use route3_core::formats::osm::osmpbfreader::Tags;
-use route3_core::formats::osm::{EdgeProperties, OsmPbfGraphBuilder};
-use route3_core::graph::GraphBuilder;
+use route3_core::formats::osm::{EdgeProperties, OsmPbfH3EdgeGraphBuilder};
+use route3_core::graph::H3EdgeGraphBuilder;
 use route3_core::io::save_graph_to_file;
 
 pub fn way_properties(tags: &Tags) -> Option<EdgeProperties<OrderedFloat<f64>>> {
@@ -72,7 +72,7 @@ fn main() {
         .expect("invalid h3 resolution");
     let graph_output = matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
 
-    let mut builder = OsmPbfGraphBuilder::new(h3_resolution, way_properties);
+    let mut builder = OsmPbfH3EdgeGraphBuilder::new(h3_resolution, way_properties);
     for pbf_input in matches.values_of("OSM-PBF").unwrap() {
         builder
             .read_pbf(Path::new(&pbf_input))

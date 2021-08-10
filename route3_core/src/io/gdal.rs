@@ -6,7 +6,7 @@ use h3ron::ToCoordinate;
 use ordered_float::OrderedFloat;
 
 use crate::error::Error;
-use crate::graph::H3Graph;
+use crate::graph::H3EdgeGraph;
 
 pub trait OgrWrite {
     fn ogr_write<S: AsRef<str>>(
@@ -102,7 +102,7 @@ impl WeightFeatureField for u32 {
     }
 }
 
-impl<T> OgrWrite for H3Graph<T>
+impl<T> OgrWrite for H3EdgeGraph<T>
 where
     T: WeightFeatureField + Send + Sync,
 {

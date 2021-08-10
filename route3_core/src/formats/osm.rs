@@ -7,23 +7,23 @@ use osmpbfreader::{OsmPbfReader, Tags};
 
 use crate::error::Error;
 use crate::geo_types::{Coordinate, LineString};
-use crate::graph::{GraphBuilder, H3Graph};
+use crate::graph::{H3EdgeGraph, H3EdgeGraphBuilder};
 
 pub struct EdgeProperties<T> {
     pub is_bidirectional: bool,
     pub weight: T,
 }
 
-pub struct OsmPbfGraphBuilder<
+pub struct OsmPbfH3EdgeGraphBuilder<
     T: PartialOrd + PartialEq + Add + Copy + Sync + Send,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
 > {
     h3_resolution: u8,
     edge_properties_fn: F,
-    graph: H3Graph<T>,
+    graph: H3EdgeGraph<T>,
 }
 
-impl<T, F> OsmPbfGraphBuilder<T, F>
+impl<T, F> OsmPbfH3EdgeGraphBuilder<T, F>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Sync,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
@@ -32,7 +32,7 @@ where
         Self {
             h3_resolution,
             edge_properties_fn,
-            graph: H3Graph::new(h3_resolution),
+            graph: H3EdgeGraph::new(h3_resolution),
         }
     }
 
@@ -87,12 +87,12 @@ where
     }
 }
 
-impl<T, F> GraphBuilder<T> for OsmPbfGraphBuilder<T, F>
+impl<T, F> H3EdgeGraphBuilder<T> for OsmPbfH3EdgeGraphBuilder<T, F>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Sync,
     F: Fn(&Tags) -> Option<EdgeProperties<T>>,
 {
-    fn build_graph(self) -> std::result::Result<H3Graph<T>, Error> {
+    fn build_graph(self) -> std::result::Result<H3EdgeGraph<T>, Error> {
         Ok(self.graph)
     }
 }

@@ -6,13 +6,13 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
-use crate::graph::H3Graph;
+use crate::graph::H3EdgeGraph;
 
 #[cfg(feature = "with-gdal")]
 pub mod gdal;
 pub mod serde_support;
 
-pub fn load_graph_from_byte_slice<'de, T>(slice: &'de [u8]) -> Result<H3Graph<T>, Error>
+pub fn load_graph_from_byte_slice<'de, T>(slice: &'de [u8]) -> Result<H3EdgeGraph<T>, Error>
 where
     T: PartialOrd + PartialEq + Add + Copy + Deserialize<'de> + Send + Sync,
 {
@@ -21,11 +21,11 @@ where
         slice.len(),
         ByteSize(slice.len() as u64)
     );
-    let graph: H3Graph<T> = bincode::deserialize(slice)?;
+    let graph: H3EdgeGraph<T> = bincode::deserialize(slice)?;
     Ok(graph)
 }
 
-pub fn load_graph<R: std::io::Read, T>(mut reader: R) -> Result<H3Graph<T>, Error>
+pub fn load_graph<R: std::io::Read, T>(mut reader: R) -> Result<H3EdgeGraph<T>, Error>
 where
     T: PartialOrd + PartialEq + Add + Copy + DeserializeOwned + Send + Sync,
 {
@@ -40,7 +40,7 @@ where
      */
 }
 
-pub fn save_graph_to_file<T>(graph: &H3Graph<T>, out_file: &mut File) -> Result<(), Error>
+pub fn save_graph_to_file<T>(graph: &H3EdgeGraph<T>, out_file: &mut File) -> Result<(), Error>
 where
     T: PartialOrd + PartialEq + Add + Copy + Serialize + Send + Sync,
 {

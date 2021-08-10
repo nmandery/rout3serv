@@ -15,7 +15,7 @@ use route3_core::algo::path::Path;
 use route3_core::algo::shortest_path::ManyToManyOptions;
 use route3_core::collections::{H3CellMap, H3CellSet};
 use route3_core::h3ron::{H3Cell, Index};
-use route3_core::routing::RoutingGraph;
+use route3_core::routing::RoutingH3EdgeGraph;
 
 use crate::server::util::StrId;
 use crate::types::Weight;
@@ -59,10 +59,10 @@ impl StrId for Output {
 /// running time in most cases.
 /// The reduction should be no more than two resolutions.
 pub fn calculate(
-    routing_graph: Arc<RoutingGraph<Weight>>,
+    routing_graph: Arc<RoutingH3EdgeGraph<Weight>>,
     input: Input,
     population: H3CellMap<f32>,
-    downsampled_routing_graph: Option<Arc<RoutingGraph<Weight>>>,
+    downsampled_routing_graph: Option<Arc<RoutingH3EdgeGraph<Weight>>>,
 ) -> Result<Output> {
     let population_within_disturbance = input
         .disturbance

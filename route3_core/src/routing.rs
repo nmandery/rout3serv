@@ -7,16 +7,16 @@ use rayon::prelude::*;
 
 use crate::collections::ThreadPartitionedMap;
 use crate::error::Error;
-use crate::graph::{H3Graph, NodeType};
+use crate::graph::{H3EdgeGraph, NodeType};
 use crate::h3ron::H3Cell;
-use crate::WithH3Resolution;
+use crate::H3Resolution;
 
-pub struct RoutingGraph<T: Send + Sync> {
-    pub graph: H3Graph<T>,
+pub struct RoutingH3EdgeGraph<T: Send + Sync> {
+    pub graph: H3EdgeGraph<T>,
     graph_nodes: ThreadPartitionedMap<H3Cell, NodeType>,
 }
 
-impl<T> WithH3Resolution for RoutingGraph<T>
+impl<T> H3Resolution for RoutingH3EdgeGraph<T>
 where
     T: Send + Sync,
 {
@@ -58,7 +58,7 @@ impl CellGraphMembership {
 ///
 /// All routing methods will silently ignore origin and destination cells which are not
 /// part of the graph.
-impl<T> RoutingGraph<T>
+impl<T> RoutingH3EdgeGraph<T>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync + Debug,
 {
@@ -115,13 +115,13 @@ where
     }
 }
 
-impl<T> TryFrom<H3Graph<T>> for RoutingGraph<T>
+impl<T> TryFrom<H3EdgeGraph<T>> for RoutingH3EdgeGraph<T>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
 {
     type Error = Error;
 
-    fn try_from(graph: H3Graph<T>) -> std::result::Result<Self, Self::Error> {
+    fn try_from(graph: H3EdgeGraph<T>) -> std::result::Result<Self, Self::Error> {
         let graph_nodes = graph.nodes();
         Ok(Self { graph, graph_nodes })
     }

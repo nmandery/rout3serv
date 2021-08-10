@@ -10,7 +10,7 @@ use crate::collections::{H3CellMap, H3CellSet, ThreadPartitionedMap};
 use crate::error::Error;
 use crate::geo_types::Polygon;
 use crate::h3ron::{Index, ToLinkedPolygons};
-use crate::WithH3Resolution;
+use crate::H3Resolution;
 
 #[derive(Serialize)]
 pub struct GraphStats {
@@ -20,13 +20,13 @@ pub struct GraphStats {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct H3Graph<T: Send + Sync> {
+pub struct H3EdgeGraph<T: Send + Sync> {
     // flexbuffers can only handle maps with  string keys
     pub edges: ThreadPartitionedMap<H3Edge, T>,
     pub h3_resolution: u8,
 }
 
-impl<T> H3Graph<T>
+impl<T> H3EdgeGraph<T>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Sync,
 {
@@ -101,7 +101,7 @@ where
         Ok(())
     }
 
-    pub fn try_add(&mut self, mut other: H3Graph<T>) -> Result<(), Error> {
+    pub fn try_add(&mut self, mut other: H3EdgeGraph<T>) -> Result<(), Error> {
         if self.h3_resolution != other.h3_resolution {
             return Err(Error::MixedH3Resolutions(
                 self.h3_resolution,
@@ -186,7 +186,7 @@ where
     }
 }
 
-impl<T> WithH3Resolution for H3Graph<T>
+impl<T> H3Resolution for H3EdgeGraph<T>
 where
     T: Send + Sync,
 {
@@ -253,16 +253,16 @@ fn edge_weight_selector<T: PartialOrd + Copy>(old: &T, new: T) -> T {
 /// change the resolution of a graph to a lower resolution
 ///
 /// the `weight_selector_fn` decides which weight is assigned to a downsampled edge
-/// by selecting a weight from all edges between full-resolution childcells.
+/// by selecting a weight from all full-resolution edges crossing the new cells boundary.
 ///
 /// This has the potential to change the graphs topology as multiple edges get condensed into one.
 /// So for example routing results may differ in parts, but the computation time will be reduced by
 /// the reduced number of nodes and edges.
 pub fn downsample_graph<T, F>(
-    graph: &H3Graph<T>,
+    graph: &H3EdgeGraph<T>,
     target_h3_resolution: u8,
     weight_selector_fn: F,
-) -> Result<H3Graph<T>, Error>
+) -> Result<H3EdgeGraph<T>, Error>
 where
     T: Sync + Send + Copy,
     F: Fn(T, T) -> T + Sync + Send,
@@ -309,17 +309,17 @@ where
         *old = weight_selector_fn(*old, new)
     });
 
-    Ok(H3Graph {
+    Ok(H3EdgeGraph {
         edges: downsampled_edges,
         h3_resolution: target_h3_resolution,
     })
 }
 
-pub trait GraphBuilder<T>
+pub trait H3EdgeGraphBuilder<T>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Sync,
 {
-    fn build_graph(self) -> Result<H3Graph<T>, Error>;
+    fn build_graph(self) -> Result<H3EdgeGraph<T>, Error>;
 }
 
 #[cfg(test)]
@@ -329,7 +329,7 @@ mod tests {
     use geo_types::{Coordinate, LineString};
     use h3ron::H3Cell;
 
-    use crate::graph::{downsample_graph, H3Graph, NodeType};
+    use crate::graph::{downsample_graph, H3EdgeGraph, NodeType};
 
     #[test]
     fn test_downsample() {
@@ -344,17 +344,13 @@ mod tests {
         .unwrap();
         assert!(cells.len() > 100);
 
-        let mut graph = H3Graph::new(full_h3_res);
+        let mut graph = H3EdgeGraph::new(full_h3_res);
         for w in cells.windows(2) {
             graph.add_edge_using_cells(w[0], w[1], 20).unwrap();
         }
         assert!(graph.num_edges() > 50);
-        let downsampled_graph = downsample_graph(
-            &graph,
-            full_h3_res.saturating_sub(3),
-            |weight_a, weight_b| min(weight_a, weight_b),
-        )
-        .unwrap();
+        let downsampled_graph =
+            downsample_graph(&graph, full_h3_res.saturating_sub(3), min).unwrap();
         assert!(downsampled_graph.num_edges() > 0);
         assert!(downsampled_graph.num_edges() < 20);
     }
@@ -409,7 +405,7 @@ mod tests {
             .map(|edge| (edge, edge.destination_index_unchecked()))
             .collect();
 
-        let mut graph = H3Graph::new(res);
+        let mut graph = H3EdgeGraph::new(res);
         graph.add_edge(edges[0].0, 1).unwrap();
         graph.add_edge(edges[1].0, 1).unwrap();
 

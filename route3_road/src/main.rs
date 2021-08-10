@@ -10,8 +10,8 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
 use mimalloc::MiMalloc;
 
-use route3_core::formats::osm::OsmPbfGraphBuilder;
-use route3_core::graph::{GraphBuilder, H3Graph};
+use route3_core::formats::osm::OsmPbfH3EdgeGraphBuilder;
+use route3_core::graph::{H3EdgeGraph, H3EdgeGraphBuilder};
 use route3_core::io::gdal::OgrWrite;
 
 use crate::io::{arrow_load_graph, arrow_save_graph};
@@ -120,7 +120,7 @@ fn main() -> Result<()> {
         ("graph", Some(graph_sc_matches)) => match graph_sc_matches.subcommand() {
             ("stats", Some(sc_matches)) => {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-                let graph: H3Graph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
+                let graph: H3EdgeGraph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
                 println!("{}", toml::to_string(&graph.stats())?);
             }
             ("to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
@@ -140,7 +140,7 @@ fn main() -> Result<()> {
 
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3Graph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
+    let graph: H3EdgeGraph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
     graph.ogr_write(
         sc_matches.value_of("driver").unwrap(),
         sc_matches.value_of("OUTPUT").unwrap(),
@@ -151,7 +151,7 @@ fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3Graph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
+    let graph: H3EdgeGraph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
 
     let mut outfile = File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?;
     let multi_poly = graph.covered_area()?;
@@ -173,7 +173,7 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
     let h3_resolution: u8 = sc_matches.value_of("h3_resolution").unwrap().parse()?;
     let graph_output = sc_matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
 
-    let mut builder = OsmPbfGraphBuilder::new(h3_resolution, way_properties);
+    let mut builder = OsmPbfH3EdgeGraphBuilder::new(h3_resolution, way_properties);
     for pbf_input in sc_matches.values_of("OSM-PBF").unwrap() {
         builder.read_pbf(Path::new(&pbf_input))?;
     }

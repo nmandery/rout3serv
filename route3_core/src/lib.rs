@@ -24,6 +24,6 @@ pub mod graph;
 pub mod io;
 pub mod routing;
 
-pub trait WithH3Resolution {
+pub trait H3Resolution {
     fn h3_resolution(&self) -> u8;
 }

@@ -16,10 +16,10 @@ use tonic::{Request, Response, Status};
 use route3_core::algo::differential_shortest_path::DifferentialShortestPath;
 use route3_core::algo::path::Path;
 use route3_core::collections::{H3CellMap, H3CellSet};
-use route3_core::graph::{downsample_graph, H3Graph};
+use route3_core::graph::{downsample_graph, H3EdgeGraph};
 use route3_core::h3ron::H3Cell;
-use route3_core::routing::RoutingGraph;
-use route3_core::WithH3Resolution;
+use route3_core::routing::RoutingH3EdgeGraph;
+use route3_core::H3Resolution;
 
 use crate::io::s3::{FoundOption, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{arrow_load_graph, recordbatch_array};
@@ -41,17 +41,17 @@ type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
 struct ServerImpl {
     config: ServerConfig,
     s3_client: Arc<S3Client>,
-    routing_graph: Arc<RoutingGraph<Weight>>,
+    routing_graph: Arc<RoutingH3EdgeGraph<Weight>>,
 
     /// downsampled routing graph
-    ds_routing_graph: Arc<RoutingGraph<Weight>>,
+    ds_routing_graph: Arc<RoutingH3EdgeGraph<Weight>>,
 }
 
 impl ServerImpl {
     pub async fn create(config: ServerConfig) -> Result<Self> {
         let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
 
-        let graph: H3Graph<Weight> = match s3_client
+        let graph: H3EdgeGraph<Weight> = match s3_client
             .get_object_bytes(config.graph.bucket.clone(), config.graph.key.clone())
             .await?
         {

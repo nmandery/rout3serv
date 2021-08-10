@@ -11,7 +11,7 @@ use crate::collections::H3CellSet;
 use crate::error::Error;
 use crate::h3ron::iter::change_cell_resolution;
 use crate::h3ron::{H3Cell, H3Edge, Index};
-use crate::WithH3Resolution;
+use crate::H3Resolution;
 
 #[derive(Serialize, Deserialize)]
 pub struct DifferentialShortestPath<O> {
@@ -43,7 +43,7 @@ where
     T: PartialEq + Ord + Send + Copy + Sync,
     I: IntoIterator,
     I::Item: Borrow<H3Cell>,
-    G: ShortestPath<T> + WithH3Resolution,
+    G: ShortestPath<T> + H3Resolution,
 {
     differential_shortest_path_map(
         graph,
@@ -67,7 +67,7 @@ where
     T: PartialEq + Ord + Send + Copy + Sync,
     I: IntoIterator,
     I::Item: Borrow<H3Cell>,
-    G: ShortestPath<T> + WithH3Resolution,
+    G: ShortestPath<T> + H3Resolution,
     F: Fn(Path<T>) -> O + Send + Sync + Clone,
     O: Send + Ord + Clone + Sync,
 {

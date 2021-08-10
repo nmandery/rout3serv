@@ -12,7 +12,7 @@ use arrow::ipc::writer::FileWriter;
 use arrow::record_batch::RecordBatch;
 use eyre::{Report, Result};
 
-use route3_core::graph::H3Graph;
+use route3_core::graph::H3EdgeGraph;
 use route3_core::h3ron::{H3Edge, Index, H3_MAX_RESOLUTION};
 
 use crate::types::Weight;
@@ -51,7 +51,7 @@ static ARROW_GRAPH_FIELD_EDGE: &str = "h3edge";
 static ARROW_GRAPH_FIELD_WEIGHT: &str = "weight";
 static ARROW_GRAPH_MD_RESOLUTION: &str = "h3_resolution";
 
-pub fn arrow_save_graph<W>(graph: &H3Graph<Weight>, writer: W) -> Result<()>
+pub fn arrow_save_graph<W>(graph: &H3EdgeGraph<Weight>, writer: W) -> Result<()>
 where
     W: Write,
 {
@@ -90,13 +90,13 @@ where
 }
 
 #[allow(dead_code)]
-pub fn arrow_save_graph_bytes(graph: &H3Graph<Weight>) -> Result<Vec<u8>> {
+pub fn arrow_save_graph_bytes(graph: &H3EdgeGraph<Weight>) -> Result<Vec<u8>> {
     let mut buf: Vec<u8> = vec![];
     arrow_save_graph(graph, &mut buf)?;
     Ok(buf)
 }
 
-pub fn arrow_load_graph<R>(reader: R) -> Result<H3Graph<Weight>>
+pub fn arrow_load_graph<R>(reader: R) -> Result<H3EdgeGraph<Weight>>
 where
     R: Read + Seek,
 {
@@ -125,7 +125,7 @@ where
         )));
     };
 
-    let mut graph = H3Graph::new(h3_resolution);
+    let mut graph = H3EdgeGraph::new(h3_resolution);
     for recordbatch_result in filereader {
         let recordbatch = recordbatch_result?;
         let edges = recordbatch_array::<UInt64Array>(&recordbatch, ARROW_GRAPH_FIELD_EDGE)?;

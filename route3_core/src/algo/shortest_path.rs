@@ -11,8 +11,8 @@ use crate::collections::{H3CellMap, H3CellSet, HashMap};
 use crate::error::Error;
 use crate::h3ron::iter::change_cell_resolution;
 use crate::h3ron::H3Cell;
-use crate::routing::RoutingGraph;
-use crate::WithH3Resolution;
+use crate::routing::RoutingH3EdgeGraph;
+use crate::H3Resolution;
 
 #[derive(Clone, Debug)]
 pub struct ManyToManyOptions {
@@ -79,7 +79,7 @@ pub trait ShortestPath<T: Ord + Send + Clone> {
         O: Send + Ord + Clone;
 }
 
-impl<T> ShortestPath<T> for RoutingGraph<T>
+impl<T> ShortestPath<T> for RoutingH3EdgeGraph<T>
 where
     T: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync + Debug,
 {

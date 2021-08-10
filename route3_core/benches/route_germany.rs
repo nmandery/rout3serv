@@ -6,14 +6,14 @@ use ordered_float::OrderedFloat;
 
 use route3_core::algo::shortest_path::{ManyToManyOptions, ShortestPath};
 use route3_core::geo_types::Coordinate;
-use route3_core::graph::H3Graph;
+use route3_core::graph::H3EdgeGraph;
 use route3_core::h3ron::H3Cell;
 use route3_core::io::load_graph;
-use route3_core::routing::RoutingGraph;
-use route3_core::WithH3Resolution;
+use route3_core::routing::RoutingH3EdgeGraph;
+use route3_core::H3Resolution;
 
-fn load_bench_graph() -> RoutingGraph<OrderedFloat<f64>> {
-    let graph: H3Graph<OrderedFloat<f64>> = load_graph(
+fn load_bench_graph() -> RoutingH3EdgeGraph<OrderedFloat<f64>> {
+    let graph: H3EdgeGraph<OrderedFloat<f64>> = load_graph(
         File::open(format!(
             "{}/../testdata/graph-germany_r7_f64.bincode",
             env!("CARGO_MANIFEST_DIR")
@@ -21,10 +21,10 @@ fn load_bench_graph() -> RoutingGraph<OrderedFloat<f64>> {
         .unwrap(),
     )
     .unwrap();
-    RoutingGraph::try_from(graph).unwrap()
+    RoutingH3EdgeGraph::try_from(graph).unwrap()
 }
 
-fn route_across_germany(routing_graph: &RoutingGraph<OrderedFloat<f64>>) {
+fn route_across_germany(routing_graph: &RoutingH3EdgeGraph<OrderedFloat<f64>>) {
     let origin_cell = H3Cell::from_coordinate(
         &Coordinate::from((9.834909439086914, 47.68708804564653)), // Wangen im Allgäu
         routing_graph.h3_resolution(),
