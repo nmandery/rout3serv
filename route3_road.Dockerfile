@@ -14,6 +14,8 @@ RUN cd /build && \
     PATH=$PATH:$HOME/.cargo/bin cargo install --path . --root /usr/local
 
 FROM basesystem
+# "0" -> let rayon determinate how many threads to use. Defaults to one per CPU core
+ENV RAYON_NUM_THREADS="0"
 ENV RUST_BACKTRACE=1
 ENV RUST_LOG="route3_road=info,route3_core=info"
 COPY --from=builder /usr/local/bin/route3_road /usr/bin/
