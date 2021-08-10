@@ -23,9 +23,9 @@ ahash = "0.7"
 num_cpus = "1"
 
 [dependencies.h3ron]
-# version = "0.11" # awaiting 0.12
-git = "https://github.com/nmandery/h3ron.git"
-rev = "3f0c2ba46abb47127a5463a122f589203d83a41a"
+version = "0.12"
+#git = "https://github.com/nmandery/h3ron.git"
+#rev = "3f0c2ba46abb47127a5463a122f589203d83a41a"
 
 [dependencies.ordered-float]
 version = "2.6"
