@@ -12,8 +12,8 @@ use arrow::ipc::writer::FileWriter;
 use arrow::record_batch::RecordBatch;
 use eyre::{Report, Result};
 
-use route3_core::graph::H3EdgeGraph;
-use route3_core::h3ron::{H3Edge, Index, H3_MAX_RESOLUTION};
+use h3ron::{H3Edge, Index, H3_MAX_RESOLUTION};
+use h3ron_graph::graph::H3EdgeGraph;
 
 use crate::types::Weight;
 

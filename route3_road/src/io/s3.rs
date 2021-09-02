@@ -21,8 +21,8 @@ use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
 
-use route3_core::h3ron::iter::change_cell_resolution;
-use route3_core::h3ron::H3Cell;
+use h3ron::iter::change_cell_resolution;
+use h3ron::H3Cell;
 
 /// a minimal option type to indicate if something has been found or not
 pub enum FoundOption<T> {

@@ -7,9 +7,9 @@ use arrow::record_batch::RecordBatch;
 use geo::algorithm::centroid::Centroid;
 use tonic::Status;
 
-use route3_core::gdal::vector::Geometry;
-use route3_core::geo_types::Geometry as GTGeometry;
-use route3_core::h3ron::{H3Cell, ToH3Cells};
+use gdal::vector::Geometry;
+use geo_types::Geometry as GTGeometry;
+use h3ron::{H3Cell, ToH3Cells};
 
 use crate::io::recordbatch_to_bytes;
 

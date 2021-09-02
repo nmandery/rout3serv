@@ -10,9 +10,9 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
 use mimalloc::MiMalloc;
 
-use route3_core::formats::osm::OsmPbfH3EdgeGraphBuilder;
-use route3_core::graph::{H3EdgeGraph, H3EdgeGraphBuilder};
-use route3_core::io::gdal::OgrWrite;
+use h3ron_graph::formats::osm::OsmPbfH3EdgeGraphBuilder;
+use h3ron_graph::graph::{H3EdgeGraph, H3EdgeGraphBuilder};
+use h3ron_graph::io::gdal::OgrWrite;
 
 use crate::io::{arrow_load_graph, arrow_save_graph};
 use crate::osm::way_properties;
@@ -22,6 +22,7 @@ use crate::types::Weight;
 static GLOBAL: MiMalloc = MiMalloc;
 
 mod build_info;
+mod gdal_util;
 mod io;
 mod osm;
 mod server;

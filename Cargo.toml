@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "route3_core",
     "route3_road",
 ]
 

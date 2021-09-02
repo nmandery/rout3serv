@@ -6,20 +6,20 @@ use std::sync::Arc;
 use arrow::array::{Float32Array, UInt64Array};
 use arrow::record_batch::RecordBatch;
 use eyre::{Report, Result};
+use h3ron::collections::{H3CellMap, H3CellSet};
+use h3ron::io::{deserialize_from, serialize_into};
+use h3ron::H3Cell;
+use h3ron::HasH3Resolution;
+use h3ron_graph::algo::differential_shortest_path::DifferentialShortestPath;
+use h3ron_graph::algo::path::Path;
+use h3ron_graph::graph::{downsample_graph, H3EdgeGraph};
+use h3ron_graph::routing::RoutingH3EdgeGraph;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
-
-use route3_core::algo::differential_shortest_path::DifferentialShortestPath;
-use route3_core::algo::path::Path;
-use route3_core::collections::{H3CellMap, H3CellSet};
-use route3_core::graph::{downsample_graph, H3EdgeGraph};
-use route3_core::h3ron::H3Cell;
-use route3_core::routing::RoutingH3EdgeGraph;
-use route3_core::H3Resolution;
 
 use crate::io::s3::{FoundOption, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
 use crate::io::{arrow_load_graph, recordbatch_array};
@@ -154,7 +154,8 @@ impl ServerImpl {
         &self,
         output: &O,
     ) -> std::result::Result<(), Status> {
-        let serialized = bincode::serialize(output).map_err(|e| {
+        let mut serialized: Vec<u8> = Default::default();
+        serialize_into(&mut serialized, output, true).map_err(|e| {
             log::error!("serializing output failed: {:?}", e);
             Status::internal("serializing output failed")
         })?;
@@ -186,7 +187,7 @@ impl ServerImpl {
                 Status::internal(format!("retrieving output with key = {} failed", key))
             })? {
             FoundOption::Found(bytes) => {
-                let output: O = bincode::deserialize(&bytes).map_err(|e| {
+                let output: O = deserialize_from(Cursor::new(&bytes)).map_err(|e| {
                     log::error!("deserializing output with key = {} failed: {:?}", key, e);
                     Status::internal(format!("deserializing output with key = {} failed", key))
                 })?;

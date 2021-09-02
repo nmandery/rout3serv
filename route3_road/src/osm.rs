@@ -1,5 +1,5 @@
-use route3_core::formats::osm::osmpbfreader::Tags;
-use route3_core::formats::osm::EdgeProperties;
+use h3ron_graph::formats::osm::osmpbfreader::Tags;
+use h3ron_graph::formats::osm::EdgeProperties;
 
 use crate::types::Weight;
 

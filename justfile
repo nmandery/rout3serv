@@ -13,8 +13,5 @@ extract-sample-data:
     osmium tags-filter data/germany-latest.osm.pbf wnr/amenity=hospital -o data/hospital.osm.pbf --progress --overwrite
     osmium export -f geojson -o data/hospital.geojson -c datasources/osmium.hospital.json --progress --overwrite data/hospital.osm.pbf
 
-generate-testdata:
-     cargo run --release --bin route3_road -- graph from-osm-pbf -r 7 testdata/graph-germany_r7_f64.bincode data/germany-latest.osm.pbf
-
 build-docker:
     sudo docker build -f route3_road.Dockerfile -t nmandery/route3_road:latest --pull .

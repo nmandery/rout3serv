@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 backoff = { version = "0.3", features = ["tokio_1", "futures", "tokio"] }
-bincode = "1.3"
 bytesize = "1"
 clap = "^2.33"
 env_logger = "0.9"
@@ -24,6 +23,7 @@ tonic = "0.5"
 wkb = "0.7"
 tokio-stream = "0.1"
 itertools = "0.10"
+geo-types = "0.7"
 
 [dependencies.arrow]
 version = "5.1"
@@ -37,9 +37,15 @@ version = "1.0"
 version = "0.1"
 default_features = false
 
-[dependencies.route3_core]
-path = "../route3_core"
-features = ["with-gdal", "osm"]
+[dependencies.h3ron]
+git = "https://github.com/nmandery/h3ron.git"
+rev = "651daf536bca6c1c1320f7a42c4066d598c8c9f1"
+features = ["io", "use-rayon"]
+
+[dependencies.h3ron-graph]
+git = "https://github.com/nmandery/h3ron.git"
+rev = "651daf536bca6c1c1320f7a42c4066d598c8c9f1"
+features = ["use-gdal", "osm"]
 
 [dependencies.ordered-float]
 version = "2.7"
@@ -74,6 +80,10 @@ features = ["client"]
 
 [dependencies.native-tls]
 version = "0.2"
+
+[dependencies.gdal]
+version = "0.9.0"
+features = ["bindgen"]
 
 [build-dependencies]
 tonic-build = "0.5"

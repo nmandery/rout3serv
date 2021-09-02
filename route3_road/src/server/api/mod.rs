@@ -1,10 +1,10 @@
 use tonic::Status;
 
-use route3_core::algo::path::Path;
-use route3_core::collections::H3CellSet;
-use route3_core::gdal_util::buffer_meters;
-use route3_core::geo_types::Coordinate;
-use route3_core::h3ron::{H3Cell, Index};
+use crate::gdal_util::buffer_meters;
+use geo_types::Coordinate;
+use h3ron::collections::H3CellSet;
+use h3ron::{H3Cell, Index};
+use h3ron_graph::algo::path::Path;
 
 use crate::server::api::route3_road::{DisturbanceOfPopulationMovementRequest, RouteWkb};
 use crate::server::population_movement;
