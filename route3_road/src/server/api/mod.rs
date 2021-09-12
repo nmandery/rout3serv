@@ -4,7 +4,7 @@ use crate::gdal_util::buffer_meters;
 use geo_types::Coordinate;
 use h3ron::collections::H3CellSet;
 use h3ron::{H3Cell, Index};
-use h3ron_graph::algo::path::Path;
+use h3ron_graph::algorithm::path::Path;
 
 use crate::server::api::route3_road::{DisturbanceOfPopulationMovementRequest, RouteWkb};
 use crate::server::population_movement;

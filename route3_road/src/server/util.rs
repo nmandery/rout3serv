@@ -28,10 +28,13 @@ pub fn gdal_geom_to_h3(
         log::error!("Converting GDAL geometry to geo-types failed: {:?}", e);
         Status::internal("unsupported geometry")
     })?;
-    let mut cells = gt_geom.to_h3_cells(h3_resolution).map_err(|e| {
-        log::error!("could not convert to h3: {:?}", e);
-        Status::internal("could not convert to h3")
-    })?;
+    let mut cells: Vec<_> = gt_geom
+        .to_h3_cells(h3_resolution)
+        .map_err(|e| {
+            log::error!("could not convert to h3: {:?}", e);
+            Status::internal("could not convert to h3")
+        })?
+        .into();
 
     if include_centroid {
         // add centroid in case of small geometries

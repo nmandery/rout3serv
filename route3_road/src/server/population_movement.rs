@@ -6,11 +6,11 @@ use arrow::record_batch::RecordBatch;
 use eyre::Result;
 use h3ron::collections::{H3CellMap, H3CellSet};
 use h3ron::{H3Cell, Index};
-use h3ron_graph::algo::differential_shortest_path::{
+use h3ron_graph::algorithm::differential_shortest_path::{
     differential_shortest_path, DifferentialShortestPath,
 };
-use h3ron_graph::algo::path::Path;
-use h3ron_graph::algo::shortest_path::ManyToManyOptions;
+use h3ron_graph::algorithm::path::Path;
+use h3ron_graph::algorithm::shortest_path::{ManyToManyOptions, ShortestPathOptions};
 use h3ron_graph::routing::RoutingH3EdgeGraph;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -89,10 +89,12 @@ pub fn calculate(
         &origin_cells,
         &input.destinations,
         downsampled_routing_graph,
-        ManyToManyOptions {
-            num_destinations_to_reach: input.num_destinations_to_reach,
+        &ShortestPathOptions {
             exclude_cells: Some(input.disturbance.clone()),
             num_gap_cells_to_graph: input.num_gap_cells_to_graph,
+        },
+        &ManyToManyOptions {
+            num_destinations_to_reach: input.num_destinations_to_reach,
         },
     )?;
 
