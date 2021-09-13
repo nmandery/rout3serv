@@ -12,6 +12,7 @@ use geo_types::Geometry as GTGeometry;
 use h3ron::{H3Cell, ToH3Cells};
 
 use crate::io::recordbatch_to_bytes;
+use h3ron::collections::indexvec::IndexVec;
 
 /// read binary WKB into a gdal `Geometry`
 pub fn read_wkb_to_gdal(wkb_bytes: &[u8]) -> std::result::Result<Geometry, Status> {
@@ -23,18 +24,15 @@ pub fn gdal_geom_to_h3(
     geom: &Geometry,
     h3_resolution: u8,
     include_centroid: bool,
-) -> std::result::Result<Vec<H3Cell>, Status> {
+) -> std::result::Result<IndexVec<H3Cell>, Status> {
     let gt_geom: GTGeometry<f64> = geom.clone().try_into().map_err(|e| {
         log::error!("Converting GDAL geometry to geo-types failed: {:?}", e);
         Status::internal("unsupported geometry")
     })?;
-    let mut cells: Vec<_> = gt_geom
-        .to_h3_cells(h3_resolution)
-        .map_err(|e| {
-            log::error!("could not convert to h3: {:?}", e);
-            Status::internal("could not convert to h3")
-        })?
-        .into();
+    let mut cells = gt_geom.to_h3_cells(h3_resolution).map_err(|e| {
+        log::error!("could not convert to h3: {:?}", e);
+        Status::internal("could not convert to h3")
+    })?;
 
     if include_centroid {
         // add centroid in case of small geometries

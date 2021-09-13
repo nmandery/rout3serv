@@ -40,7 +40,7 @@ impl DisturbanceOfPopulationMovementRequest {
     ) -> std::result::Result<(H3CellSet, Vec<H3Cell>), Status> {
         let disturbance_geom = read_wkb_to_gdal(&self.disturbance_wkb_geometry)?;
         let disturbed_cells: H3CellSet = gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
-            .drain(..)
+            .drain()
             .collect();
 
         let buffered_cells: Vec<_> = gdal_geom_to_h3(
@@ -50,7 +50,9 @@ impl DisturbanceOfPopulationMovementRequest {
             })?,
             h3_resolution,
             true,
-        )?;
+        )?
+        .drain()
+        .collect();
         Ok((disturbed_cells, buffered_cells))
     }
 
