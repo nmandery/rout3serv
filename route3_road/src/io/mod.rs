@@ -16,6 +16,7 @@ use h3ron::{H3Edge, Index, H3_MAX_RESOLUTION};
 use h3ron_graph::graph::H3EdgeGraph;
 
 use crate::types::Weight;
+use itertools::Itertools;
 
 pub mod s3;
 
@@ -68,17 +69,23 @@ where
         ],
         metadata,
     ));
-    let mut h3edges = UInt64Vec::with_capacity(graph.edges.len());
-    let mut weights = Float64Vec::with_capacity(graph.edges.len());
-    for (h3edge, weight) in graph.edges.iter() {
-        h3edges.push(Some(h3edge.h3index() as u64));
-        weights.push(Some(**weight));
+    let mut filewriter = FileWriter::try_new(&mut writer, &*schema)?;
+    let chunk_size = 10_000_000;
+    let edges_iter = &(graph.edges).iter().chunks(chunk_size);
+
+    for chunk in edges_iter {
+        let mut h3edges = UInt64Vec::with_capacity(chunk_size);
+        let mut weights = Float64Vec::with_capacity(chunk_size);
+        for (h3edge, weight) in chunk {
+            h3edges.push(Some(h3edge.h3index() as u64));
+            weights.push(Some(**weight));
+        }
+
+        let recordbatch =
+            RecordBatch::try_new(schema.clone(), vec![h3edges.into_arc(), weights.into_arc()])?;
+
+        filewriter.write(&recordbatch)?;
     }
-
-    let recordbatch = RecordBatch::try_new(schema, vec![h3edges.into_arc(), weights.into_arc()])?;
-
-    let mut filewriter = FileWriter::try_new(&mut writer, recordbatch.schema())?;
-    filewriter.write(&recordbatch)?;
     filewriter.finish()?;
     Ok(())
 }
