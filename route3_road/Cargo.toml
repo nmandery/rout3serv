@@ -30,7 +30,7 @@ version = "0.5.3"
 features = ["io_ipc"]
 
 [dependencies.bytes]
-version = "1.0"
+version = "1"
 
 [dependencies.mimalloc]
 version = "0.1"
@@ -55,7 +55,7 @@ version = "0.8"
 features = ["v4"]
 
 [dependencies.tokio]
-version = "1.9"
+version = "1.11"
 features = [
     "rt-multi-thread",
     "macros",
