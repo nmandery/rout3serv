@@ -5,11 +5,11 @@ use std::convert::TryFrom;
 use std::io::{Read, Seek, Write};
 use std::sync::Arc;
 
-use arrow::array::{Float64Array, UInt64Array};
-use arrow::datatypes::{DataType, Field, Schema};
-use arrow::ipc::reader::FileReader;
-use arrow::ipc::writer::FileWriter;
-use arrow::record_batch::RecordBatch;
+use arrow2::array::{Array, Float64Array, Float64Vec, UInt64Array, UInt64Vec};
+use arrow2::datatypes::{DataType, Field, Schema};
+use arrow2::io::ipc::read::{read_file_metadata, FileReader};
+use arrow2::io::ipc::write::FileWriter;
+use arrow2::record_batch::RecordBatch;
 use eyre::{Report, Result};
 
 use h3ron::{H3Edge, Index, H3_MAX_RESOLUTION};
@@ -51,7 +51,7 @@ static ARROW_GRAPH_FIELD_EDGE: &str = "h3edge";
 static ARROW_GRAPH_FIELD_WEIGHT: &str = "weight";
 static ARROW_GRAPH_MD_RESOLUTION: &str = "h3_resolution";
 
-pub fn arrow_save_graph<W>(graph: &H3EdgeGraph<Weight>, writer: W) -> Result<()>
+pub fn arrow_save_graph<W>(graph: &H3EdgeGraph<Weight>, mut writer: W) -> Result<()>
 where
     W: Write,
 {
@@ -61,29 +61,23 @@ where
         graph.h3_resolution.to_string(),
     );
 
-    let schema = Arc::new(Schema::new_with_metadata(
+    let schema = Arc::new(Schema::new_from(
         vec![
             Field::new(ARROW_GRAPH_FIELD_EDGE, DataType::UInt64, false),
             Field::new(ARROW_GRAPH_FIELD_WEIGHT, DataType::Float64, false),
         ],
         metadata,
     ));
-    let mut h3edges = Vec::with_capacity(graph.edges.len());
-    let mut weights = Vec::with_capacity(graph.edges.len());
+    let mut h3edges = UInt64Vec::with_capacity(graph.edges.len());
+    let mut weights = Float64Vec::with_capacity(graph.edges.len());
     for (h3edge, weight) in graph.edges.iter() {
-        h3edges.push(h3edge.h3index() as u64);
-        weights.push(**weight);
+        h3edges.push(Some(h3edge.h3index() as u64));
+        weights.push(Some(**weight));
     }
 
-    let recordbatch = RecordBatch::try_new(
-        schema,
-        vec![
-            Arc::new(UInt64Array::from(h3edges)),
-            Arc::new(Float64Array::from(weights)),
-        ],
-    )?;
+    let recordbatch = RecordBatch::try_new(schema, vec![h3edges.into_arc(), weights.into_arc()])?;
 
-    let mut filewriter = FileWriter::try_new(writer, &recordbatch.schema())?;
+    let mut filewriter = FileWriter::try_new(&mut writer, recordbatch.schema())?;
     filewriter.write(&recordbatch)?;
     filewriter.finish()?;
     Ok(())
@@ -96,11 +90,12 @@ pub fn arrow_save_graph_bytes(graph: &H3EdgeGraph<Weight>) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-pub fn arrow_load_graph<R>(reader: R) -> Result<H3EdgeGraph<Weight>>
+pub fn arrow_load_graph<R>(mut reader: R) -> Result<H3EdgeGraph<Weight>>
 where
     R: Read + Seek,
 {
-    let filereader = FileReader::try_new(reader)?;
+    let metadata = read_file_metadata(&mut reader)?;
+    let filereader = FileReader::new(&mut reader, metadata, None);
     let schema = filereader.schema();
     let h3_resolution = if let Some(h3res_string) = schema.metadata().get(ARROW_GRAPH_MD_RESOLUTION)
     {
@@ -133,7 +128,7 @@ where
         let mut validated_edges = Vec::with_capacity(edges.len());
         for option_tuple in edges.iter().zip(weights.iter()) {
             if let (Some(edge), Some(weight)) = option_tuple {
-                let h3edge = H3Edge::try_from(edge)?;
+                let h3edge = H3Edge::try_from(*edge)?;
                 if h3edge.resolution() != h3_resolution {
                     return Err(Report::msg(format!(
                         "Encountered h3edge with unexpected resolution {}. Expected was {}",
@@ -141,7 +136,7 @@ where
                         h3_resolution
                     )));
                 }
-                validated_edges.push((h3edge, Weight::from(weight)));
+                validated_edges.push((h3edge, Weight::from(*weight)));
             }
         }
         graph.edges.insert_many(validated_edges.drain(..))

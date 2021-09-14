@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use arrow::array::{Float64Array, UInt64Array};
-use arrow::datatypes::{DataType, Field, Schema};
-use arrow::record_batch::RecordBatch;
+use arrow2::array::{Float64Vec, UInt64Vec};
+use arrow2::datatypes::{DataType, Field, Schema};
+use arrow2::record_batch::RecordBatch;
 use eyre::Result;
 use h3ron::collections::{H3CellMap, H3CellSet};
 use h3ron::{H3Cell, Index};
@@ -146,30 +146,32 @@ pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
     let mut batches = vec![];
     let chunk_size = 2000_usize;
     for chunk in &output.differential_shortest_paths.iter().chunks(chunk_size) {
-        let mut cell_h3indexes = Vec::with_capacity(chunk_size);
-        let mut population = Vec::with_capacity(chunk_size);
-        let mut num_reached_without_disturbance = Vec::with_capacity(chunk_size);
-        let mut num_reached_with_disturbance = Vec::with_capacity(chunk_size);
-        let mut avg_cost_without_disturbance = Vec::with_capacity(chunk_size);
-        let mut avg_cost_with_disturbance = Vec::with_capacity(chunk_size);
-        let mut preferred_destination_without_disturbance = Vec::with_capacity(chunk_size);
-        let mut preferred_destination_with_disturbance = Vec::with_capacity(chunk_size);
+        let mut cell_h3indexes = UInt64Vec::with_capacity(chunk_size);
+        let mut population_at_origin = Float64Vec::with_capacity(chunk_size);
+        let mut num_reached_without_disturbance = UInt64Vec::with_capacity(chunk_size);
+        let mut num_reached_with_disturbance = UInt64Vec::with_capacity(chunk_size);
+        let mut avg_cost_without_disturbance = Float64Vec::with_capacity(chunk_size);
+        let mut avg_cost_with_disturbance = Float64Vec::with_capacity(chunk_size);
+        let mut preferred_destination_without_disturbance = UInt64Vec::with_capacity(chunk_size);
+        let mut preferred_destination_with_disturbance = UInt64Vec::with_capacity(chunk_size);
         for differential_shortest_path in chunk {
-            cell_h3indexes.push(differential_shortest_path.origin_cell.h3index() as u64);
-            population.push(
+            cell_h3indexes.push(Some(differential_shortest_path.origin_cell.h3index() as u64));
+            population_at_origin.push(
                 output
                     .population_at_origins
                     .get(&differential_shortest_path.origin_cell)
                     .cloned(),
             );
 
-            num_reached_without_disturbance
-                .push(differential_shortest_path.without_disturbance.len() as u64);
+            num_reached_without_disturbance.push(Some(
+                differential_shortest_path.without_disturbance.len() as u64,
+            ));
             avg_cost_without_disturbance
                 .push(avg_cost(&differential_shortest_path.without_disturbance));
 
-            num_reached_with_disturbance
-                .push(differential_shortest_path.with_disturbance.len() as u64);
+            num_reached_with_disturbance.push(Some(
+                differential_shortest_path.with_disturbance.len() as u64,
+            ));
             avg_cost_with_disturbance.push(avg_cost(&differential_shortest_path.with_disturbance));
 
             preferred_destination_without_disturbance.push(preferred_destination(
@@ -180,29 +182,33 @@ pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
             ));
         }
 
+        /*
         let h3index_origin_array = UInt64Array::from(cell_h3indexes);
         let population_origin_array = Float64Array::from(population);
         let num_reached_without_disturbance_array =
             UInt64Array::from(num_reached_without_disturbance);
-        let num_reached_with_disturbance_array = UInt64Array::from(num_reached_with_disturbance);
+        let num_reached_with_disturbance_array =
+            UInt64Array::from_slice(&num_reached_with_disturbance);
         let avg_cost_without_disturbance_array = Float64Array::from(avg_cost_without_disturbance);
         let avg_cost_with_disturbance_array = Float64Array::from(avg_cost_with_disturbance);
         let preferred_destination_without_disturbance_array =
-            UInt64Array::from(preferred_destination_without_disturbance);
+            UInt64Array::from(&preferred_destination_without_disturbance);
         let preferred_destination_with_disturbance_array =
             UInt64Array::from(preferred_destination_with_disturbance);
+
+         */
 
         let batch = RecordBatch::try_new(
             schema.clone(),
             vec![
-                Arc::new(h3index_origin_array),
-                Arc::new(preferred_destination_without_disturbance_array),
-                Arc::new(preferred_destination_with_disturbance_array),
-                Arc::new(population_origin_array),
-                Arc::new(num_reached_without_disturbance_array),
-                Arc::new(num_reached_with_disturbance_array),
-                Arc::new(avg_cost_without_disturbance_array),
-                Arc::new(avg_cost_with_disturbance_array),
+                cell_h3indexes.into_arc(),
+                preferred_destination_without_disturbance.into_arc(),
+                preferred_destination_with_disturbance.into_arc(),
+                population_at_origin.into_arc(),
+                num_reached_without_disturbance.into_arc(),
+                num_reached_with_disturbance.into_arc(),
+                avg_cost_without_disturbance.into_arc(),
+                avg_cost_with_disturbance.into_arc(),
             ],
         )?;
         batches.push(batch);

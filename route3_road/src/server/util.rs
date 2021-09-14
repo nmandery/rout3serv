@@ -3,7 +3,7 @@
 
 use std::convert::TryInto;
 
-use arrow::record_batch::RecordBatch;
+use arrow2::record_batch::RecordBatch;
 use geo::algorithm::centroid::Centroid;
 use tonic::Status;
 

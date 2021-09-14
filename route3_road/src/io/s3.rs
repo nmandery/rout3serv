@@ -5,8 +5,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrow::ipc::reader::FileReader;
-use arrow::record_batch::RecordBatch;
+use arrow2::io::ipc::read::{read_file_metadata, FileReader};
+use arrow2::record_batch::RecordBatch;
 use bytes::Bytes;
 use bytesize::ByteSize;
 use eyre::{Report, Result};
@@ -273,8 +273,9 @@ impl S3RecordBatchLoader {
                     .and_then(|object_bytes| {
                         let mut record_batches = vec![];
                         if let FoundOption::Found(bytes) = object_bytes {
-                            let cursor = Cursor::new(&bytes);
-                            for record_batch in FileReader::try_new(cursor)? {
+                            let mut cursor = Cursor::new(&bytes);
+                            let metadata = read_file_metadata(&mut cursor)?;
+                            for record_batch in FileReader::new(&mut cursor, metadata, None) {
                                 record_batches.push(record_batch?);
                             }
                         };

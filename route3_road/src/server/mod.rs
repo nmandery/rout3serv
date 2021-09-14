@@ -3,8 +3,8 @@ use std::convert::{TryFrom, TryInto};
 use std::io::Cursor;
 use std::sync::Arc;
 
-use arrow::array::{Float32Array, UInt64Array};
-use arrow::record_batch::RecordBatch;
+use arrow2::array::{Float32Array, UInt64Array};
+use arrow2::record_batch::RecordBatch;
 use eyre::{Report, Result};
 use h3ron::collections::{H3CellMap, H3CellSet};
 use h3ron::io::{deserialize_from, serialize_into};
@@ -122,9 +122,9 @@ impl ServerImpl {
             let cells_to_use: H3CellSet = cells.iter().cloned().collect();
             for (h3index_o, pop_o) in h3index_array.iter().zip(pop_array.iter()) {
                 if let (Some(h3index), Some(population_count)) = (h3index_o, pop_o) {
-                    if let Ok(cell) = H3Cell::try_from(h3index) {
+                    if let Ok(cell) = H3Cell::try_from(*h3index) {
                         if cells_to_use.contains(&cell) {
-                            population_cells.insert(cell, population_count);
+                            population_cells.insert(cell, *population_count);
                         }
                     } else {
                         log::warn!(

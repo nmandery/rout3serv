@@ -25,10 +25,9 @@ tokio-stream = "0.1"
 itertools = "0.10"
 geo-types = "0.7"
 
-[dependencies.arrow]
-version = "5.1"
-default_features = false
-features = ["ipc"]
+[dependencies.arrow2]
+version = "0.5.3"
+features = ["io_ipc"]
 
 [dependencies.bytes]
 version = "1.0"
