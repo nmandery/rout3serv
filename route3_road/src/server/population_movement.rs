@@ -10,7 +10,7 @@ use h3ron_graph::algorithm::differential_shortest_path::{
     differential_shortest_path, DifferentialShortestPath,
 };
 use h3ron_graph::algorithm::path::Path;
-use h3ron_graph::algorithm::shortest_path::{ManyToManyOptions, ShortestPathOptions};
+use h3ron_graph::algorithm::shortest_path::ShortestPathOptions;
 use h3ron_graph::routing::RoutingH3EdgeGraph;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -34,6 +34,20 @@ pub struct Input {
     pub num_gap_cells_to_graph: u32,
     pub downsampled_prerouting: bool,
     pub store_output: bool,
+}
+
+impl ShortestPathOptions<Weight> for Input {
+    fn exclude_cells(&self) -> Option<H3CellSet> {
+        Some(self.disturbance.clone())
+    }
+
+    fn num_gap_cells_to_graph(&self) -> u32 {
+        self.num_gap_cells_to_graph
+    }
+
+    fn num_destinations_to_reach(&self) -> Option<usize> {
+        self.num_destinations_to_reach
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -89,13 +103,7 @@ pub fn calculate(
         &origin_cells,
         &input.destinations,
         downsampled_routing_graph,
-        &ShortestPathOptions {
-            exclude_cells: Some(input.disturbance.clone()),
-            num_gap_cells_to_graph: input.num_gap_cells_to_graph,
-        },
-        &ManyToManyOptions {
-            num_destinations_to_reach: input.num_destinations_to_reach,
-        },
+        &input,
     )?;
 
     Ok(Output {
@@ -181,22 +189,6 @@ pub fn disturbance_statistics(output: &Output) -> Result<Vec<RecordBatch>> {
                 &differential_shortest_path.with_disturbance,
             ));
         }
-
-        /*
-        let h3index_origin_array = UInt64Array::from(cell_h3indexes);
-        let population_origin_array = Float64Array::from(population);
-        let num_reached_without_disturbance_array =
-            UInt64Array::from(num_reached_without_disturbance);
-        let num_reached_with_disturbance_array =
-            UInt64Array::from_slice(&num_reached_with_disturbance);
-        let avg_cost_without_disturbance_array = Float64Array::from(avg_cost_without_disturbance);
-        let avg_cost_with_disturbance_array = Float64Array::from(avg_cost_with_disturbance);
-        let preferred_destination_without_disturbance_array =
-            UInt64Array::from(&preferred_destination_without_disturbance);
-        let preferred_destination_with_disturbance_array =
-            UInt64Array::from(preferred_destination_with_disturbance);
-
-         */
 
         let batch = RecordBatch::try_new(
             schema.clone(),

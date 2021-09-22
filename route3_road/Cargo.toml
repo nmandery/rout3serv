@@ -38,12 +38,12 @@ default_features = false
 
 [dependencies.h3ron]
 git = "https://github.com/nmandery/h3ron.git"
-rev = "e2959cae981b297a3b2e28993f6a32d18f29789b"
+rev = "c61b6a24692adaca0bd82150744d03c34b931de9"
 features = ["io", "use-rayon"]
 
 [dependencies.h3ron-graph]
 git = "https://github.com/nmandery/h3ron.git"
-rev = "e2959cae981b297a3b2e28993f6a32d18f29789b"
+rev = "c61b6a24692adaca0bd82150744d03c34b931de9"
 features = ["use-gdal", "osm"]
 
 [dependencies.ordered-float]
