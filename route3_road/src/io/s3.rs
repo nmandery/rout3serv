@@ -1,28 +1,33 @@
 use std::collections::HashSet;
+use std::convert::TryFrom;
 use std::env;
 use std::io::Cursor;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use arrow2::array::{PrimitiveArray, UInt64Array};
 use arrow2::io::ipc::read::{read_file_metadata, FileReader};
 use arrow2::record_batch::RecordBatch;
+use arrow2::types::NativeType;
 use bytes::Bytes;
 use bytesize::ByteSize;
 use eyre::{Report, Result};
 use futures::TryStreamExt;
+use h3ron::collections::{H3CellMap, H3CellSet};
+use h3ron::iter::change_cell_resolution;
+use h3ron::H3Cell;
 use hyper::client::HttpConnector;
 use hyper_tls::HttpsConnector;
 use native_tls::TlsConnector;
 use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{ByteStream, HttpClient, Region, RusotoError};
-use rusoto_s3::{GetObjectRequest, PutObjectRequest, S3};
+use rusoto_s3::{GetObjectRequest, ListObjectsRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
 
-use h3ron::iter::change_cell_resolution;
-use h3ron::H3Cell;
+use crate::io::recordbatch_array;
 
 /// a minimal option type to indicate if something has been found or not
 pub enum FoundOption<T> {
@@ -207,6 +212,38 @@ impl S3Client {
         .await?;
         Ok(ob)
     }
+
+    pub async fn list_object_keys(
+        &self,
+        bucket: String,
+        prefix: Option<String>,
+    ) -> Result<Vec<String>> {
+        let list_req = ListObjectsRequest {
+            bucket: bucket.clone(),
+            delimiter: None,
+            encoding_type: None,
+            expected_bucket_owner: None,
+            marker: None,
+            max_keys: Some(600),
+            prefix: prefix.clone(),
+            request_payer: None,
+        };
+        match self.s3.list_objects(list_req).await {
+            Ok(lo_output) => Ok(lo_output
+                .contents
+                .map(|mut objects| objects.drain(..).filter_map(|object| object.key).collect())
+                .unwrap_or_else(Vec::new)),
+            Err(e) => {
+                log::error!(
+                    "list_object_keys: bucket={}, key={} -> {}",
+                    bucket,
+                    prefix.unwrap_or_default(),
+                    e.to_string()
+                );
+                Err(e.into())
+            }
+        }
+    }
 }
 
 fn build_http_client(insecure: bool) -> Result<HttpClient> {
@@ -252,7 +289,7 @@ impl S3RecordBatchLoader {
 
     pub async fn load_h3_dataset<D: S3H3Dataset>(
         &self,
-        dataset: D,
+        dataset: &D,
         cells: &[H3Cell],
         data_h3_resolution: u8,
     ) -> Result<Vec<RecordBatch>> {
@@ -264,7 +301,7 @@ impl S3RecordBatchLoader {
 
         let mut task_results = futures::future::try_join_all(file_cells.iter().map(|cell| {
             let bucket_name = dataset.bucket_name();
-            let key = self.build_h3_key(&dataset, cell, data_h3_resolution);
+            let key = self.build_h3_key(dataset, cell, data_h3_resolution);
             let s3_client = self.s3_client.clone();
             task::spawn(async move {
                 s3_client
@@ -312,5 +349,40 @@ impl S3RecordBatchLoader {
                 cell.to_string(),
             )
             .to_string()
+    }
+
+    pub async fn load_h3_dataset_cellmap<D: S3H3Dataset, T: NativeType>(
+        &self,
+        dataset: &D,
+        cells: &[H3Cell],
+        data_h3_resolution: u8,
+        cell_column_name: &str,
+        value_column_name: &str,
+    ) -> Result<H3CellMap<T>> {
+        let ref_recordbatches = self
+            .load_h3_dataset(dataset, cells, data_h3_resolution)
+            .await?;
+
+        let mut cellmap = H3CellMap::default();
+        let cells_to_use: H3CellSet = cells.iter().cloned().collect();
+        for ref_recordbatch in ref_recordbatches.iter() {
+            let h3index_array =
+                recordbatch_array::<UInt64Array>(ref_recordbatch, cell_column_name)?;
+            let ds_array =
+                recordbatch_array::<PrimitiveArray<T>>(ref_recordbatch, value_column_name)?;
+
+            for (h3index_o, ds_value_o) in h3index_array.iter().zip(ds_array.iter()) {
+                if let (Some(h3index), Some(ds_value)) = (h3index_o, ds_value_o) {
+                    if let Ok(cell) = H3Cell::try_from(*h3index) {
+                        if cells_to_use.contains(&cell) {
+                            cellmap.insert(cell, *ds_value);
+                        }
+                    } else {
+                        log::warn!("encountered invalid h3 index in loaded data: {}", h3index);
+                    }
+                }
+            }
+        }
+        Ok(cellmap)
     }
 }

@@ -6,10 +6,10 @@ region = "us-east-1"
 access_key = "admin"
 secret_key = "password"
 
-[graph]
+[graph_store]
 bucket = "graph"
-key = "germany_r10.arrow"
-downsample_resolution_difference = 2
+prefix = ""
+cache_size = 4
 
 [population_dataset]
 bucket = "population"

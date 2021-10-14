@@ -1,53 +1,13 @@
 //! utility functions to use within the server context, most of them
 //! return a `tonic::Status` on error.
 
-use std::convert::TryInto;
-
 use arrow2::record_batch::RecordBatch;
-use geo::algorithm::centroid::Centroid;
-use tonic::Status;
-
-use gdal::vector::Geometry;
-use geo_types::Geometry as GTGeometry;
-use h3ron::{H3Cell, ToH3Cells};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+use tonic::{Response, Status};
 
 use crate::io::recordbatch_to_bytes;
-use h3ron::collections::indexvec::IndexVec;
-
-/// read binary WKB into a gdal `Geometry`
-pub fn read_wkb_to_gdal(wkb_bytes: &[u8]) -> std::result::Result<Geometry, Status> {
-    Geometry::from_wkb(wkb_bytes).map_err(|_e| Status::invalid_argument("Can not parse WKB"))
-}
-
-/// convert a gdal `Geometry` to `H3Cell`s.
-pub fn gdal_geom_to_h3(
-    geom: &Geometry,
-    h3_resolution: u8,
-    include_centroid: bool,
-) -> std::result::Result<IndexVec<H3Cell>, Status> {
-    let gt_geom: GTGeometry<f64> = geom.clone().try_into().map_err(|e| {
-        log::error!("Converting GDAL geometry to geo-types failed: {:?}", e);
-        Status::internal("unsupported geometry")
-    })?;
-    let mut cells = gt_geom.to_h3_cells(h3_resolution).map_err(|e| {
-        log::error!("could not convert to h3: {:?}", e);
-        Status::internal("could not convert to h3")
-    })?;
-
-    if include_centroid {
-        // add centroid in case of small geometries
-        if let Some(point) = gt_geom.centroid() {
-            if let Ok(cell) = H3Cell::from_coordinate(&point.0, h3_resolution) {
-                cells.push(cell);
-            }
-        }
-    }
-
-    // remove duplicates in case of multi* geometries
-    cells.sort_unstable();
-    cells.dedup();
-    Ok(cells)
-}
+use crate::server::api::generated::ArrowRecordBatch;
 
 /// wrapper around tokios `spawn_blocking` to directly
 /// return the `JoinHandle` as a tonic `Status`.
@@ -62,7 +22,8 @@ where
     })
 }
 
-pub fn recordbatch_to_bytes_status(recordbatch: &RecordBatch) -> Result<Vec<u8>, Status> {
+#[inline]
+fn recordbatch_to_bytes_status(recordbatch: &RecordBatch) -> Result<Vec<u8>, Status> {
     let recordbatch_bytes = recordbatch_to_bytes(recordbatch).map_err(|e| {
         log::error!("serializing recordbatch failed: {:?}", e);
         Status::internal("serializing recordbatch failed")
@@ -72,4 +33,28 @@ pub fn recordbatch_to_bytes_status(recordbatch: &RecordBatch) -> Result<Vec<u8>,
 
 pub trait StrId {
     fn id(&self) -> &str;
+}
+
+/// type for a stream of ArrowRecordBatches to a GRPC client
+/// TODO: should be in ::api
+pub type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
+
+/// stream [`ArrowRecordBatch`] instances to a client
+/// TODO: should be in ::api
+pub async fn respond_recordbatches_stream(
+    id: String,
+    mut recordbatches: Vec<RecordBatch>,
+) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
+    let (tx, rx) = mpsc::channel(5);
+    tokio::spawn(async move {
+        for recordbatch in recordbatches.drain(..) {
+            let serialization_result =
+                recordbatch_to_bytes_status(&recordbatch).map(|rb_bytes| ArrowRecordBatch {
+                    object_id: id.clone(),
+                    data: rb_bytes,
+                });
+            tx.send(serialization_result).await.unwrap();
+        }
+    });
+    Ok(Response::new(ReceiverStream::new(rx)))
 }

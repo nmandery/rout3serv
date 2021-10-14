@@ -11,13 +11,13 @@ use arrow2::io::ipc::read::{read_file_metadata, FileReader};
 use arrow2::io::ipc::write::FileWriter;
 use arrow2::record_batch::RecordBatch;
 use eyre::{Report, Result};
-
 use h3ron::{H3Edge, Index, H3_MAX_RESOLUTION};
 use h3ron_graph::graph::H3EdgeGraph;
-
-use crate::types::Weight;
 use itertools::Itertools;
 
+use crate::weight::Weight;
+
+pub mod graph_store;
 pub mod s3;
 
 /// get and downcast an array of a arrow recordbatch
@@ -52,6 +52,7 @@ static ARROW_GRAPH_FIELD_EDGE: &str = "h3edge";
 static ARROW_GRAPH_FIELD_WEIGHT: &str = "weight";
 static ARROW_GRAPH_MD_RESOLUTION: &str = "h3_resolution";
 
+#[allow(dead_code)]
 pub fn arrow_save_graph<W>(graph: &H3EdgeGraph<Weight>, mut writer: W) -> Result<()>
 where
     W: Write,
@@ -97,6 +98,7 @@ pub fn arrow_save_graph_bytes(graph: &H3EdgeGraph<Weight>) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
+#[allow(dead_code)]
 pub fn arrow_load_graph<R>(mut reader: R) -> Result<H3EdgeGraph<Weight>>
 where
     R: Read + Seek,

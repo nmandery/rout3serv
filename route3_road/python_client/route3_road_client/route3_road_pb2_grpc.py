@@ -24,20 +24,20 @@ class Route3RoadStub(object):
                 request_serializer=route3__road__pb2.Empty.SerializeToString,
                 response_deserializer=route3__road__pb2.GraphInfoResponse.FromString,
                 )
-        self.AnalyzeDisturbanceOfPopulationMovement = channel.unary_stream(
-                '/route3.road.Route3Road/AnalyzeDisturbanceOfPopulationMovement',
-                request_serializer=route3__road__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
+        self.DifferentialShortestPath = channel.unary_stream(
+                '/route3.road.Route3Road/DifferentialShortestPath',
+                request_serializer=route3__road__pb2.DifferentialShortestPathRequest.SerializeToString,
                 response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
                 )
-        self.GetDisturbanceOfPopulationMovement = channel.unary_stream(
-                '/route3.road.Route3Road/GetDisturbanceOfPopulationMovement',
+        self.GetDifferentialShortestPath = channel.unary_stream(
+                '/route3.road.Route3Road/GetDifferentialShortestPath',
                 request_serializer=route3__road__pb2.IdRef.SerializeToString,
                 response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
                 )
-        self.GetDisturbanceOfPopulationMovementRoutes = channel.unary_stream(
-                '/route3.road.Route3Road/GetDisturbanceOfPopulationMovementRoutes',
-                request_serializer=route3__road__pb2.DisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
-                response_deserializer=route3__road__pb2.DisturbanceOfPopulationMovementRoutes.FromString,
+        self.GetDifferentialShortestPathRoutes = channel.unary_stream(
+                '/route3.road.Route3Road/GetDifferentialShortestPathRoutes',
+                request_serializer=route3__road__pb2.DifferentialShortestPathRoutesRequest.SerializeToString,
+                response_deserializer=route3__road__pb2.DifferentialShortestPathRoutes.FromString,
                 )
 
 
@@ -57,21 +57,20 @@ class Route3RoadServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def AnalyzeDisturbanceOfPopulationMovement(self, request, context):
-        """Population movement ---------------------------------
+    def DifferentialShortestPath(self, request, context):
+        """* differential shortest path based on the population dataset 
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetDisturbanceOfPopulationMovement(self, request, context):
-        """get an already computed analysis 
-        """
+    def GetDifferentialShortestPath(self, request, context):
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetDisturbanceOfPopulationMovementRoutes(self, request, context):
+    def GetDifferentialShortestPathRoutes(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -90,20 +89,20 @@ def add_Route3RoadServicer_to_server(servicer, server):
                     request_deserializer=route3__road__pb2.Empty.FromString,
                     response_serializer=route3__road__pb2.GraphInfoResponse.SerializeToString,
             ),
-            'AnalyzeDisturbanceOfPopulationMovement': grpc.unary_stream_rpc_method_handler(
-                    servicer.AnalyzeDisturbanceOfPopulationMovement,
-                    request_deserializer=route3__road__pb2.DisturbanceOfPopulationMovementRequest.FromString,
+            'DifferentialShortestPath': grpc.unary_stream_rpc_method_handler(
+                    servicer.DifferentialShortestPath,
+                    request_deserializer=route3__road__pb2.DifferentialShortestPathRequest.FromString,
                     response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
             ),
-            'GetDisturbanceOfPopulationMovement': grpc.unary_stream_rpc_method_handler(
-                    servicer.GetDisturbanceOfPopulationMovement,
+            'GetDifferentialShortestPath': grpc.unary_stream_rpc_method_handler(
+                    servicer.GetDifferentialShortestPath,
                     request_deserializer=route3__road__pb2.IdRef.FromString,
                     response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
             ),
-            'GetDisturbanceOfPopulationMovementRoutes': grpc.unary_stream_rpc_method_handler(
-                    servicer.GetDisturbanceOfPopulationMovementRoutes,
-                    request_deserializer=route3__road__pb2.DisturbanceOfPopulationMovementRoutesRequest.FromString,
-                    response_serializer=route3__road__pb2.DisturbanceOfPopulationMovementRoutes.SerializeToString,
+            'GetDifferentialShortestPathRoutes': grpc.unary_stream_rpc_method_handler(
+                    servicer.GetDifferentialShortestPathRoutes,
+                    request_deserializer=route3__road__pb2.DifferentialShortestPathRoutesRequest.FromString,
+                    response_serializer=route3__road__pb2.DifferentialShortestPathRoutes.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -150,7 +149,7 @@ class Route3Road(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def AnalyzeDisturbanceOfPopulationMovement(request,
+    def DifferentialShortestPath(request,
             target,
             options=(),
             channel_credentials=None,
@@ -160,14 +159,14 @@ class Route3Road(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/AnalyzeDisturbanceOfPopulationMovement',
-            route3__road__pb2.DisturbanceOfPopulationMovementRequest.SerializeToString,
+        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/DifferentialShortestPath',
+            route3__road__pb2.DifferentialShortestPathRequest.SerializeToString,
             route3__road__pb2.ArrowRecordBatch.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GetDisturbanceOfPopulationMovement(request,
+    def GetDifferentialShortestPath(request,
             target,
             options=(),
             channel_credentials=None,
@@ -177,14 +176,14 @@ class Route3Road(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/GetDisturbanceOfPopulationMovement',
+        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/GetDifferentialShortestPath',
             route3__road__pb2.IdRef.SerializeToString,
             route3__road__pb2.ArrowRecordBatch.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GetDisturbanceOfPopulationMovementRoutes(request,
+    def GetDifferentialShortestPathRoutes(request,
             target,
             options=(),
             channel_credentials=None,
@@ -194,8 +193,8 @@ class Route3Road(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/GetDisturbanceOfPopulationMovementRoutes',
-            route3__road__pb2.DisturbanceOfPopulationMovementRoutesRequest.SerializeToString,
-            route3__road__pb2.DisturbanceOfPopulationMovementRoutes.FromString,
+        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/GetDifferentialShortestPathRoutes',
+            route3__road__pb2.DifferentialShortestPathRoutesRequest.SerializeToString,
+            route3__road__pb2.DifferentialShortestPathRoutes.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

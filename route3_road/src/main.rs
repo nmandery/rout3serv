@@ -1,32 +1,32 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
+use h3ron::io::{deserialize_from, serialize_into};
+use h3ron_graph::algorithm::covered_area::CoveredArea;
+use h3ron_graph::formats::osm::OsmPbfH3EdgeGraphBuilder;
+use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
+use h3ron_graph::io::gdal::OgrWrite;
 use mimalloc::MiMalloc;
 
-use h3ron_graph::formats::osm::OsmPbfH3EdgeGraphBuilder;
-use h3ron_graph::graph::{H3EdgeGraph, H3EdgeGraphBuilder};
-use h3ron_graph::io::gdal::OgrWrite;
-
-use crate::io::{arrow_load_graph, arrow_save_graph};
 use crate::osm::way_properties;
-use crate::types::Weight;
+use crate::weight::Weight;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
 mod build_info;
-mod gdal_util;
+mod config;
 mod io;
 mod osm;
 mod server;
-mod types;
+mod weight;
 
 fn main() -> Result<()> {
     env_logger::init_from_env(
@@ -121,8 +121,9 @@ fn main() -> Result<()> {
         ("graph", Some(graph_sc_matches)) => match graph_sc_matches.subcommand() {
             ("stats", Some(sc_matches)) => {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-                let graph: H3EdgeGraph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
-                println!("{}", toml::to_string(&graph.stats())?);
+                let prepared_graph: PreparedH3EdgeGraph<Weight> =
+                    deserialize_from(File::open(graph_filename)?)?;
+                println!("{}", toml::to_string(&prepared_graph.get_stats())?);
             }
             ("to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
             ("covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
@@ -141,7 +142,9 @@ fn main() -> Result<()> {
 
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3EdgeGraph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
+    let prepared_graph: PreparedH3EdgeGraph<Weight> =
+        deserialize_from(File::open(graph_filename)?)?;
+    let graph: H3EdgeGraph<Weight> = prepared_graph.into();
     graph.ogr_write(
         sc_matches.value_of("driver").unwrap(),
         sc_matches.value_of("OUTPUT").unwrap(),
@@ -152,10 +155,11 @@ fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3EdgeGraph<Weight> = arrow_load_graph(File::open(graph_filename)?)?;
+    let prepared_graph: PreparedH3EdgeGraph<Weight> =
+        deserialize_from(File::open(graph_filename)?)?;
 
     let mut outfile = File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?;
-    let multi_poly = graph.covered_area()?;
+    let multi_poly = prepared_graph.covered_area(2)?;
     let gj_geom = geojson::Geometry::try_from(&multi_poly)?;
     outfile.write_all(gj_geom.to_string().as_ref())?;
 
@@ -180,12 +184,16 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
     }
     let graph = builder.build_graph()?;
 
+    log::info!("Preparing graph");
+    let prepared_graph: PreparedH3EdgeGraph<_> = graph.try_into()?;
+
+    let stats = prepared_graph.get_stats();
     log::info!(
         "Created graph ({} nodes, {} edges)",
-        graph.num_nodes(),
-        graph.num_edges()
+        stats.num_nodes,
+        stats.num_edges
     );
     let mut out_file = File::create(graph_output)?;
-    arrow_save_graph(&graph, &mut out_file)?;
+    serialize_into(&mut out_file, &prepared_graph, true)?;
     Ok(())
 }

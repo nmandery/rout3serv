@@ -1,4 +1,4 @@
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 from typing import Optional, Iterable, Tuple
 
@@ -13,12 +13,13 @@ from shapely.geometry.base import BaseGeometry
 
 from . import route3_road_pb2
 from .route3_road_pb2_grpc import Route3RoadStub
+from .route3_road_pb2 import GraphHandle
 
 DEFAULT_PORT = 7088
 
 
 class DataFrameWithId:
-    dopm_id: str
+    object_id: str
     population_within_disturbance: float
     dataframe: pd.DataFrame
 
@@ -38,21 +39,26 @@ class Server:
     def version(self) -> route3_road_pb2.VersionResponse:
         return self.stub.Version(route3_road_pb2.Empty())
 
-    def graph_info(self) -> str:
+    def graph_info(self) -> route3_road_pb2.GraphInfoResponse:
         return self.stub.GraphInfo(route3_road_pb2.Empty())
 
-    def analyze_disturbance_of_population_movement(self, disturbance_geom: BaseGeometry, radius_meters: float,
-                                                   destination_points: Iterable[Point],
-                                                   num_destinations_to_reach: int = 3,
-                                                   num_gap_cells_to_graph: int = 1,
-                                                   downsampled_prerouting: bool = False,
-                                                   store_output: bool = True,
-                                                   ) -> Tuple[str, pd.DataFrame]:
-        req = route3_road_pb2.DisturbanceOfPopulationMovementRequest()
+    def differential_shortest_path(self, graph_handle: GraphHandle, disturbance_geom: BaseGeometry,
+                                   radius_meters: float,
+                                   destination_points: Iterable[Point],
+                                   num_destinations_to_reach: int = 3,
+                                   num_gap_cells_to_graph: int = 1,
+                                   downsampled_prerouting: bool = False,
+                                   store_output: bool = True,
+                                   ) -> Tuple[str, pd.DataFrame]:
+        shortest_path_options = route3_road_pb2.ShortestPathOptions()
+        shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
+        shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
+
+        req = route3_road_pb2.DifferentialShortestPathRequest()
+        req.graph_handle.MergeFrom(graph_handle)
+        req.options.MergeFrom(shortest_path_options)
         req.disturbance_wkb_geometry = shapely.wkb.dumps(disturbance_geom)
         req.radius_meters = radius_meters
-        req.num_destinations_to_reach = num_destinations_to_reach
-        req.num_gap_cells_to_graph = num_gap_cells_to_graph
         req.downsampled_prerouting = downsampled_prerouting
         req.store_output = store_output
 
@@ -61,22 +67,20 @@ class Server:
             pt.x = destination_point.x
             pt.y = destination_point.y
 
-        response = self.stub.AnalyzeDisturbanceOfPopulationMovement(req)
-        return _arrowrecordbatch_to_dataframe(response)
+        return _arrowrecordbatch_to_dataframe(self.stub.DifferentialShortestPath(req))
 
-    def get_disturbance_of_population_movement(self, dopm_id: str) -> Tuple[str, pd.DataFrame]:
+    def get_differential_shortest_path(self, object_id: str) -> Tuple[str, pd.DataFrame]:
         req = route3_road_pb2.IdRef()
-        req.id = dopm_id
-        response = self.stub.GetDisturbanceOfPopulationMovement(req)
-        return _arrowrecordbatch_to_dataframe(response)
+        req.object_id = object_id
+        return _arrowrecordbatch_to_dataframe(self.stub.GetDifferentialShortestPath(req))
 
-    def get_disturbance_of_population_movement_routes(self, dopm_id: str, cells: Iterable[int]) -> gpd.GeoDataFrame:
-        req = route3_road_pb2.DisturbanceOfPopulationMovementRoutesRequest()
-        req.dopm_id = dopm_id
+    def get_differential_shortest_path_routes(self, object_id: str, cells: Iterable[int]) -> gpd.GeoDataFrame:
+        req = route3_road_pb2.DifferentialShortestPathRoutesRequest()
+        req.object_id = object_id
         for cell in cells:
             req.cells.append(cell)
 
-        response = self.stub.GetDisturbanceOfPopulationMovementRoutes(req)
+        response = self.stub.GetDifferentialShortestPathRoutes(req)
 
         geoms = []
         h3index_origin = []
@@ -116,3 +120,10 @@ def _arrowrecordbatch_to_dataframe(response: route3_road_pb2.ArrowRecordBatch) -
     if len(batches) > 0:
         df = pa.Table.from_batches(batches).to_pandas()
     return object_id, df
+
+
+def make_graph_handle(name: str, h3_resolution: int) -> GraphHandle:
+    gh = GraphHandle()
+    gh.name = name
+    gh.h3_resolution = h3_resolution
+    return gh

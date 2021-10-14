@@ -17,10 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tonic_output_path = Path::new("src/server/api/route3.road.rs");
     if tonic_output_path.exists() {
-        rename(
-            tonic_output_path,
-            Path::new("src/server/api/route3_road.rs"),
-        )?;
+        rename(tonic_output_path, Path::new("src/server/api/generated.rs"))?;
     }
     Ok(())
 }

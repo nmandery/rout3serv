@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x11route3_road.proto\x12\x0broute3.road\"\x07\n\x05\x45mpty\"S\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0egit_commit_sha\x18\x02 \x01(\t\x12\x17\n\x0f\x62uild_timestamp\x18\x03 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"\x84\x02\n&DisturbanceOfPopulationMovementRequest\x12 \n\x18\x64isturbance_wkb_geometry\x18\x01 \x01(\x0c\x12\x15\n\rradius_meters\x18\x02 \x01(\x01\x12!\n\x19num_destinations_to_reach\x18\x03 \x01(\r\x12(\n\x0c\x64\x65stinations\x18\x04 \x03(\x0b\x32\x12.route3.road.Point\x12\x1e\n\x16num_gap_cells_to_graph\x18\x05 \x01(\r\x12\x1e\n\x16\x64ownsampled_prerouting\x18\x06 \x01(\x08\x12\x14\n\x0cstore_output\x18\x07 \x01(\x08\"\x13\n\x05IdRef\x12\n\n\x02id\x18\x01 \x01(\t\"N\n,DisturbanceOfPopulationMovementRoutesRequest\x12\x0f\n\x07\x64opm_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"3\n\x10\x41rrowRecordBatch\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x9a\x01\n%DisturbanceOfPopulationMovementRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.route3.road.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.route3.road.RouteWKB\"=\n\x11GraphInfoResponse\x12\x15\n\rh3_resolution\x18\x01 \x01(\r\x12\x11\n\tnum_edges\x18\x02 \x01(\x04*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\x8e\x04\n\nRoute3Road\x12=\n\x07Version\x12\x12.route3.road.Empty\x1a\x1c.route3.road.VersionResponse\"\x00\x12\x41\n\tGraphInfo\x12\x12.route3.road.Empty\x1a\x1e.route3.road.GraphInfoResponse\"\x00\x12\x80\x01\n&AnalyzeDisturbanceOfPopulationMovement\x12\x33.route3.road.DisturbanceOfPopulationMovementRequest\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12[\n\"GetDisturbanceOfPopulationMovement\x12\x12.route3.road.IdRef\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12\x9d\x01\n(GetDisturbanceOfPopulationMovementRoutes\x12\x39.route3.road.DisturbanceOfPopulationMovementRoutesRequest\x1a\x32.route3.road.DisturbanceOfPopulationMovementRoutes\"\x00\x30\x01\x62\x06proto3'
+  serialized_pb=b'\n\x11route3_road.proto\x12\x0broute3.road\"\x07\n\x05\x45mpty\"S\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0egit_commit_sha\x18\x02 \x01(\t\x12\x17\n\x0f\x62uild_timestamp\x18\x03 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"X\n\x13ShortestPathOptions\x12!\n\x19num_destinations_to_reach\x18\x04 \x01(\r\x12\x1e\n\x16num_gap_cells_to_graph\x18\x06 \x01(\r\"\x9d\x02\n\x1f\x44ifferentialShortestPathRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12 \n\x18\x64isturbance_wkb_geometry\x18\x02 \x01(\x0c\x12\x15\n\rradius_meters\x18\x03 \x01(\x01\x12\x31\n\x07options\x18\x04 \x01(\x0b\x32 .route3.road.ShortestPathOptions\x12(\n\x0c\x64\x65stinations\x18\x05 \x03(\x0b\x32\x12.route3.road.Point\x12\x1e\n\x16\x64ownsampled_prerouting\x18\x06 \x01(\x08\x12\x14\n\x0cstore_output\x18\x07 \x01(\x08\"\x1a\n\x05IdRef\x12\x11\n\tobject_id\x18\x01 \x01(\t\"I\n%DifferentialShortestPathRoutesRequest\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"3\n\x10\x41rrowRecordBatch\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x93\x01\n\x1e\x44ifferentialShortestPathRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.route3.road.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.route3.road.RouteWKB\"2\n\x0bGraphHandle\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x15\n\rh3_resolution\x18\x02 \x01(\r\"n\n\tGraphInfo\x12(\n\x06handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12\x11\n\tis_cached\x18\x02 \x01(\x08\x12\x11\n\tnum_edges\x18\x03 \x01(\x04\x12\x11\n\tnum_nodes\x18\x04 \x01(\x04\";\n\x11GraphInfoResponse\x12&\n\x06graphs\x18\x01 \x03(\x0b\x32\x16.route3.road.GraphInfo*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\xdc\x03\n\nRoute3Road\x12=\n\x07Version\x12\x12.route3.road.Empty\x1a\x1c.route3.road.VersionResponse\"\x00\x12\x41\n\tGraphInfo\x12\x12.route3.road.Empty\x1a\x1e.route3.road.GraphInfoResponse\"\x00\x12k\n\x18\x44ifferentialShortestPath\x12,.route3.road.DifferentialShortestPathRequest\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12T\n\x1bGetDifferentialShortestPath\x12\x12.route3.road.IdRef\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12\x88\x01\n!GetDifferentialShortestPathRoutes\x12\x32.route3.road.DifferentialShortestPathRoutesRequest\x1a+.route3.road.DifferentialShortestPathRoutes\"\x00\x30\x01\x62\x06proto3'
 )
 
 _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
@@ -43,8 +43,8 @@ _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=882,
-  serialized_end=932,
+  serialized_start=1154,
+  serialized_end=1204,
 )
 _sym_db.RegisterEnumDescriptor(_CELLINROUTEPOSITION)
 
@@ -164,58 +164,97 @@ _POINT = _descriptor.Descriptor(
 )
 
 
-_DISTURBANCEOFPOPULATIONMOVEMENTREQUEST = _descriptor.Descriptor(
-  name='DisturbanceOfPopulationMovementRequest',
-  full_name='route3.road.DisturbanceOfPopulationMovementRequest',
+_SHORTESTPATHOPTIONS = _descriptor.Descriptor(
+  name='ShortestPathOptions',
+  full_name='route3.road.ShortestPathOptions',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='disturbance_wkb_geometry', full_name='route3.road.DisturbanceOfPopulationMovementRequest.disturbance_wkb_geometry', index=0,
-      number=1, type=12, cpp_type=9, label=1,
+      name='num_destinations_to_reach', full_name='route3.road.ShortestPathOptions.num_destinations_to_reach', index=0,
+      number=4, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='num_gap_cells_to_graph', full_name='route3.road.ShortestPathOptions.num_gap_cells_to_graph', index=1,
+      number=6, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=159,
+  serialized_end=247,
+)
+
+
+_DIFFERENTIALSHORTESTPATHREQUEST = _descriptor.Descriptor(
+  name='DifferentialShortestPathRequest',
+  full_name='route3.road.DifferentialShortestPathRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='graph_handle', full_name='route3.road.DifferentialShortestPathRequest.graph_handle', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='disturbance_wkb_geometry', full_name='route3.road.DifferentialShortestPathRequest.disturbance_wkb_geometry', index=1,
+      number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=b"",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='radius_meters', full_name='route3.road.DisturbanceOfPopulationMovementRequest.radius_meters', index=1,
-      number=2, type=1, cpp_type=5, label=1,
+      name='radius_meters', full_name='route3.road.DifferentialShortestPathRequest.radius_meters', index=2,
+      number=3, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='num_destinations_to_reach', full_name='route3.road.DisturbanceOfPopulationMovementRequest.num_destinations_to_reach', index=2,
-      number=3, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
+      name='options', full_name='route3.road.DifferentialShortestPathRequest.options', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='destinations', full_name='route3.road.DisturbanceOfPopulationMovementRequest.destinations', index=3,
-      number=4, type=11, cpp_type=10, label=3,
+      name='destinations', full_name='route3.road.DifferentialShortestPathRequest.destinations', index=4,
+      number=5, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='num_gap_cells_to_graph', full_name='route3.road.DisturbanceOfPopulationMovementRequest.num_gap_cells_to_graph', index=4,
-      number=5, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='downsampled_prerouting', full_name='route3.road.DisturbanceOfPopulationMovementRequest.downsampled_prerouting', index=5,
+      name='downsampled_prerouting', full_name='route3.road.DifferentialShortestPathRequest.downsampled_prerouting', index=5,
       number=6, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='store_output', full_name='route3.road.DisturbanceOfPopulationMovementRequest.store_output', index=6,
+      name='store_output', full_name='route3.road.DifferentialShortestPathRequest.store_output', index=6,
       number=7, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -233,8 +272,8 @@ _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=160,
-  serialized_end=420,
+  serialized_start=250,
+  serialized_end=535,
 )
 
 
@@ -247,7 +286,7 @@ _IDREF = _descriptor.Descriptor(
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='id', full_name='route3.road.IdRef.id', index=0,
+      name='object_id', full_name='route3.road.IdRef.object_id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -265,28 +304,28 @@ _IDREF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=422,
-  serialized_end=441,
+  serialized_start=537,
+  serialized_end=563,
 )
 
 
-_DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST = _descriptor.Descriptor(
-  name='DisturbanceOfPopulationMovementRoutesRequest',
-  full_name='route3.road.DisturbanceOfPopulationMovementRoutesRequest',
+_DIFFERENTIALSHORTESTPATHROUTESREQUEST = _descriptor.Descriptor(
+  name='DifferentialShortestPathRoutesRequest',
+  full_name='route3.road.DifferentialShortestPathRoutesRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='dopm_id', full_name='route3.road.DisturbanceOfPopulationMovementRoutesRequest.dopm_id', index=0,
+      name='object_id', full_name='route3.road.DifferentialShortestPathRoutesRequest.object_id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='cells', full_name='route3.road.DisturbanceOfPopulationMovementRoutesRequest.cells', index=1,
+      name='cells', full_name='route3.road.DifferentialShortestPathRoutesRequest.cells', index=1,
       number=3, type=4, cpp_type=4, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -304,8 +343,8 @@ _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=443,
-  serialized_end=521,
+  serialized_start=565,
+  serialized_end=638,
 )
 
 
@@ -357,8 +396,8 @@ _ROUTEWKB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=523,
-  serialized_end=607,
+  serialized_start=640,
+  serialized_end=724,
 )
 
 
@@ -396,28 +435,28 @@ _ARROWRECORDBATCH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=609,
-  serialized_end=660,
+  serialized_start=726,
+  serialized_end=777,
 )
 
 
-_DISTURBANCEOFPOPULATIONMOVEMENTROUTES = _descriptor.Descriptor(
-  name='DisturbanceOfPopulationMovementRoutes',
-  full_name='route3.road.DisturbanceOfPopulationMovementRoutes',
+_DIFFERENTIALSHORTESTPATHROUTES = _descriptor.Descriptor(
+  name='DifferentialShortestPathRoutes',
+  full_name='route3.road.DifferentialShortestPathRoutes',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='routes_without_disturbance', full_name='route3.road.DisturbanceOfPopulationMovementRoutes.routes_without_disturbance', index=0,
+      name='routes_without_disturbance', full_name='route3.road.DifferentialShortestPathRoutes.routes_without_disturbance', index=0,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='routes_with_disturbance', full_name='route3.road.DisturbanceOfPopulationMovementRoutes.routes_with_disturbance', index=1,
+      name='routes_with_disturbance', full_name='route3.road.DifferentialShortestPathRoutes.routes_with_disturbance', index=1,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -435,29 +474,29 @@ _DISTURBANCEOFPOPULATIONMOVEMENTROUTES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=663,
-  serialized_end=817,
+  serialized_start=780,
+  serialized_end=927,
 )
 
 
-_GRAPHINFORESPONSE = _descriptor.Descriptor(
-  name='GraphInfoResponse',
-  full_name='route3.road.GraphInfoResponse',
+_GRAPHHANDLE = _descriptor.Descriptor(
+  name='GraphHandle',
+  full_name='route3.road.GraphHandle',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='h3_resolution', full_name='route3.road.GraphInfoResponse.h3_resolution', index=0,
-      number=1, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
+      name='name', full_name='route3.road.GraphHandle.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='num_edges', full_name='route3.road.GraphInfoResponse.num_edges', index=1,
-      number=2, type=4, cpp_type=4, label=1,
+      name='h3_resolution', full_name='route3.road.GraphHandle.h3_resolution', index=1,
+      number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -474,22 +513,114 @@ _GRAPHINFORESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=819,
-  serialized_end=880,
+  serialized_start=929,
+  serialized_end=979,
 )
 
-_DISTURBANCEOFPOPULATIONMOVEMENTREQUEST.fields_by_name['destinations'].message_type = _POINT
-_DISTURBANCEOFPOPULATIONMOVEMENTROUTES.fields_by_name['routes_without_disturbance'].message_type = _ROUTEWKB
-_DISTURBANCEOFPOPULATIONMOVEMENTROUTES.fields_by_name['routes_with_disturbance'].message_type = _ROUTEWKB
+
+_GRAPHINFO = _descriptor.Descriptor(
+  name='GraphInfo',
+  full_name='route3.road.GraphInfo',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='handle', full_name='route3.road.GraphInfo.handle', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='is_cached', full_name='route3.road.GraphInfo.is_cached', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='num_edges', full_name='route3.road.GraphInfo.num_edges', index=2,
+      number=3, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='num_nodes', full_name='route3.road.GraphInfo.num_nodes', index=3,
+      number=4, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=981,
+  serialized_end=1091,
+)
+
+
+_GRAPHINFORESPONSE = _descriptor.Descriptor(
+  name='GraphInfoResponse',
+  full_name='route3.road.GraphInfoResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='graphs', full_name='route3.road.GraphInfoResponse.graphs', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1093,
+  serialized_end=1152,
+)
+
+_DIFFERENTIALSHORTESTPATHREQUEST.fields_by_name['graph_handle'].message_type = _GRAPHHANDLE
+_DIFFERENTIALSHORTESTPATHREQUEST.fields_by_name['options'].message_type = _SHORTESTPATHOPTIONS
+_DIFFERENTIALSHORTESTPATHREQUEST.fields_by_name['destinations'].message_type = _POINT
+_DIFFERENTIALSHORTESTPATHROUTES.fields_by_name['routes_without_disturbance'].message_type = _ROUTEWKB
+_DIFFERENTIALSHORTESTPATHROUTES.fields_by_name['routes_with_disturbance'].message_type = _ROUTEWKB
+_GRAPHINFO.fields_by_name['handle'].message_type = _GRAPHHANDLE
+_GRAPHINFORESPONSE.fields_by_name['graphs'].message_type = _GRAPHINFO
 DESCRIPTOR.message_types_by_name['Empty'] = _EMPTY
 DESCRIPTOR.message_types_by_name['VersionResponse'] = _VERSIONRESPONSE
 DESCRIPTOR.message_types_by_name['Point'] = _POINT
-DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRequest'] = _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST
+DESCRIPTOR.message_types_by_name['ShortestPathOptions'] = _SHORTESTPATHOPTIONS
+DESCRIPTOR.message_types_by_name['DifferentialShortestPathRequest'] = _DIFFERENTIALSHORTESTPATHREQUEST
 DESCRIPTOR.message_types_by_name['IdRef'] = _IDREF
-DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRoutesRequest'] = _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST
+DESCRIPTOR.message_types_by_name['DifferentialShortestPathRoutesRequest'] = _DIFFERENTIALSHORTESTPATHROUTESREQUEST
 DESCRIPTOR.message_types_by_name['RouteWKB'] = _ROUTEWKB
 DESCRIPTOR.message_types_by_name['ArrowRecordBatch'] = _ARROWRECORDBATCH
-DESCRIPTOR.message_types_by_name['DisturbanceOfPopulationMovementRoutes'] = _DISTURBANCEOFPOPULATIONMOVEMENTROUTES
+DESCRIPTOR.message_types_by_name['DifferentialShortestPathRoutes'] = _DIFFERENTIALSHORTESTPATHROUTES
+DESCRIPTOR.message_types_by_name['GraphHandle'] = _GRAPHHANDLE
+DESCRIPTOR.message_types_by_name['GraphInfo'] = _GRAPHINFO
 DESCRIPTOR.message_types_by_name['GraphInfoResponse'] = _GRAPHINFORESPONSE
 DESCRIPTOR.enum_types_by_name['CellInRoutePosition'] = _CELLINROUTEPOSITION
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
@@ -515,12 +646,19 @@ Point = _reflection.GeneratedProtocolMessageType('Point', (_message.Message,), {
   })
 _sym_db.RegisterMessage(Point)
 
-DisturbanceOfPopulationMovementRequest = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementRequest', (_message.Message,), {
-  'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTREQUEST,
+ShortestPathOptions = _reflection.GeneratedProtocolMessageType('ShortestPathOptions', (_message.Message,), {
+  'DESCRIPTOR' : _SHORTESTPATHOPTIONS,
   '__module__' : 'route3_road_pb2'
-  # @@protoc_insertion_point(class_scope:route3.road.DisturbanceOfPopulationMovementRequest)
+  # @@protoc_insertion_point(class_scope:route3.road.ShortestPathOptions)
   })
-_sym_db.RegisterMessage(DisturbanceOfPopulationMovementRequest)
+_sym_db.RegisterMessage(ShortestPathOptions)
+
+DifferentialShortestPathRequest = _reflection.GeneratedProtocolMessageType('DifferentialShortestPathRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DIFFERENTIALSHORTESTPATHREQUEST,
+  '__module__' : 'route3_road_pb2'
+  # @@protoc_insertion_point(class_scope:route3.road.DifferentialShortestPathRequest)
+  })
+_sym_db.RegisterMessage(DifferentialShortestPathRequest)
 
 IdRef = _reflection.GeneratedProtocolMessageType('IdRef', (_message.Message,), {
   'DESCRIPTOR' : _IDREF,
@@ -529,12 +667,12 @@ IdRef = _reflection.GeneratedProtocolMessageType('IdRef', (_message.Message,), {
   })
 _sym_db.RegisterMessage(IdRef)
 
-DisturbanceOfPopulationMovementRoutesRequest = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementRoutesRequest', (_message.Message,), {
-  'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST,
+DifferentialShortestPathRoutesRequest = _reflection.GeneratedProtocolMessageType('DifferentialShortestPathRoutesRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DIFFERENTIALSHORTESTPATHROUTESREQUEST,
   '__module__' : 'route3_road_pb2'
-  # @@protoc_insertion_point(class_scope:route3.road.DisturbanceOfPopulationMovementRoutesRequest)
+  # @@protoc_insertion_point(class_scope:route3.road.DifferentialShortestPathRoutesRequest)
   })
-_sym_db.RegisterMessage(DisturbanceOfPopulationMovementRoutesRequest)
+_sym_db.RegisterMessage(DifferentialShortestPathRoutesRequest)
 
 RouteWKB = _reflection.GeneratedProtocolMessageType('RouteWKB', (_message.Message,), {
   'DESCRIPTOR' : _ROUTEWKB,
@@ -550,12 +688,26 @@ ArrowRecordBatch = _reflection.GeneratedProtocolMessageType('ArrowRecordBatch', 
   })
 _sym_db.RegisterMessage(ArrowRecordBatch)
 
-DisturbanceOfPopulationMovementRoutes = _reflection.GeneratedProtocolMessageType('DisturbanceOfPopulationMovementRoutes', (_message.Message,), {
-  'DESCRIPTOR' : _DISTURBANCEOFPOPULATIONMOVEMENTROUTES,
+DifferentialShortestPathRoutes = _reflection.GeneratedProtocolMessageType('DifferentialShortestPathRoutes', (_message.Message,), {
+  'DESCRIPTOR' : _DIFFERENTIALSHORTESTPATHROUTES,
   '__module__' : 'route3_road_pb2'
-  # @@protoc_insertion_point(class_scope:route3.road.DisturbanceOfPopulationMovementRoutes)
+  # @@protoc_insertion_point(class_scope:route3.road.DifferentialShortestPathRoutes)
   })
-_sym_db.RegisterMessage(DisturbanceOfPopulationMovementRoutes)
+_sym_db.RegisterMessage(DifferentialShortestPathRoutes)
+
+GraphHandle = _reflection.GeneratedProtocolMessageType('GraphHandle', (_message.Message,), {
+  'DESCRIPTOR' : _GRAPHHANDLE,
+  '__module__' : 'route3_road_pb2'
+  # @@protoc_insertion_point(class_scope:route3.road.GraphHandle)
+  })
+_sym_db.RegisterMessage(GraphHandle)
+
+GraphInfo = _reflection.GeneratedProtocolMessageType('GraphInfo', (_message.Message,), {
+  'DESCRIPTOR' : _GRAPHINFO,
+  '__module__' : 'route3_road_pb2'
+  # @@protoc_insertion_point(class_scope:route3.road.GraphInfo)
+  })
+_sym_db.RegisterMessage(GraphInfo)
 
 GraphInfoResponse = _reflection.GeneratedProtocolMessageType('GraphInfoResponse', (_message.Message,), {
   'DESCRIPTOR' : _GRAPHINFORESPONSE,
@@ -573,8 +725,8 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=935,
-  serialized_end=1461,
+  serialized_start=1207,
+  serialized_end=1683,
   methods=[
   _descriptor.MethodDescriptor(
     name='Version',
@@ -597,18 +749,18 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
     create_key=_descriptor._internal_create_key,
   ),
   _descriptor.MethodDescriptor(
-    name='AnalyzeDisturbanceOfPopulationMovement',
-    full_name='route3.road.Route3Road.AnalyzeDisturbanceOfPopulationMovement',
+    name='DifferentialShortestPath',
+    full_name='route3.road.Route3Road.DifferentialShortestPath',
     index=2,
     containing_service=None,
-    input_type=_DISTURBANCEOFPOPULATIONMOVEMENTREQUEST,
+    input_type=_DIFFERENTIALSHORTESTPATHREQUEST,
     output_type=_ARROWRECORDBATCH,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),
   _descriptor.MethodDescriptor(
-    name='GetDisturbanceOfPopulationMovement',
-    full_name='route3.road.Route3Road.GetDisturbanceOfPopulationMovement',
+    name='GetDifferentialShortestPath',
+    full_name='route3.road.Route3Road.GetDifferentialShortestPath',
     index=3,
     containing_service=None,
     input_type=_IDREF,
@@ -617,12 +769,12 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
     create_key=_descriptor._internal_create_key,
   ),
   _descriptor.MethodDescriptor(
-    name='GetDisturbanceOfPopulationMovementRoutes',
-    full_name='route3.road.Route3Road.GetDisturbanceOfPopulationMovementRoutes',
+    name='GetDifferentialShortestPathRoutes',
+    full_name='route3.road.Route3Road.GetDifferentialShortestPathRoutes',
     index=4,
     containing_service=None,
-    input_type=_DISTURBANCEOFPOPULATIONMOVEMENTROUTESREQUEST,
-    output_type=_DISTURBANCEOFPOPULATIONMOVEMENTROUTES,
+    input_type=_DIFFERENTIALSHORTESTPATHROUTESREQUEST,
+    output_type=_DIFFERENTIALSHORTESTPATHROUTES,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,
   ),

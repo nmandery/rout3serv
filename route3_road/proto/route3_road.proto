@@ -17,29 +17,38 @@ message Point {
   double y = 2;
 }
 
-message DisturbanceOfPopulationMovementRequest {
-  /** the geometry of the disturbance in WKB format
-
-  WGS84 coordinate system
-   */
-  bytes disturbance_wkb_geometry = 1;
-
-  /** The radius around the wkb_geometry to be analyzed.
-      units are meters. */
-  double radius_meters = 2;
+message ShortestPathOptions {
 
   /** number of destinations which should be reached for one cell. after that routing for this cell will be stopped.
       0 -> continue until all are reached
    */
-  uint32 num_destinations_to_reach = 3;
-
-  /** targets to route to */
-  repeated Point destinations = 4;
+  uint32 num_destinations_to_reach = 4;
 
   /** Number of cells to be allowed to be missing between
    a cell and the graph while the cell is still counted as being connected
    to the graph */
-  uint32 num_gap_cells_to_graph = 5;
+  uint32 num_gap_cells_to_graph = 6;
+}
+
+message DifferentialShortestPathRequest {
+
+  /** the graph to use */
+  GraphHandle graph_handle = 1;
+
+  /** the geometry of the disturbance in WKB format
+
+  WGS84 coordinate system
+   */
+  bytes disturbance_wkb_geometry = 2;
+
+  /** The radius around the wkb_geometry to be analyzed.
+      units are meters. */
+  double radius_meters = 3;
+
+  ShortestPathOptions options = 4;
+
+  /** targets to route to */
+  repeated Point destinations = 5;
 
   /** Setting a `downsampled_prerouting` will allow performing an initial routing at a lower resolution
   to reduce the number of routings to perform on the full-resolution graph. This has the potential
@@ -55,7 +64,7 @@ message DisturbanceOfPopulationMovementRequest {
 
 /** A reference to an ID string */
 message IdRef {
-  string id = 1;
+  string object_id = 1;
 }
 
 enum CellInRoutePosition {
@@ -63,8 +72,8 @@ enum CellInRoutePosition {
   Destination = 1;
 }
 
-message DisturbanceOfPopulationMovementRoutesRequest {
-  string dopm_id = 1;
+message DifferentialShortestPathRoutesRequest {
+  string object_id = 1;
   //CellInRoutePosition cell_position = 2;
   repeated uint64 cells = 3;
 }
@@ -84,14 +93,33 @@ message ArrowRecordBatch {
   bytes data = 2;
 }
 
-message DisturbanceOfPopulationMovementRoutes {
+message DifferentialShortestPathRoutes {
   repeated RouteWKB routes_without_disturbance = 2;
   repeated RouteWKB routes_with_disturbance = 3;
 }
 
+/** using these handles graphs can be references */
+message GraphHandle {
+  string name = 1;
+  uint32 h3_resolution = 2;
+}
+
+message GraphInfo {
+  /** using this the graph can be referenced*/
+  GraphHandle handle = 1;
+
+  /** true when the graph is currently loaded into memory */
+  bool is_cached = 2;
+
+  /** only for cached graphs */
+  uint64 num_edges = 3;
+
+  /** only for cached graphs */
+  uint64 num_nodes = 4;
+}
+
 message GraphInfoResponse {
-  uint32 h3_resolution = 1;
-  uint64 num_edges = 2;
+  repeated GraphInfo graphs = 1;
 }
 
 service Route3Road {
@@ -100,14 +128,12 @@ service Route3Road {
   rpc GraphInfo(Empty) returns (GraphInfoResponse) {}
 
 
-  // Population movement ---------------------------------
-  rpc AnalyzeDisturbanceOfPopulationMovement(DisturbanceOfPopulationMovementRequest)
+  /** differential shortest path based on the population dataset */
+  rpc DifferentialShortestPath(DifferentialShortestPathRequest)
       returns (stream ArrowRecordBatch) {}
-
-  /* get an already computed analysis */
-  rpc GetDisturbanceOfPopulationMovement(IdRef)
+  rpc GetDifferentialShortestPath(IdRef)
       returns (stream ArrowRecordBatch) {}
-
-  rpc GetDisturbanceOfPopulationMovementRoutes(DisturbanceOfPopulationMovementRoutesRequest)
-      returns (stream DisturbanceOfPopulationMovementRoutes) {}
+  rpc GetDifferentialShortestPathRoutes(DifferentialShortestPathRoutesRequest)
+      returns (stream DifferentialShortestPathRoutes) {}
 }
+

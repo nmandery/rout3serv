@@ -1,234 +1,50 @@
-use std::cmp::min;
-use std::convert::{TryFrom, TryInto};
-use std::io::Cursor;
+use std::convert::TryFrom;
 use std::sync::Arc;
 
-use arrow2::array::{Float32Array, UInt64Array};
-use arrow2::record_batch::RecordBatch;
-use eyre::{Report, Result};
+use eyre::Result;
 use h3ron::collections::{H3CellMap, H3CellSet};
-use h3ron::io::{deserialize_from, serialize_into};
 use h3ron::H3Cell;
 use h3ron::HasH3Resolution;
-use h3ron_graph::algorithm::differential_shortest_path::DifferentialShortestPath;
-use h3ron_graph::algorithm::path::Path;
-use h3ron_graph::graph::{downsample_graph, H3EdgeGraph};
-use h3ron_graph::routing::RoutingH3EdgeGraph;
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use h3ron_graph::graph::GetStats;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
-use crate::io::s3::{FoundOption, S3Client, S3Config, S3H3Dataset, S3RecordBatchLoader};
-use crate::io::{arrow_load_graph, recordbatch_array};
-use crate::server::api::route3_road::route3_road_server::{Route3Road, Route3RoadServer};
-use crate::server::api::route3_road::{
-    ArrowRecordBatch, DisturbanceOfPopulationMovementRequest,
-    DisturbanceOfPopulationMovementRoutes, DisturbanceOfPopulationMovementRoutesRequest, Empty,
-    GraphInfoResponse, IdRef, RouteWkb, VersionResponse,
+use crate::config::ServerConfig;
+use crate::io::graph_store::GraphCacheKey;
+use crate::io::s3::FoundOption;
+use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
+use crate::server::api::generated::{
+    DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
+    DifferentialShortestPathRoutesRequest, Empty, GraphInfo, GraphInfoResponse, IdRef,
+    VersionResponse,
 };
-use crate::server::util::{recordbatch_to_bytes_status, spawn_blocking_status, StrId};
-use crate::types::Weight;
+use crate::server::storage::S3Storage;
+use crate::server::util::{
+    respond_recordbatches_stream, spawn_blocking_status, ArrowRecordBatchStream,
+};
+use crate::weight::Weight;
 
 mod api;
-mod population_movement;
+mod differential_shortest_path;
+mod storage;
 mod util;
-
-type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
+mod vector;
 
 struct ServerImpl {
-    config: ServerConfig,
-    s3_client: Arc<S3Client>,
-    routing_graph: Arc<RoutingH3EdgeGraph<Weight>>,
-
-    /// downsampled routing graph
-    ds_routing_graph: Arc<RoutingH3EdgeGraph<Weight>>,
+    storage: S3Storage<Weight>,
 }
 
 impl ServerImpl {
     pub async fn create(config: ServerConfig) -> Result<Self> {
-        let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
-
-        let graph: H3EdgeGraph<Weight> = match s3_client
-            .get_object_bytes(config.graph.bucket.clone(), config.graph.key.clone())
-            .await?
-        {
-            FoundOption::Found(graph_bytes) => arrow_load_graph(Cursor::new(graph_bytes))?,
-            FoundOption::NotFound => return Err(Report::msg("could not find graph")),
-        };
-
-        if config.population_dataset.file_h3_resolution > graph.h3_resolution() {
-            return Err(Report::msg(
-                "file_h3_resolution of the population must be lower than the graph h3 resolution",
-            ));
-        }
-
-        // create the downsampled routing graph. the reduced resolution should be only a bit less than
-        // the main graphs resolution to avoid skewing results too much by bridging non-connected nodes.
-        let ds_graph_resolution = graph
-            .h3_resolution
-            .saturating_sub(config.graph.downsample_resolution_difference.unwrap_or(2));
-        log::debug!(
-            "using h3 resolution = {} for the downsampled graph",
-            ds_graph_resolution
-        );
-        let ds_graph = downsample_graph(&graph, ds_graph_resolution, min)?;
-
-        Ok(Self {
-            config,
-            s3_client,
-            routing_graph: Arc::new(graph.try_into()?),
-            ds_routing_graph: Arc::new(ds_graph.try_into()?),
-        })
-    }
-
-    async fn load_population(
-        &self,
-        cells: &[H3Cell],
-    ) -> std::result::Result<H3CellMap<f32>, Status> {
-        let h3index_column_name = self.config.population_dataset.get_h3index_column_name();
-        let population_count_column_name = self
-            .config
-            .population_dataset
-            .get_population_count_column_name();
-
-        let loader = S3RecordBatchLoader::new(self.s3_client.clone());
-        let population = loader
-            .load_h3_dataset(
-                self.config.population_dataset.clone(),
-                cells,
-                self.routing_graph.h3_resolution(),
-            )
-            .await
-            .map_err(|e| {
-                log::error!("loading population from s3 failed: {:?}", e);
-                Status::internal("population data inaccessible")
-            })?;
-        let mut population_cells = H3CellMap::default();
-        for pop in population.iter() {
-            let h3index_array = recordbatch_array::<UInt64Array>(pop, &h3index_column_name)
-                .map_err(|report| {
-                    log::error!("Can not access population data: {}", report);
-                    Status::internal("population h3index is inaccessible")
-                })?;
-            let pop_array = recordbatch_array::<Float32Array>(pop, &population_count_column_name)
-                .map_err(|report| {
-                log::error!("Can not access population data: {}", report);
-                Status::internal("population h3index is inaccessible")
-            })?;
-
-            let cells_to_use: H3CellSet = cells.iter().cloned().collect();
-            for (h3index_o, pop_o) in h3index_array.iter().zip(pop_array.iter()) {
-                if let (Some(h3index), Some(population_count)) = (h3index_o, pop_o) {
-                    if let Ok(cell) = H3Cell::try_from(*h3index) {
-                        if cells_to_use.contains(&cell) {
-                            population_cells.insert(cell, *population_count);
-                        }
-                    } else {
-                        log::warn!(
-                            "encountered invalid h3 index in population data: {}",
-                            h3index
-                        );
-                    }
-                }
-            }
-        }
-        Ok(population_cells)
-    }
-
-    fn output_s3_key<I: AsRef<str>>(&self, id: I) -> String {
-        format!(
-            "{}.bincode",
-            self.config
-                .output
-                .key_prefix
-                .as_ref()
-                .map(|prefix| format!("{}{}", prefix, id.as_ref()))
-                .unwrap_or_else(|| id.as_ref().to_string())
-        )
-    }
-
-    async fn store_output<O: Serialize + StrId>(
-        &self,
-        output: &O,
-    ) -> std::result::Result<(), Status> {
-        let mut serialized: Vec<u8> = Default::default();
-        serialize_into(&mut serialized, output, true).map_err(|e| {
-            log::error!("serializing output failed: {:?}", e);
-            Status::internal("serializing output failed")
-        })?;
-        self.s3_client
-            .put_object_bytes(
-                self.config.output.bucket.clone(),
-                self.output_s3_key(output.id()),
-                serialized,
-            )
-            .await
-            .map_err(|e| {
-                log::error!("storing output failed: {:?}", e);
-                Status::internal("storing output failed")
-            })?;
-        Ok(())
-    }
-
-    async fn retrieve_output<I: AsRef<str>, O: DeserializeOwned>(
-        &self,
-        id: I,
-    ) -> std::result::Result<FoundOption<O>, Status> {
-        let key = self.output_s3_key(id);
-        let found_option = match self
-            .s3_client
-            .get_object_bytes(self.config.output.bucket.clone(), key.clone())
-            .await
-            .map_err(|e| {
-                log::error!("retrieving output with key = {} failed: {:?}", key, e);
-                Status::internal(format!("retrieving output with key = {} failed", key))
-            })? {
-            FoundOption::Found(bytes) => {
-                let output: O = deserialize_from(Cursor::new(&bytes)).map_err(|e| {
-                    log::error!("deserializing output with key = {} failed: {:?}", key, e);
-                    Status::internal(format!("deserializing output with key = {} failed", key))
-                })?;
-                FoundOption::Found(output)
-            }
-            FoundOption::NotFound => FoundOption::NotFound,
-        };
-        Ok(found_option)
-    }
-
-    async fn respond_recordbatches_stream(
-        &self,
-        id: String,
-        mut recordbatches: Vec<RecordBatch>,
-    ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
-        let (tx, rx) = mpsc::channel(5);
-        tokio::spawn(async move {
-            for recordbatch in recordbatches.drain(..) {
-                let serialization_result =
-                    recordbatch_to_bytes_status(&recordbatch).map(|rb_bytes| ArrowRecordBatch {
-                        object_id: id.clone(),
-                        data: rb_bytes,
-                    });
-                tx.send(serialization_result).await.unwrap();
-            }
-        });
-        Ok(Response::new(ReceiverStream::new(rx)))
+        let storage = S3Storage::<Weight>::from_config(Arc::new(config))?;
+        Ok(Self { storage })
     }
 }
 
 #[tonic::async_trait]
 impl Route3Road for ServerImpl {
-    type AnalyzeDisturbanceOfPopulationMovementStream =
-        ReceiverStream<Result<ArrowRecordBatch, Status>>;
-
-    type GetDisturbanceOfPopulationMovementStream =
-        ReceiverStream<Result<ArrowRecordBatch, Status>>;
-
-    type GetDisturbanceOfPopulationMovementRoutesStream =
-        ReceiverStream<Result<DisturbanceOfPopulationMovementRoutes, Status>>;
-
     async fn version(
         &self,
         _request: Request<Empty>,
@@ -239,25 +55,79 @@ impl Route3Road for ServerImpl {
             build_timestamp: crate::build_info::build_timestamp().to_string(),
         }))
     }
-
-    async fn analyze_disturbance_of_population_movement(
+    async fn graph_info(
         &self,
-        request: Request<DisturbanceOfPopulationMovementRequest>,
-    ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
-        let input = request
-            .into_inner()
-            .get_input(self.routing_graph.h3_resolution())?;
+        _request: Request<Empty>,
+    ) -> Result<Response<GraphInfoResponse>, Status> {
+        let mut resp = GraphInfoResponse { graphs: vec![] };
 
-        let do_store_output = input.store_output;
-        let population = self.load_population(&input.within_buffer).await?;
-        let routing_graph = self.routing_graph.clone();
-        let ds_routing_graph = if input.downsampled_prerouting {
-            Some(self.ds_routing_graph.clone())
+        for gck in self.storage.load_graph_cache_keys().await? {
+            let graph = self.storage.graph_store.load_cached(&gck).await;
+            let mut gi: GraphInfo = gck.into();
+            if let Some(g) = graph {
+                gi.is_cached = true;
+                let stats = g.get_stats();
+                gi.num_nodes = stats.num_nodes as u64;
+                gi.num_edges = stats.num_edges as u64;
+            } else {
+                gi.is_cached = false;
+            }
+            resp.graphs.push(gi);
+        }
+        Ok(Response::new(resp))
+    }
+
+    type DifferentialShortestPathStream = ArrowRecordBatchStream;
+
+    async fn differential_shortest_path(
+        &self,
+        request: Request<DifferentialShortestPathRequest>,
+    ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
+        let dsp_request = request.into_inner();
+        let (graph, graph_cache_key) = self
+            .storage
+            .load_graph_from_option(&dsp_request.graph_handle)
+            .await?;
+        let input = dsp_request.get_input(graph.h3_resolution())?;
+
+        // obtain the downsampled graph if requested
+        let downsampled_graph = if input.downsampled_prerouting {
+            // attempt to find a suitable graph at a lower resolution
+            let mut found_gck: Option<GraphCacheKey> = None;
+            for gck in self.storage.load_graph_cache_keys().await?.drain(..) {
+                if gck.name == graph_cache_key.name
+                    && gck.h3_resolution < graph_cache_key.h3_resolution
+                {
+                    if let Some(f_gck) = found_gck.as_ref() {
+                        // use the next lower resolution
+                        if f_gck.h3_resolution < gck.h3_resolution {
+                            found_gck = Some(gck);
+                        }
+                    } else {
+                        found_gck = Some(gck);
+                    }
+                }
+            }
+
+            if let Some(dsg_gck) = found_gck {
+                Some(self.storage.load_graph(&dsg_gck).await?)
+            } else {
+                return Err(Status::invalid_argument(
+                    "no suitable graph at a lower resolution found",
+                ));
+            }
         } else {
             None
         };
+
+        let population: H3CellMap<f32> = self
+            .storage
+            .load_population(graph.h3_resolution(), &input.within_buffer)
+            .await?;
+
+        let do_store_output = input.store_output;
         let output = spawn_blocking_status(move || {
-            population_movement::calculate(routing_graph, input, population, ds_routing_graph)
+            differential_shortest_path::calculate(graph, input, population, downsampled_graph)
         })
         .await?
         .map_err(|e| {
@@ -265,14 +135,14 @@ impl Route3Road for ServerImpl {
             Status::internal("calculating routes failed")
         })?;
 
-        let response_fut = self.respond_recordbatches_stream(
-            output.dopm_id.clone(),
-            population_movement::disturbance_statistics_status(&output)?,
+        let response_fut = respond_recordbatches_stream(
+            output.object_id.clone(),
+            differential_shortest_path::disturbance_statistics_status(&output)?,
         );
 
         let response = if do_store_output {
             let (_, response) = tokio::try_join!(
-                self.store_output(&output), // save the output for later
+                self.storage.store_output(&output), // save the output for later
                 response_fut
             )?;
             response
@@ -282,18 +152,21 @@ impl Route3Road for ServerImpl {
         Ok(response)
     }
 
-    async fn get_disturbance_of_population_movement(
+    type GetDifferentialShortestPathStream = ArrowRecordBatchStream;
+
+    async fn get_differential_shortest_path(
         &self,
         request: Request<IdRef>,
     ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
         let inner = request.into_inner();
         if let FoundOption::Found(output) = self
-            .retrieve_output::<_, population_movement::Output>(inner.id.as_str())
+            .storage
+            .retrieve_output::<_, differential_shortest_path::DspOutput>(inner.object_id.as_str())
             .await?
         {
-            self.respond_recordbatches_stream(
-                output.dopm_id.clone(),
-                population_movement::disturbance_statistics_status(&output)?,
+            respond_recordbatches_stream(
+                output.object_id.clone(),
+                differential_shortest_path::disturbance_statistics_status(&output)?,
             )
             .await
         } else {
@@ -301,14 +174,18 @@ impl Route3Road for ServerImpl {
         }
     }
 
-    async fn get_disturbance_of_population_movement_routes(
+    type GetDifferentialShortestPathRoutesStream =
+        ReceiverStream<Result<DifferentialShortestPathRoutes, Status>>;
+
+    async fn get_differential_shortest_path_routes(
         &self,
-        request: Request<DisturbanceOfPopulationMovementRoutesRequest>,
-    ) -> Result<Response<Self::GetDisturbanceOfPopulationMovementRoutesStream>, Status> {
+        request: Request<DifferentialShortestPathRoutesRequest>,
+    ) -> Result<Response<Self::GetDifferentialShortestPathRoutesStream>, Status> {
         let (tx, rx) = mpsc::channel(20);
         let inner = request.into_inner();
         let output = if let FoundOption::Found(output) = self
-            .retrieve_output::<_, population_movement::Output>(inner.dopm_id.as_str())
+            .storage
+            .retrieve_output::<_, differential_shortest_path::DspOutput>(inner.object_id.as_str())
             .await?
         {
             output
@@ -329,9 +206,9 @@ impl Route3Road for ServerImpl {
                 })
                 .collect();
 
-            for differential_shortest_path in output.differential_shortest_paths.iter() {
-                if cell_lookup.contains(&differential_shortest_path.origin_cell) {
-                    tx.send(build_routes_response(differential_shortest_path))
+            for (origin_cell, diff) in output.differential_shortest_paths.iter() {
+                if cell_lookup.contains(origin_cell) {
+                    tx.send(differential_shortest_path::build_routes_response(diff))
                         .await
                         .unwrap();
                 }
@@ -339,98 +216,6 @@ impl Route3Road for ServerImpl {
         });
         Ok(Response::new(ReceiverStream::new(rx)))
     }
-
-    async fn graph_info(
-        &self,
-        _request: Request<Empty>,
-    ) -> Result<Response<GraphInfoResponse>, Status> {
-        Ok(Response::new(GraphInfoResponse {
-            h3_resolution: self.routing_graph.h3_resolution() as u32,
-            num_edges: self.routing_graph.graph.num_edges() as u64,
-        }))
-    }
-}
-
-fn build_routes_response(
-    differential_shortest_path: &DifferentialShortestPath<Path<Weight>>,
-) -> Result<DisturbanceOfPopulationMovementRoutes, Status> {
-    let mut response = DisturbanceOfPopulationMovementRoutes {
-        routes_without_disturbance: vec![],
-        routes_with_disturbance: vec![],
-    };
-    for path in differential_shortest_path.without_disturbance.iter() {
-        response
-            .routes_without_disturbance
-            .push(RouteWkb::from_path(path)?);
-    }
-    for path in differential_shortest_path.with_disturbance.iter() {
-        response
-            .routes_with_disturbance
-            .push(RouteWkb::from_path(path)?);
-    }
-    Ok(response)
-}
-
-#[derive(Deserialize)]
-pub struct GraphConfig {
-    key: String,
-    bucket: String,
-
-    /// number of resolution to downsample the graph to for the
-    /// internal downsampled graph
-    downsample_resolution_difference: Option<u8>,
-}
-
-#[derive(Deserialize)]
-pub struct OutputConfig {
-    key_prefix: Option<String>,
-    bucket: String,
-}
-
-#[derive(Deserialize, Clone)]
-pub struct PopulationDatasetConfig {
-    key_pattern: String,
-    bucket: String,
-    file_h3_resolution: u8,
-    h3index_column_name: Option<String>,
-    population_count_column_name: Option<String>,
-}
-
-impl PopulationDatasetConfig {
-    pub fn get_h3index_column_name(&self) -> String {
-        self.h3index_column_name
-            .clone()
-            .unwrap_or_else(|| "h3index".to_string())
-    }
-
-    pub fn get_population_count_column_name(&self) -> String {
-        self.population_count_column_name
-            .clone()
-            .unwrap_or_else(|| "population".to_string())
-    }
-}
-
-impl S3H3Dataset for PopulationDatasetConfig {
-    fn bucket_name(&self) -> String {
-        self.bucket.clone()
-    }
-
-    fn key_pattern(&self) -> String {
-        self.key_pattern.clone()
-    }
-
-    fn file_h3_resolution(&self) -> u8 {
-        self.file_h3_resolution
-    }
-}
-
-#[derive(Deserialize)]
-pub struct ServerConfig {
-    pub bind_to: String,
-    pub s3: S3Config,
-    pub graph: GraphConfig,
-    pub population_dataset: PopulationDatasetConfig,
-    pub output: OutputConfig,
 }
 
 pub fn launch_server(server_config: ServerConfig) -> Result<()> {
@@ -452,6 +237,5 @@ async fn run_server(server_config: ServerConfig) -> Result<()> {
         .add_service(Route3RoadServer::new(server_impl))
         .serve(addr)
         .await?;
-
     Ok(())
 }

@@ -1,7 +1,7 @@
 use h3ron_graph::formats::osm::osmpbfreader::Tags;
 use h3ron_graph::formats::osm::EdgeProperties;
 
-use crate::types::Weight;
+use crate::weight::Weight;
 
 pub fn way_properties(tags: &Tags) -> Option<EdgeProperties<Weight>> {
     // https://wiki.openstreetmap.org/wiki/Key:highway or https://wiki.openstreetmap.org/wiki/DE:Key:highway
