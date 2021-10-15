@@ -19,6 +19,7 @@ use h3ron::iter::change_cell_resolution;
 use h3ron::H3Cell;
 use hyper::client::HttpConnector;
 use hyper_tls::HttpsConnector;
+use itertools::Itertools;
 use native_tls::TlsConnector;
 use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
@@ -299,27 +300,33 @@ impl S3RecordBatchLoader {
         let file_cells = change_cell_resolution(cells.iter(), dataset.file_h3_resolution())
             .collect::<HashSet<_>>();
 
-        let mut task_results = futures::future::try_join_all(file_cells.iter().map(|cell| {
-            let bucket_name = dataset.bucket_name();
-            let key = self.build_h3_key(dataset, cell, data_h3_resolution);
-            let s3_client = self.s3_client.clone();
-            task::spawn(async move {
-                s3_client
-                    .get_object_bytes(bucket_name, key)
-                    .await
-                    .and_then(|object_bytes| {
-                        let mut record_batches = vec![];
-                        if let FoundOption::Found(bytes) = object_bytes {
-                            let mut cursor = Cursor::new(&bytes);
-                            let metadata = read_file_metadata(&mut cursor)?;
-                            for record_batch in FileReader::new(&mut cursor, metadata, None) {
-                                record_batches.push(record_batch?);
-                            }
-                        };
-                        Ok(record_batches)
+        let mut task_results = futures::future::try_join_all(
+            file_cells
+                .iter()
+                .map(|cell| self.build_h3_key(dataset, cell, data_h3_resolution))
+                .sorted() // remove duplicates when the keys are not grouped using a file resolution
+                .dedup()
+                .map(|key| {
+                    let bucket_name = dataset.bucket_name();
+                    let s3_client = self.s3_client.clone();
+                    task::spawn(async move {
+                        s3_client.get_object_bytes(bucket_name, key).await.and_then(
+                            |object_bytes| {
+                                let mut record_batches = vec![];
+                                if let FoundOption::Found(bytes) = object_bytes {
+                                    let mut cursor = Cursor::new(&bytes);
+                                    let metadata = read_file_metadata(&mut cursor)?;
+                                    for record_batch in FileReader::new(&mut cursor, metadata, None)
+                                    {
+                                        record_batches.push(record_batch?);
+                                    }
+                                };
+                                Ok(record_batches)
+                            },
+                        )
                     })
-            })
-        }))
+                }),
+        )
         .await?;
 
         let mut record_batches = Vec::with_capacity(file_cells.len());
