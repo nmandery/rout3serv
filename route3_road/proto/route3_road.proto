@@ -143,4 +143,3 @@ service Route3Road {
   rpc GetDifferentialShortestPathRoutes(DifferentialShortestPathRoutesRequest)
       returns (stream DifferentialShortestPathRoutes) {}
 }
-
