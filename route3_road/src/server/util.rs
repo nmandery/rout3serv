@@ -40,7 +40,6 @@ pub trait StrId {
 }
 
 /// type for a stream of ArrowRecordBatches to a GRPC client
-/// TODO: should be in ::api
 pub type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
 
 /// stream [`ArrowRecordBatch`] instances to a client

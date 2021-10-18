@@ -9,6 +9,7 @@ use h3ron_graph::graph::PreparedH3EdgeGraph;
 use polars_core::frame::DataFrame;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tokio::task::block_in_place;
 use tonic::Status;
 
 use crate::config::{GenericDataset, ServerConfig};
@@ -60,10 +61,15 @@ where
         &self,
         output: &O,
     ) -> std::result::Result<(), Status> {
-        let mut serialized: Vec<u8> = Default::default();
-        serialize_into(&mut serialized, output, true).map_err(|e| {
-            log::error!("serializing output failed: {:?}", e);
-            Status::internal("serializing output failed")
+        let serialized = block_in_place(move || {
+            let mut serialized: Vec<u8> = Default::default();
+            match serialize_into(&mut serialized, output, true) {
+                Ok(_) => Ok(serialized),
+                Err(e) => {
+                    log::error!("serializing output failed: {:?}", e);
+                    Err(Status::internal("serializing output failed"))
+                }
+            }
         })?;
         self.s3_client
             .put_object_bytes(
@@ -93,10 +99,11 @@ where
                 Status::internal(format!("retrieving output with key = {} failed", key))
             })? {
             FoundOption::Found(bytes) => {
-                let output: O = deserialize_from(Cursor::new(&bytes)).map_err(|e| {
-                    log::error!("deserializing output with key = {} failed: {:?}", key, e);
-                    Status::internal(format!("deserializing output with key = {} failed", key))
-                })?;
+                let output: O = block_in_place(move || deserialize_from(Cursor::new(&bytes)))
+                    .map_err(|e| {
+                        log::error!("deserializing output with key = {} failed: {:?}", key, e);
+                        Status::internal(format!("deserializing output with key = {} failed", key))
+                    })?;
                 FoundOption::Found(output)
             }
             FoundOption::NotFound => FoundOption::NotFound,

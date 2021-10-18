@@ -53,6 +53,7 @@ pub struct DspInput<W: Send + Sync> {
     pub ref_dataframe_cells: H3CellSet,
 }
 
+/// collect/prepare/download all input data needed for the differential shortest path
 pub async fn collect_input<W: Send + Sync>(
     mut request: DifferentialShortestPathRequest,
     storage: Arc<S3Storage<W>>,
