@@ -38,10 +38,10 @@ impl RouteWkb {
 }
 
 impl From<GraphCacheKey> for GraphHandle {
-    fn from(gck: GraphCacheKey) -> Self {
+    fn from(graph_cache_key: GraphCacheKey) -> Self {
         Self {
-            name: gck.name,
-            h3_resolution: gck.h3_resolution as u32,
+            name: graph_cache_key.name,
+            h3_resolution: graph_cache_key.h3_resolution as u32,
         }
     }
 }
@@ -82,6 +82,11 @@ impl shortest_path::ShortestPathOptions for ShortestPathOptions {
     }
 
     fn num_destinations_to_reach(&self) -> Option<usize> {
-        Some(self.num_destinations_to_reach as usize)
+        if self.num_destinations_to_reach == 0 {
+            // 0 means nothing has been set
+            None
+        } else {
+            Some(self.num_destinations_to_reach as usize)
+        }
     }
 }

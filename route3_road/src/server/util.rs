@@ -44,7 +44,6 @@ pub trait StrId {
 pub type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
 
 /// stream [`ArrowRecordBatch`] instances to a client
-/// TODO: should be in ::api
 pub async fn respond_recordbatches_stream(
     id: String,
     mut recordbatches: Vec<RecordBatch>,

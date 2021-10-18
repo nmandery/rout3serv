@@ -194,9 +194,7 @@ where
             for cell in input.within_buffer.iter() {
                 // exclude the cells of the disturbance itself as well as all origin cells without
                 // any population from routing
-                if input.ref_dataframe_cells.contains(cell) == true
-                    && input.disturbance.contains(cell) == false
-                {
+                if input.ref_dataframe_cells.contains(cell) && !input.disturbance.contains(cell) {
                     origin_cells.push(*cell);
                 }
             }
