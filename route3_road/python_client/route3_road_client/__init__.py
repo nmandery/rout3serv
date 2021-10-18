@@ -1,5 +1,6 @@
 __version__ = '0.2.0'
 
+import typing
 from typing import Optional, Iterable, Tuple
 
 import geopandas as gpd
@@ -42,9 +43,13 @@ class Server:
     def graph_info(self) -> route3_road_pb2.GraphInfoResponse:
         return self.stub.GraphInfo(route3_road_pb2.Empty())
 
+    def list_datasets(self) -> typing.List[str]:
+        return self.stub.ListDatasets(route3_road_pb2.Empty()).dataset_name
+
     def differential_shortest_path(self, graph_handle: GraphHandle, disturbance_geom: BaseGeometry,
                                    radius_meters: float,
                                    destination_points: Iterable[Point],
+                                   ref_dataset_name: str,
                                    num_destinations_to_reach: int = 3,
                                    num_gap_cells_to_graph: int = 1,
                                    downsampled_prerouting: bool = False,
@@ -55,6 +60,7 @@ class Server:
         shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
 
         req = route3_road_pb2.DifferentialShortestPathRequest()
+        req.ref_dataset_name = ref_dataset_name
         req.graph_handle.MergeFrom(graph_handle)
         req.options.MergeFrom(shortest_path_options)
         req.disturbance_wkb_geometry = shapely.wkb.dumps(disturbance_geom)

@@ -11,7 +11,7 @@ bucket = "graph"
 prefix = ""
 cache_size = 4
 
-[population_dataset]
+[datasets.population]
 bucket = "population"
 key_pattern = "{ file_h3_resolution }/{ data_h3_resolution }/{ h3cell }.arrow"
 file_h3_resolution = 5
@@ -20,12 +20,6 @@ file_h3_resolution = 5
 ## must be type UInt64
 ## default: "h3index"
 # h3index_column_name = "h3index"
-
-## name of the population count column in the dataset
-## must be type Float32
-## default: "population"
-# population_count_column_name = "population"
-
 
 [output]
 bucket = "outputs"

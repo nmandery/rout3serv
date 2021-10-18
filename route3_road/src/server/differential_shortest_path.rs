@@ -1,30 +1,34 @@
 use std::cmp::max;
+use std::ops::Add;
 use std::sync::Arc;
 
-use arrow2::array::{Float32Vec, Float64Vec, UInt64Vec};
-use arrow2::datatypes::{DataType, Field, Schema};
 use arrow2::record_batch::RecordBatch;
 use eyre::Result;
 use geo_types::Coordinate;
-use h3ron::collections::{H3CellMap, H3CellSet, H3Treemap};
+use h3ron::collections::{H3CellSet, H3Treemap};
 use h3ron::iter::change_cell_resolution;
 use h3ron::{H3Cell, H3Edge, HasH3Resolution, Index};
 use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPath, ExclusionDiff};
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
-use itertools::Itertools;
+use num_traits::Zero;
+use polars_core::prelude::*;
 use rayon::prelude::*;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tonic::Status;
 
+use crate::io::graph_store::GraphCacheKey;
+use crate::io::s3::S3H3Dataset;
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes, RouteWkb, ShortestPathOptions,
 };
-use crate::server::util::StrId;
+use crate::server::storage::S3Storage;
+use crate::server::util::{extract_h3indexes, StrId};
 use crate::server::vector::{buffer_meters, gdal_geom_to_h3, read_wkb_to_gdal};
-use crate::weight::Weight;
+use crate::weight::ToFloatWeight;
 
-pub struct DspInput {
+pub struct DspInput<W: Send + Sync> {
     /// the cells within the disturbance
     pub disturbance: H3Treemap<H3Cell>,
 
@@ -34,71 +38,145 @@ pub struct DspInput {
     /// the destination cells to route to
     pub destinations: Vec<H3Cell>,
 
-    pub downsampled_prerouting: bool,
     pub store_output: bool,
     pub options: ShortestPathOptions,
+    pub graph: Arc<PreparedH3EdgeGraph<W>>,
+
+    /// Setting a `downsampled_graph` will allow performing an initial routing at a lower resolution
+    /// to reduce the number of routings to perform on the full-resolution graph. This has the potential
+    /// to skew the results as a reduction in resolution may change the graph topology, but decreases the
+    /// running time in most cases.
+    /// The reduction should be no more than two resolutions.
+    pub downsampled_graph: Option<Arc<PreparedH3EdgeGraph<W>>>,
+    pub ref_dataframe: DataFrame,
+    pub ref_dataframe_h3index_column: String,
+    pub ref_dataframe_cells: H3CellSet,
 }
 
-impl DifferentialShortestPathRequest {
-    pub fn get_input(&self, h3_resolution: u8) -> std::result::Result<DspInput, Status> {
-        let (disturbance, within_buffer) = self.disturbance_and_buffered_cells(h3_resolution)?;
-        Ok(DspInput {
-            disturbance,
-            within_buffer,
-            destinations: self.destination_cells(h3_resolution)?,
-            downsampled_prerouting: self.downsampled_prerouting,
-            store_output: self.store_output,
-            options: self.options.clone().unwrap_or_else(Default::default),
-        })
-    }
+pub async fn collect_input<W: Send + Sync>(
+    mut request: DifferentialShortestPathRequest,
+    storage: Arc<S3Storage<W>>,
+) -> std::result::Result<DspInput<W>, Status>
+where
+    W: Serialize + DeserializeOwned,
+{
+    let (graph, graph_cache_key) = storage
+        .load_graph_from_option(&request.graph_handle)
+        .await?;
 
-    fn disturbance_and_buffered_cells(
-        &self,
-        h3_resolution: u8,
-    ) -> std::result::Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
-        let disturbance_geom = read_wkb_to_gdal(&self.disturbance_wkb_geometry)?;
-        let disturbed_cells: H3Treemap<H3Cell> =
-            gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
-                .drain()
-                .collect();
+    // obtain the downsampled graph if requested
+    let downsampled_graph = if request.downsampled_prerouting {
+        // attempt to find a suitable graph at a lower resolution
+        let mut found_gck: Option<GraphCacheKey> = None;
+        for gck in storage.load_graph_cache_keys().await?.drain(..) {
+            if gck.name == graph_cache_key.name && gck.h3_resolution < graph_cache_key.h3_resolution
+            {
+                if let Some(f_gck) = found_gck.as_ref() {
+                    // use the next lower resolution
+                    if f_gck.h3_resolution < gck.h3_resolution {
+                        found_gck = Some(gck);
+                    }
+                } else {
+                    found_gck = Some(gck);
+                }
+            }
+        }
 
-        let buffered_cells: Vec<_> = gdal_geom_to_h3(
-            &buffer_meters(&disturbance_geom, self.radius_meters)?,
-            h3_resolution,
-            true,
-        )?
-        .drain()
-        .collect();
-        Ok((disturbed_cells, buffered_cells))
-    }
+        if let Some(dsg_gck) = found_gck {
+            Some(storage.load_graph(&dsg_gck).await?)
+        } else {
+            return Err(Status::invalid_argument(
+                "no suitable graph at a lower resolution found",
+            ));
+        }
+    } else {
+        None
+    };
 
-    /// cells to route to
-    fn destination_cells(&self, h3_resolution: u8) -> std::result::Result<Vec<H3Cell>, Status> {
-        let mut destination_cells = self
-            .destinations
-            .iter()
-            .map(|pt| H3Cell::from_coordinate(&Coordinate::from((pt.x, pt.y)), h3_resolution))
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| {
-                log::error!("can not convert the target_points to h3: {:?}", e);
-                Status::internal("can not convert the target_points to h3")
-            })?;
-        destination_cells.sort_unstable();
-        destination_cells.dedup();
-        Ok(destination_cells)
-    }
+    let (disturbance, within_buffer) = {
+        let disturbance_wkb_geometry = std::mem::take(&mut request.disturbance_wkb_geometry);
+        let radius_meters = request.radius_meters;
+        tokio::task::block_in_place(|| {
+            disturbance_and_buffered_cells(
+                graph.h3_resolution(),
+                disturbance_wkb_geometry,
+                radius_meters,
+            )
+        })?
+    };
+
+    let ref_dataset_config = storage.get_dataset_config(request.ref_dataset_name)?;
+    let ref_dataframe = storage
+        .load_dataset_dataframe(ref_dataset_config, &within_buffer, graph.h3_resolution())
+        .await?;
+    let ref_dataframe_cells: H3CellSet =
+        extract_h3indexes(&ref_dataframe, &ref_dataset_config.h3index_column())?;
+
+    Ok(DspInput {
+        disturbance,
+        within_buffer,
+        destinations: destination_cells(request.destinations, graph.h3_resolution())?,
+        store_output: request.store_output,
+        options: request.options.unwrap_or_else(Default::default),
+        graph,
+        downsampled_graph,
+        ref_dataframe,
+        ref_dataframe_h3index_column: ref_dataset_config.h3index_column(),
+        ref_dataframe_cells,
+    })
+}
+
+/// cells to route to
+fn destination_cells(
+    destinations: Vec<super::api::generated::Point>,
+    h3_resolution: u8,
+) -> std::result::Result<Vec<H3Cell>, Status> {
+    let mut destination_cells = destinations
+        .iter()
+        .map(|pt| H3Cell::from_coordinate(&Coordinate::from((pt.x, pt.y)), h3_resolution))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!("can not convert the target_points to h3: {:?}", e);
+            Status::internal("can not convert the target_points to h3")
+        })?;
+    destination_cells.sort_unstable();
+    destination_cells.dedup();
+    Ok(destination_cells)
+}
+
+fn disturbance_and_buffered_cells(
+    h3_resolution: u8,
+    disturbance_wkb_geometry: Vec<u8>,
+    radius_meters: f64,
+) -> std::result::Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
+    let disturbance_geom = read_wkb_to_gdal(&disturbance_wkb_geometry)?;
+    let disturbed_cells: H3Treemap<H3Cell> =
+        gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
+            .drain()
+            .collect();
+
+    let buffered_cells: Vec<_> = gdal_geom_to_h3(
+        &buffer_meters(&disturbance_geom, radius_meters)?,
+        h3_resolution,
+        true,
+    )?
+    .drain()
+    .collect();
+    Ok((disturbed_cells, buffered_cells))
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct DspOutput {
+pub struct DspOutput<W: Send + Sync> {
     pub object_id: String,
-    pub population_at_origins: H3CellMap<f32>,
+    pub ref_dataframe: DataFrame,
+    pub ref_dataframe_h3index_column: String,
+    pub ref_dataframe_cells: H3CellSet,
 
     /// tuple: (origin h3 cell, diff)
-    pub differential_shortest_paths: Vec<(H3Cell, ExclusionDiff<Path<Weight>>)>,
+    pub differential_shortest_paths: Vec<(H3Cell, ExclusionDiff<Path<W>>)>,
 }
 
-impl StrId for DspOutput {
+impl<W: Send + Sync> StrId for DspOutput<W> {
     fn id(&self) -> &str {
         self.object_id.as_ref()
     }
@@ -106,35 +184,26 @@ impl StrId for DspOutput {
 
 ///
 ///
-/// Setting a `downsampled_routing_graph` will allow performing an initial routing at a lower resolution
-/// to reduce the number of routings to perform on the full-resolution graph. This has the potential
-/// to skew the results as a reduction in resolution may change the graph topology, but decreases the
-/// running time in most cases.
-/// The reduction should be no more than two resolutions.
-pub fn calculate(
-    prepared_graph: Arc<PreparedH3EdgeGraph<Weight>>,
-    input: DspInput,
-    population: H3CellMap<f32>,
-    downsampled_graph: Option<Arc<PreparedH3EdgeGraph<Weight>>>,
-) -> Result<DspOutput> {
-    let mut population_at_origins: H3CellMap<f32> = H3CellMap::default();
-
+pub fn calculate<W>(input: DspInput<W>) -> Result<DspOutput<W>>
+where
+    W: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
+{
     let origin_cells: Vec<H3Cell> = {
         let origin_cells: Vec<H3Cell> = {
             let mut origin_cells = Vec::with_capacity(input.within_buffer.len());
             for cell in input.within_buffer.iter() {
                 // exclude the cells of the disturbance itself as well as all origin cells without
                 // any population from routing
-                if let (Some(pop), false) = (population.get(cell), input.disturbance.contains(cell))
+                if input.ref_dataframe_cells.contains(cell) == true
+                    && input.disturbance.contains(cell) == false
                 {
-                    population_at_origins.insert(*cell, *pop);
                     origin_cells.push(*cell);
                 }
             }
             origin_cells
         };
 
-        if let Some(downsampled_graph) = downsampled_graph {
+        if let Some(downsampled_graph) = input.downsampled_graph {
             let mut origin_cells_ds: Vec<_> =
                 change_cell_resolution(&origin_cells, downsampled_graph.h3_resolution()).collect();
             origin_cells_ds.sort_unstable();
@@ -198,7 +267,8 @@ pub fn calculate(
         }
     };
 
-    let diff: Vec<_> = prepared_graph
+    let diff: Vec<_> = input
+        .graph
         .differential_shortest_path(
             &origin_cells,
             &input.destinations,
@@ -210,41 +280,29 @@ pub fn calculate(
 
     Ok(DspOutput {
         object_id: uuid::Uuid::new_v4().to_string(),
-        population_at_origins,
+        ref_dataframe: input.ref_dataframe,
+        ref_dataframe_h3index_column: input.ref_dataframe_h3index_column,
+        ref_dataframe_cells: input.ref_dataframe_cells,
         differential_shortest_paths: diff,
     })
 }
 
 /// build an arrow dataset with some basic stats for each of the origin cells
-pub fn disturbance_statistics(output: &DspOutput) -> Result<Vec<RecordBatch>> {
-    let schema = Arc::new(Schema::new(vec![
-        Field::new("h3index_origin", DataType::UInt64, false),
-        Field::new(
-            "preferred_dest_h3index_without_disturbance",
-            DataType::UInt64,
-            true,
-        ),
-        Field::new(
-            "preferred_dest_h3index_with_disturbance",
-            DataType::UInt64,
-            true,
-        ),
-        Field::new("population_origin", DataType::Float32, true),
-        Field::new("num_reached_without_disturbance", DataType::UInt64, false),
-        Field::new("num_reached_with_disturbance", DataType::UInt64, false),
-        Field::new("avg_cost_without_disturbance", DataType::Float64, true),
-        Field::new("avg_cost_with_disturbance", DataType::Float64, true),
-    ]));
-
-    let avg_cost = |paths: &[Path<Weight>]| -> Option<f64> {
+fn disturbance_statistics_internal<W: Send + Sync>(
+    output: &DspOutput<W>,
+) -> Result<Vec<RecordBatch>>
+where
+    W: ToFloatWeight,
+{
+    let avg_cost = |paths: &[Path<W>]| -> Option<f64> {
         if paths.is_empty() {
             None
         } else {
-            Some(paths.iter().map(|p| f64::from(p.cost)).sum::<f64>() / paths.len() as f64)
+            Some(paths.iter().map(|p| p.cost.to_float_weight()).sum::<f64>() / paths.len() as f64)
         }
     };
 
-    let preferred_destination = |paths: &[Path<Weight>]| -> Option<u64> {
+    let preferred_destination = |paths: &[Path<W>]| -> Option<u64> {
         paths
             .first()
             .map(|p| p.destination_cell().ok())
@@ -252,64 +310,87 @@ pub fn disturbance_statistics(output: &DspOutput) -> Result<Vec<RecordBatch>> {
             .map(|cell| cell.h3index() as u64)
     };
 
-    let mut batches = vec![];
-    let chunk_size = 2000_usize;
-    for chunk in &output.differential_shortest_paths.iter().chunks(chunk_size) {
-        let mut cell_h3indexes = UInt64Vec::with_capacity(chunk_size);
-        let mut population_at_origin = Float32Vec::with_capacity(chunk_size);
-        let mut num_reached_without_disturbance = UInt64Vec::with_capacity(chunk_size);
-        let mut num_reached_with_disturbance = UInt64Vec::with_capacity(chunk_size);
-        let mut avg_cost_without_disturbance = Float64Vec::with_capacity(chunk_size);
-        let mut avg_cost_with_disturbance = Float64Vec::with_capacity(chunk_size);
-        let mut preferred_destination_without_disturbance = UInt64Vec::with_capacity(chunk_size);
-        let mut preferred_destination_with_disturbance = UInt64Vec::with_capacity(chunk_size);
-        for (origin_cell, diff) in chunk {
-            cell_h3indexes.push(Some(origin_cell.h3index() as u64));
-            population_at_origin.push(output.population_at_origins.get(origin_cell).cloned());
+    let mut cell_h3indexes = Vec::with_capacity(output.differential_shortest_paths.len());
+    let mut num_reached_without_disturbance =
+        Vec::with_capacity(output.differential_shortest_paths.len());
+    let mut num_reached_with_disturbance =
+        Vec::with_capacity(output.differential_shortest_paths.len());
+    let mut avg_cost_without_disturbance =
+        Vec::with_capacity(output.differential_shortest_paths.len());
+    let mut avg_cost_with_disturbance =
+        Vec::with_capacity(output.differential_shortest_paths.len());
+    let mut preferred_destination_without_disturbance =
+        Vec::with_capacity(output.differential_shortest_paths.len());
+    let mut preferred_destination_with_disturbance =
+        Vec::with_capacity(output.differential_shortest_paths.len());
+    for (origin_cell, diff) in output.differential_shortest_paths.iter() {
+        cell_h3indexes.push(origin_cell.h3index() as u64);
+        //population_at_origin.push(output.population_at_origins.get(origin_cell).cloned());
 
-            num_reached_without_disturbance.push(Some(diff.before_cell_exclusion.len() as u64));
-            avg_cost_without_disturbance.push(avg_cost(&diff.before_cell_exclusion));
+        num_reached_without_disturbance.push(diff.before_cell_exclusion.len() as u64);
+        avg_cost_without_disturbance.push(avg_cost(&diff.before_cell_exclusion));
 
-            num_reached_with_disturbance.push(Some(diff.after_cell_exclusion.len() as u64));
-            avg_cost_with_disturbance.push(avg_cost(&diff.after_cell_exclusion));
+        num_reached_with_disturbance.push(diff.after_cell_exclusion.len() as u64);
+        avg_cost_with_disturbance.push(avg_cost(&diff.after_cell_exclusion));
 
-            preferred_destination_without_disturbance
-                .push(preferred_destination(&diff.before_cell_exclusion));
-            preferred_destination_with_disturbance
-                .push(preferred_destination(&diff.after_cell_exclusion));
-        }
-
-        let batch = RecordBatch::try_new(
-            schema.clone(),
-            vec![
-                cell_h3indexes.into_arc(),
-                preferred_destination_without_disturbance.into_arc(),
-                preferred_destination_with_disturbance.into_arc(),
-                population_at_origin.into_arc(),
-                num_reached_without_disturbance.into_arc(),
-                num_reached_with_disturbance.into_arc(),
-                avg_cost_without_disturbance.into_arc(),
-                avg_cost_with_disturbance.into_arc(),
-            ],
-        )?;
-        batches.push(batch);
+        preferred_destination_without_disturbance
+            .push(preferred_destination(&diff.before_cell_exclusion));
+        preferred_destination_with_disturbance
+            .push(preferred_destination(&diff.after_cell_exclusion));
     }
-    Ok(batches)
+
+    let df = DataFrame::new(vec![
+        Series::new("h3index_origin", &cell_h3indexes),
+        Series::new(
+            "preferred_dest_h3index_without_disturbance",
+            &preferred_destination_without_disturbance,
+        ),
+        Series::new(
+            "num_reached_without_disturbance",
+            &num_reached_without_disturbance,
+        ),
+        Series::new(
+            "avg_cost_without_disturbance",
+            &avg_cost_without_disturbance,
+        ),
+        Series::new(
+            "preferred_dest_h3index_with_disturbance",
+            &preferred_destination_with_disturbance,
+        ),
+        Series::new(
+            "num_reached_with_disturbance",
+            &num_reached_with_disturbance,
+        ),
+        Series::new("avg_cost_with_disturbance", &avg_cost_with_disturbance),
+    ])?;
+    let df = df.inner_join(
+        &output.ref_dataframe,
+        "h3index_origin",
+        &output.ref_dataframe_h3index_column,
+    )?;
+
+    Ok(df.as_record_batches()?)
 }
 
-pub fn disturbance_statistics_status(
-    output: &DspOutput,
-) -> std::result::Result<Vec<RecordBatch>, Status> {
-    let rbs = disturbance_statistics(output).map_err(|e| {
+pub fn disturbance_statistics<W: Send + Sync>(
+    output: &DspOutput<W>,
+) -> std::result::Result<Vec<RecordBatch>, Status>
+where
+    W: ToFloatWeight,
+{
+    let rbs = disturbance_statistics_internal(output).map_err(|e| {
         log::error!("calculating population movement stats failed: {:?}", e);
         Status::internal("calculating population movement stats failed")
     })?;
     Ok(rbs)
 }
 
-pub fn build_routes_response(
-    diff: &ExclusionDiff<Path<Weight>>,
-) -> Result<DifferentialShortestPathRoutes, Status> {
+pub fn build_routes_response<W: Send + Sync>(
+    diff: &ExclusionDiff<Path<W>>,
+) -> Result<DifferentialShortestPathRoutes, Status>
+where
+    W: ToFloatWeight,
+{
     let response = DifferentialShortestPathRoutes {
         routes_without_disturbance: diff
             .before_cell_exclusion

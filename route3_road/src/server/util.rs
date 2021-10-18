@@ -1,12 +1,16 @@
 //! utility functions to use within the server context, most of them
-//! return a `tonic::Status` on error.
+//! return a `tonic::Status` on error and a somewhat useful error message + logging.
+
+use std::iter::FromIterator;
 
 use arrow2::record_batch::RecordBatch;
+use h3ron::Index;
+use polars_core::frame::DataFrame;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 
-use crate::io::recordbatch_to_bytes;
+use crate::io::dataframe::recordbatch_to_bytes;
 use crate::server::api::generated::ArrowRecordBatch;
 
 /// wrapper around tokios `spawn_blocking` to directly
@@ -57,4 +61,22 @@ pub async fn respond_recordbatches_stream(
         }
     });
     Ok(Response::new(ReceiverStream::new(rx)))
+}
+
+pub fn extract_h3indexes<C, I>(dataframe: &DataFrame, column_name: &str) -> Result<C, Status>
+where
+    C: FromIterator<I>,
+    I: Index,
+{
+    crate::io::dataframe::extract_h3indexes(dataframe, column_name).map_err(|e| {
+        log::error!(
+            "extracting indexes from column {} failed: {:?}",
+            column_name,
+            e
+        );
+        Status::invalid_argument(format!(
+            "extracting indexes from column {} failed",
+            column_name
+        ))
+    })
 }

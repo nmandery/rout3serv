@@ -2,9 +2,8 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 
 use eyre::Result;
-use h3ron::collections::{H3CellMap, H3CellSet};
+use h3ron::collections::H3CellSet;
 use h3ron::H3Cell;
-use h3ron::HasH3Resolution;
 use h3ron_graph::graph::GetStats;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -12,13 +11,12 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::config::ServerConfig;
-use crate::io::graph_store::GraphCacheKey;
 use crate::io::s3::FoundOption;
 use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
     DifferentialShortestPathRoutesRequest, Empty, GraphInfo, GraphInfoResponse, IdRef,
-    VersionResponse,
+    ListDatasetsResponse, VersionResponse,
 };
 use crate::server::storage::S3Storage;
 use crate::server::util::{
@@ -33,12 +31,12 @@ mod util;
 mod vector;
 
 struct ServerImpl {
-    storage: S3Storage<Weight>,
+    storage: Arc<S3Storage<Weight>>,
 }
 
 impl ServerImpl {
     pub async fn create(config: ServerConfig) -> Result<Self> {
-        let storage = S3Storage::<Weight>::from_config(Arc::new(config))?;
+        let storage = Arc::new(S3Storage::<Weight>::from_config(Arc::new(config))?);
         Ok(Self { storage })
     }
 }
@@ -77,6 +75,16 @@ impl Route3Road for ServerImpl {
         Ok(Response::new(resp))
     }
 
+    async fn list_datasets(
+        &self,
+        _request: Request<Empty>,
+    ) -> Result<Response<ListDatasetsResponse>, Status> {
+        let response = ListDatasetsResponse {
+            dataset_name: self.storage.list_datasets(),
+        };
+        Ok(Response::new(response))
+    }
+
     type DifferentialShortestPathStream = ArrowRecordBatchStream;
 
     async fn differential_shortest_path(
@@ -84,60 +92,20 @@ impl Route3Road for ServerImpl {
         request: Request<DifferentialShortestPathRequest>,
     ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
         let dsp_request = request.into_inner();
-        let (graph, graph_cache_key) = self
-            .storage
-            .load_graph_from_option(&dsp_request.graph_handle)
-            .await?;
-        let input = dsp_request.get_input(graph.h3_resolution())?;
-
-        // obtain the downsampled graph if requested
-        let downsampled_graph = if input.downsampled_prerouting {
-            // attempt to find a suitable graph at a lower resolution
-            let mut found_gck: Option<GraphCacheKey> = None;
-            for gck in self.storage.load_graph_cache_keys().await?.drain(..) {
-                if gck.name == graph_cache_key.name
-                    && gck.h3_resolution < graph_cache_key.h3_resolution
-                {
-                    if let Some(f_gck) = found_gck.as_ref() {
-                        // use the next lower resolution
-                        if f_gck.h3_resolution < gck.h3_resolution {
-                            found_gck = Some(gck);
-                        }
-                    } else {
-                        found_gck = Some(gck);
-                    }
-                }
-            }
-
-            if let Some(dsg_gck) = found_gck {
-                Some(self.storage.load_graph(&dsg_gck).await?)
-            } else {
-                return Err(Status::invalid_argument(
-                    "no suitable graph at a lower resolution found",
-                ));
-            }
-        } else {
-            None
-        };
-
-        let population: H3CellMap<f32> = self
-            .storage
-            .load_population(graph.h3_resolution(), &input.within_buffer)
-            .await?;
+        let input =
+            differential_shortest_path::collect_input(dsp_request, self.storage.clone()).await?;
 
         let do_store_output = input.store_output;
-        let output = spawn_blocking_status(move || {
-            differential_shortest_path::calculate(graph, input, population, downsampled_graph)
-        })
-        .await?
-        .map_err(|e| {
-            log::error!("calculating routes failed: {:?}", e);
-            Status::internal("calculating routes failed")
-        })?;
+        let output = spawn_blocking_status(move || differential_shortest_path::calculate(input))
+            .await?
+            .map_err(|e| {
+                log::error!("calculating routes failed: {:?}", e);
+                Status::internal("calculating routes failed")
+            })?;
 
         let response_fut = respond_recordbatches_stream(
             output.object_id.clone(),
-            differential_shortest_path::disturbance_statistics_status(&output)?,
+            differential_shortest_path::disturbance_statistics(&output)?,
         );
 
         let response = if do_store_output {
@@ -161,12 +129,14 @@ impl Route3Road for ServerImpl {
         let inner = request.into_inner();
         if let FoundOption::Found(output) = self
             .storage
-            .retrieve_output::<_, differential_shortest_path::DspOutput>(inner.object_id.as_str())
+            .retrieve_output::<_, differential_shortest_path::DspOutput<Weight>>(
+                inner.object_id.as_str(),
+            )
             .await?
         {
             respond_recordbatches_stream(
                 output.object_id.clone(),
-                differential_shortest_path::disturbance_statistics_status(&output)?,
+                differential_shortest_path::disturbance_statistics(&output)?,
             )
             .await
         } else {
@@ -185,7 +155,9 @@ impl Route3Road for ServerImpl {
         let inner = request.into_inner();
         let output = if let FoundOption::Found(output) = self
             .storage
-            .retrieve_output::<_, differential_shortest_path::DspOutput>(inner.object_id.as_str())
+            .retrieve_output::<_, differential_shortest_path::DspOutput<Weight>>(
+                inner.object_id.as_str(),
+            )
             .await?
         {
             output

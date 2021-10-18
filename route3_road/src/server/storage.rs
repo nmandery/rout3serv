@@ -1,16 +1,17 @@
+use std::borrow::Borrow;
 use std::convert::TryInto;
 use std::io::Cursor;
 use std::sync::Arc;
 
-use h3ron::collections::H3CellMap;
 use h3ron::io::{deserialize_from, serialize_into};
 use h3ron::H3Cell;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
+use polars_core::frame::DataFrame;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tonic::Status;
 
-use crate::config::ServerConfig;
+use crate::config::{GenericDataset, ServerConfig};
 use crate::io::graph_store::{GraphCacheKey, GraphStore};
 use crate::io::s3::{FoundOption, S3Client, S3RecordBatchLoader};
 use crate::server::api::generated::GraphHandle;
@@ -24,6 +25,7 @@ pub struct S3Storage<W: Send + Sync> {
     s3_client: Arc<S3Client>,
     pub graph_store: GraphStore<W>,
     config: Arc<ServerConfig>,
+    recordbatch_loader: S3RecordBatchLoader,
 }
 
 impl<W: Send + Sync> S3Storage<W>
@@ -33,10 +35,12 @@ where
     pub fn from_config(config: Arc<ServerConfig>) -> eyre::Result<Self> {
         let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
         let graph_store = GraphStore::new(s3_client.clone(), config.graph_store.clone());
+        let recordbatch_loader = S3RecordBatchLoader::new(s3_client.clone());
         Ok(Self {
             s3_client,
             graph_store,
             config,
+            recordbatch_loader,
         })
     }
 
@@ -136,28 +140,39 @@ where
         }
     }
 
-    pub async fn load_population(
+    pub fn get_dataset_config<B>(&self, dataset_name: B) -> Result<&GenericDataset, Status>
+    where
+        B: Borrow<String>,
+    {
+        let ds_name = dataset_name.borrow().trim().to_string();
+        if ds_name.is_empty() {
+            log::warn!("empty dataset name given");
+            return Err(Status::invalid_argument("empty dataset name given"));
+        }
+        self.config.datasets.get(&ds_name).ok_or_else(|| {
+            log::warn!("unknown dataset requested: {}", ds_name);
+            Status::invalid_argument(format!("unknown dataset: {}", ds_name))
+        })
+    }
+
+    pub async fn load_dataset_dataframe(
         &self,
-        h3_resolution: u8,
+        dataset_config: &GenericDataset,
         cells: &[H3Cell],
-    ) -> std::result::Result<H3CellMap<f32>, Status> {
-        let loader = S3RecordBatchLoader::new(self.s3_client.clone());
-        let population_cellmap = loader
-            .load_h3_dataset_cellmap(
-                &self.config.population_dataset,
-                cells,
-                h3_resolution,
-                &self.config.population_dataset.get_h3index_column_name(),
-                &self
-                    .config
-                    .population_dataset
-                    .get_population_count_column_name(),
-            )
+        data_h3_resolution: u8,
+    ) -> Result<DataFrame, Status> {
+        let dataframe = self
+            .recordbatch_loader
+            .load_h3_dataset_dataframe(dataset_config, cells, data_h3_resolution)
             .await
             .map_err(|e| {
-                log::error!("loading population from s3 failed: {:?}", e);
-                Status::internal("population data inaccessible")
+                log::error!("loading from s3 failed: {:?}", e);
+                Status::internal("dataset is inaccessible")
             })?;
-        Ok(population_cellmap)
+        Ok(dataframe)
+    }
+
+    pub fn list_datasets(&self) -> Vec<String> {
+        self.config.datasets.keys().cloned().collect()
     }
 }

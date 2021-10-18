@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x11route3_road.proto\x12\x0broute3.road\"\x07\n\x05\x45mpty\"S\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0egit_commit_sha\x18\x02 \x01(\t\x12\x17\n\x0f\x62uild_timestamp\x18\x03 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"X\n\x13ShortestPathOptions\x12!\n\x19num_destinations_to_reach\x18\x04 \x01(\r\x12\x1e\n\x16num_gap_cells_to_graph\x18\x06 \x01(\r\"\x9d\x02\n\x1f\x44ifferentialShortestPathRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12 \n\x18\x64isturbance_wkb_geometry\x18\x02 \x01(\x0c\x12\x15\n\rradius_meters\x18\x03 \x01(\x01\x12\x31\n\x07options\x18\x04 \x01(\x0b\x32 .route3.road.ShortestPathOptions\x12(\n\x0c\x64\x65stinations\x18\x05 \x03(\x0b\x32\x12.route3.road.Point\x12\x1e\n\x16\x64ownsampled_prerouting\x18\x06 \x01(\x08\x12\x14\n\x0cstore_output\x18\x07 \x01(\x08\"\x1a\n\x05IdRef\x12\x11\n\tobject_id\x18\x01 \x01(\t\"I\n%DifferentialShortestPathRoutesRequest\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"3\n\x10\x41rrowRecordBatch\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x93\x01\n\x1e\x44ifferentialShortestPathRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.route3.road.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.route3.road.RouteWKB\"2\n\x0bGraphHandle\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x15\n\rh3_resolution\x18\x02 \x01(\r\"n\n\tGraphInfo\x12(\n\x06handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12\x11\n\tis_cached\x18\x02 \x01(\x08\x12\x11\n\tnum_edges\x18\x03 \x01(\x04\x12\x11\n\tnum_nodes\x18\x04 \x01(\x04\";\n\x11GraphInfoResponse\x12&\n\x06graphs\x18\x01 \x03(\x0b\x32\x16.route3.road.GraphInfo*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\xdc\x03\n\nRoute3Road\x12=\n\x07Version\x12\x12.route3.road.Empty\x1a\x1c.route3.road.VersionResponse\"\x00\x12\x41\n\tGraphInfo\x12\x12.route3.road.Empty\x1a\x1e.route3.road.GraphInfoResponse\"\x00\x12k\n\x18\x44ifferentialShortestPath\x12,.route3.road.DifferentialShortestPathRequest\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12T\n\x1bGetDifferentialShortestPath\x12\x12.route3.road.IdRef\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12\x88\x01\n!GetDifferentialShortestPathRoutes\x12\x32.route3.road.DifferentialShortestPathRoutesRequest\x1a+.route3.road.DifferentialShortestPathRoutes\"\x00\x30\x01\x62\x06proto3'
+  serialized_pb=b'\n\x11route3_road.proto\x12\x0broute3.road\"\x07\n\x05\x45mpty\"S\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0egit_commit_sha\x18\x02 \x01(\t\x12\x17\n\x0f\x62uild_timestamp\x18\x03 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"X\n\x13ShortestPathOptions\x12!\n\x19num_destinations_to_reach\x18\x04 \x01(\r\x12\x1e\n\x16num_gap_cells_to_graph\x18\x06 \x01(\r\"\xb7\x02\n\x1f\x44ifferentialShortestPathRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12 \n\x18\x64isturbance_wkb_geometry\x18\x02 \x01(\x0c\x12\x15\n\rradius_meters\x18\x03 \x01(\x01\x12\x31\n\x07options\x18\x04 \x01(\x0b\x32 .route3.road.ShortestPathOptions\x12(\n\x0c\x64\x65stinations\x18\x05 \x03(\x0b\x32\x12.route3.road.Point\x12\x1e\n\x16\x64ownsampled_prerouting\x18\x06 \x01(\x08\x12\x14\n\x0cstore_output\x18\x07 \x01(\x08\x12\x18\n\x10ref_dataset_name\x18\x08 \x01(\t\"\x1a\n\x05IdRef\x12\x11\n\tobject_id\x18\x01 \x01(\t\"I\n%DifferentialShortestPathRoutesRequest\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"T\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x0c\n\x04\x63ost\x18\x03 \x01(\x01\x12\x0b\n\x03wkb\x18\x04 \x01(\x0c\"3\n\x10\x41rrowRecordBatch\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x93\x01\n\x1e\x44ifferentialShortestPathRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.route3.road.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.route3.road.RouteWKB\"2\n\x0bGraphHandle\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x15\n\rh3_resolution\x18\x02 \x01(\r\"n\n\tGraphInfo\x12(\n\x06handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12\x11\n\tis_cached\x18\x02 \x01(\x08\x12\x11\n\tnum_edges\x18\x03 \x01(\x04\x12\x11\n\tnum_nodes\x18\x04 \x01(\x04\";\n\x11GraphInfoResponse\x12&\n\x06graphs\x18\x01 \x03(\x0b\x32\x16.route3.road.GraphInfo\",\n\x14ListDatasetsResponse\x12\x14\n\x0c\x64\x61taset_name\x18\x01 \x03(\t*2\n\x13\x43\x65llInRoutePosition\x12\n\n\x06Origin\x10\x00\x12\x0f\n\x0b\x44\x65stination\x10\x01\x32\xa5\x04\n\nRoute3Road\x12=\n\x07Version\x12\x12.route3.road.Empty\x1a\x1c.route3.road.VersionResponse\"\x00\x12\x41\n\tGraphInfo\x12\x12.route3.road.Empty\x1a\x1e.route3.road.GraphInfoResponse\"\x00\x12G\n\x0cListDatasets\x12\x12.route3.road.Empty\x1a!.route3.road.ListDatasetsResponse\"\x00\x12k\n\x18\x44ifferentialShortestPath\x12,.route3.road.DifferentialShortestPathRequest\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12T\n\x1bGetDifferentialShortestPath\x12\x12.route3.road.IdRef\x1a\x1d.route3.road.ArrowRecordBatch\"\x00\x30\x01\x12\x88\x01\n!GetDifferentialShortestPathRoutes\x12\x32.route3.road.DifferentialShortestPathRoutesRequest\x1a+.route3.road.DifferentialShortestPathRoutes\"\x00\x30\x01\x62\x06proto3'
 )
 
 _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
@@ -43,8 +43,8 @@ _CELLINROUTEPOSITION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1154,
-  serialized_end=1204,
+  serialized_start=1226,
+  serialized_end=1276,
 )
 _sym_db.RegisterEnumDescriptor(_CELLINROUTEPOSITION)
 
@@ -260,6 +260,13 @@ _DIFFERENTIALSHORTESTPATHREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ref_dataset_name', full_name='route3.road.DifferentialShortestPathRequest.ref_dataset_name', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -273,7 +280,7 @@ _DIFFERENTIALSHORTESTPATHREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=250,
-  serialized_end=535,
+  serialized_end=561,
 )
 
 
@@ -304,8 +311,8 @@ _IDREF = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=537,
-  serialized_end=563,
+  serialized_start=563,
+  serialized_end=589,
 )
 
 
@@ -343,8 +350,8 @@ _DIFFERENTIALSHORTESTPATHROUTESREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=565,
-  serialized_end=638,
+  serialized_start=591,
+  serialized_end=664,
 )
 
 
@@ -396,8 +403,8 @@ _ROUTEWKB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=640,
-  serialized_end=724,
+  serialized_start=666,
+  serialized_end=750,
 )
 
 
@@ -435,8 +442,8 @@ _ARROWRECORDBATCH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=726,
-  serialized_end=777,
+  serialized_start=752,
+  serialized_end=803,
 )
 
 
@@ -474,8 +481,8 @@ _DIFFERENTIALSHORTESTPATHROUTES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=780,
-  serialized_end=927,
+  serialized_start=806,
+  serialized_end=953,
 )
 
 
@@ -513,8 +520,8 @@ _GRAPHHANDLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=929,
-  serialized_end=979,
+  serialized_start=955,
+  serialized_end=1005,
 )
 
 
@@ -566,8 +573,8 @@ _GRAPHINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=981,
-  serialized_end=1091,
+  serialized_start=1007,
+  serialized_end=1117,
 )
 
 
@@ -598,8 +605,40 @@ _GRAPHINFORESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1093,
-  serialized_end=1152,
+  serialized_start=1119,
+  serialized_end=1178,
+)
+
+
+_LISTDATASETSRESPONSE = _descriptor.Descriptor(
+  name='ListDatasetsResponse',
+  full_name='route3.road.ListDatasetsResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='dataset_name', full_name='route3.road.ListDatasetsResponse.dataset_name', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1180,
+  serialized_end=1224,
 )
 
 _DIFFERENTIALSHORTESTPATHREQUEST.fields_by_name['graph_handle'].message_type = _GRAPHHANDLE
@@ -622,6 +661,7 @@ DESCRIPTOR.message_types_by_name['DifferentialShortestPathRoutes'] = _DIFFERENTI
 DESCRIPTOR.message_types_by_name['GraphHandle'] = _GRAPHHANDLE
 DESCRIPTOR.message_types_by_name['GraphInfo'] = _GRAPHINFO
 DESCRIPTOR.message_types_by_name['GraphInfoResponse'] = _GRAPHINFORESPONSE
+DESCRIPTOR.message_types_by_name['ListDatasetsResponse'] = _LISTDATASETSRESPONSE
 DESCRIPTOR.enum_types_by_name['CellInRoutePosition'] = _CELLINROUTEPOSITION
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -716,6 +756,13 @@ GraphInfoResponse = _reflection.GeneratedProtocolMessageType('GraphInfoResponse'
   })
 _sym_db.RegisterMessage(GraphInfoResponse)
 
+ListDatasetsResponse = _reflection.GeneratedProtocolMessageType('ListDatasetsResponse', (_message.Message,), {
+  'DESCRIPTOR' : _LISTDATASETSRESPONSE,
+  '__module__' : 'route3_road_pb2'
+  # @@protoc_insertion_point(class_scope:route3.road.ListDatasetsResponse)
+  })
+_sym_db.RegisterMessage(ListDatasetsResponse)
+
 
 
 _ROUTE3ROAD = _descriptor.ServiceDescriptor(
@@ -725,8 +772,8 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=1207,
-  serialized_end=1683,
+  serialized_start=1279,
+  serialized_end=1828,
   methods=[
   _descriptor.MethodDescriptor(
     name='Version',
@@ -749,9 +796,19 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
     create_key=_descriptor._internal_create_key,
   ),
   _descriptor.MethodDescriptor(
+    name='ListDatasets',
+    full_name='route3.road.Route3Road.ListDatasets',
+    index=2,
+    containing_service=None,
+    input_type=_EMPTY,
+    output_type=_LISTDATASETSRESPONSE,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
     name='DifferentialShortestPath',
     full_name='route3.road.Route3Road.DifferentialShortestPath',
-    index=2,
+    index=3,
     containing_service=None,
     input_type=_DIFFERENTIALSHORTESTPATHREQUEST,
     output_type=_ARROWRECORDBATCH,
@@ -761,7 +818,7 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetDifferentialShortestPath',
     full_name='route3.road.Route3Road.GetDifferentialShortestPath',
-    index=3,
+    index=4,
     containing_service=None,
     input_type=_IDREF,
     output_type=_ARROWRECORDBATCH,
@@ -771,7 +828,7 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetDifferentialShortestPathRoutes',
     full_name='route3.road.Route3Road.GetDifferentialShortestPathRoutes',
-    index=4,
+    index=5,
     containing_service=None,
     input_type=_DIFFERENTIALSHORTESTPATHROUTESREQUEST,
     output_type=_DIFFERENTIALSHORTESTPATHROUTES,

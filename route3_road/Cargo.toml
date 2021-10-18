@@ -26,9 +26,14 @@ tokio-stream = "0.1"
 itertools = "0.10"
 geo-types = "0.7"
 lru = "0.7.0"
+num-traits = "0.2"
+
+[dependencies.polars-core]
+version = "0.16.0"
+features = ["serde", "dtype-u64"]
 
 [dependencies.arrow2]
-version = "0.6.2"
+version = "0.5.3" # matches version polars-core depends on
 features = ["io_ipc"]
 
 [dependencies.bytes]

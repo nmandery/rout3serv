@@ -41,24 +41,27 @@ message DifferentialShortestPathRequest {
    */
   bytes disturbance_wkb_geometry = 2;
 
-  /** The radius around the wkb_geometry to be analyzed.
+  /* The radius around the wkb_geometry to be analyzed.
       units are meters. */
   double radius_meters = 3;
 
   ShortestPathOptions options = 4;
 
-  /** targets to route to */
+  /* targets to route to */
   repeated Point destinations = 5;
 
-  /** Setting a `downsampled_prerouting` will allow performing an initial routing at a lower resolution
+  /* Setting a `downsampled_prerouting` will allow performing an initial routing at a lower resolution
   to reduce the number of routings to perform on the full-resolution graph. This has the potential
    to skew the results as a reduction in resolution may change the graph topology, but decreases the
    running time in most cases.
    */
   bool downsampled_prerouting = 6;
 
-  /** store output on s3 */
+  /* store output on s3 */
   bool store_output = 7;
+
+  /* dataset to use for providing population/... data */
+  string ref_dataset_name = 8;
 
 }
 
@@ -122,11 +125,15 @@ message GraphInfoResponse {
   repeated GraphInfo graphs = 1;
 }
 
+message ListDatasetsResponse {
+  repeated string dataset_name = 1;
+}
+
 service Route3Road {
   // general methods -------------------------------------
   rpc Version(Empty) returns (VersionResponse) {}
   rpc GraphInfo(Empty) returns (GraphInfoResponse) {}
-
+  rpc ListDatasets(Empty) returns (ListDatasetsResponse) {}
 
   /** differential shortest path based on the population dataset */
   rpc DifferentialShortestPath(DifferentialShortestPathRequest)

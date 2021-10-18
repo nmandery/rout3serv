@@ -6,21 +6,20 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrow2::array::{PrimitiveArray, UInt64Array};
 use arrow2::io::ipc::read::{read_file_metadata, FileReader};
 use arrow2::record_batch::RecordBatch;
-use arrow2::types::NativeType;
 use bytes::Bytes;
 use bytesize::ByteSize;
 use eyre::{Report, Result};
 use futures::TryStreamExt;
-use h3ron::collections::{H3CellMap, H3CellSet};
 use h3ron::iter::change_cell_resolution;
 use h3ron::H3Cell;
 use hyper::client::HttpConnector;
 use hyper_tls::HttpsConnector;
 use itertools::Itertools;
 use native_tls::TlsConnector;
+use polars_core::datatypes::DataType;
+use polars_core::frame::DataFrame;
 use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{ByteStream, HttpClient, Region, RusotoError};
@@ -28,7 +27,7 @@ use rusoto_s3::{GetObjectRequest, ListObjectsRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
 
-use crate::io::recordbatch_array;
+//use crate::io::recordbatch_array;
 
 /// a minimal option type to indicate if something has been found or not
 pub enum FoundOption<T> {
@@ -269,6 +268,7 @@ pub trait S3H3Dataset {
     fn bucket_name(&self) -> String;
     fn key_pattern(&self) -> String;
     fn file_h3_resolution(&self) -> u8;
+    fn h3index_column(&self) -> String;
 }
 
 lazy_static! {
@@ -288,7 +288,7 @@ impl S3RecordBatchLoader {
         Self { s3_client }
     }
 
-    pub async fn load_h3_dataset<D: S3H3Dataset>(
+    pub async fn load_h3_dataset_recordbatches<D: S3H3Dataset>(
         &self,
         dataset: &D,
         cells: &[H3Cell],
@@ -338,6 +338,42 @@ impl S3RecordBatchLoader {
         Ok(record_batches)
     }
 
+    pub async fn load_h3_dataset_dataframe<D: S3H3Dataset>(
+        &self,
+        dataset: &D,
+        cells: &[H3Cell],
+        data_h3_resolution: u8,
+    ) -> Result<DataFrame> {
+        let df = DataFrame::try_from(
+            self.load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
+                .await?,
+        )?;
+        let h3index_column = dataset.h3index_column();
+        log::info!(
+            "loaded dataframe with {:?} shape, columns: {}",
+            df.shape(),
+            df.get_column_names().join(", ")
+        );
+        match df.column(&h3index_column) {
+            Ok(column) => {
+                if column.dtype() != &DataType::UInt64 {
+                    return Err(Report::msg(format!(
+                        "dataframe h3index column '{}' is typed as {}, but should be UInt64",
+                        h3index_column,
+                        column.dtype().to_string()
+                    )));
+                }
+            }
+            Err(_) => {
+                return Err(Report::msg(format!(
+                    "dataframe contains no column named '{}'",
+                    h3index_column
+                )))
+            }
+        };
+        Ok(df)
+    }
+
     fn build_h3_key<D: S3H3Dataset>(
         &self,
         dataset: &D,
@@ -356,40 +392,5 @@ impl S3RecordBatchLoader {
                 cell.to_string(),
             )
             .to_string()
-    }
-
-    pub async fn load_h3_dataset_cellmap<D: S3H3Dataset, T: NativeType>(
-        &self,
-        dataset: &D,
-        cells: &[H3Cell],
-        data_h3_resolution: u8,
-        cell_column_name: &str,
-        value_column_name: &str,
-    ) -> Result<H3CellMap<T>> {
-        let ref_recordbatches = self
-            .load_h3_dataset(dataset, cells, data_h3_resolution)
-            .await?;
-
-        let mut cellmap = H3CellMap::default();
-        let cells_to_use: H3CellSet = cells.iter().cloned().collect();
-        for ref_recordbatch in ref_recordbatches.iter() {
-            let h3index_array =
-                recordbatch_array::<UInt64Array>(ref_recordbatch, cell_column_name)?;
-            let ds_array =
-                recordbatch_array::<PrimitiveArray<T>>(ref_recordbatch, value_column_name)?;
-
-            for (h3index_o, ds_value_o) in h3index_array.iter().zip(ds_array.iter()) {
-                if let (Some(h3index), Some(ds_value)) = (h3index_o, ds_value_o) {
-                    if let Ok(cell) = H3Cell::try_from(*h3index) {
-                        if cells_to_use.contains(&cell) {
-                            cellmap.insert(cell, *ds_value);
-                        }
-                    } else {
-                        log::warn!("encountered invalid h3 index in loaded data: {}", h3index);
-                    }
-                }
-            }
-        }
-        Ok(cellmap)
     }
 }
