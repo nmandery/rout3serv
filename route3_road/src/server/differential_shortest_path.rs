@@ -202,16 +202,13 @@ where
         };
 
         if let Some(downsampled_graph) = input.downsampled_graph {
-            let mut origin_cells_ds: Vec<_> =
-                change_cell_resolution(&origin_cells, downsampled_graph.h3_resolution()).collect();
-            origin_cells_ds.sort_unstable();
-            origin_cells_ds.dedup();
+            let origin_cells_ds =
+                change_cell_resolution_dedup(&origin_cells, downsampled_graph.h3_resolution());
 
-            let mut destinations_ds: Vec<_> =
-                change_cell_resolution(&input.destinations, downsampled_graph.h3_resolution())
-                    .collect();
-            destinations_ds.sort_unstable();
-            destinations_ds.dedup();
+            let destinations_ds = change_cell_resolution_dedup(
+                &input.destinations,
+                downsampled_graph.h3_resolution(),
+            );
 
             let disturbance_ds: H3Treemap<_> =
                 change_cell_resolution(input.disturbance.iter(), downsampled_graph.h3_resolution())
@@ -283,6 +280,13 @@ where
         ref_dataframe_cells: input.ref_dataframe_cells,
         differential_shortest_paths: diff,
     })
+}
+
+fn change_cell_resolution_dedup(cells: &[H3Cell], h3_resolution: u8) -> Vec<H3Cell> {
+    let mut out_cells: Vec<_> = change_cell_resolution(cells, h3_resolution).collect();
+    out_cells.sort_unstable();
+    out_cells.dedup();
+    out_cells
 }
 
 /// build an arrow dataset with some basic stats for each of the origin cells
