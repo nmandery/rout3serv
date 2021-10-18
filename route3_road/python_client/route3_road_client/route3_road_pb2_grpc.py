@@ -19,10 +19,10 @@ class Route3RoadStub(object):
                 request_serializer=route3__road__pb2.Empty.SerializeToString,
                 response_deserializer=route3__road__pb2.VersionResponse.FromString,
                 )
-        self.GraphInfo = channel.unary_unary(
-                '/route3.road.Route3Road/GraphInfo',
+        self.ListGraphs = channel.unary_unary(
+                '/route3.road.Route3Road/ListGraphs',
                 request_serializer=route3__road__pb2.Empty.SerializeToString,
-                response_deserializer=route3__road__pb2.GraphInfoResponse.FromString,
+                response_deserializer=route3__road__pb2.ListGraphsResponse.FromString,
                 )
         self.ListDatasets = channel.unary_unary(
                 '/route3.road.Route3Road/ListDatasets',
@@ -56,7 +56,7 @@ class Route3RoadServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GraphInfo(self, request, context):
+    def ListGraphs(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -95,10 +95,10 @@ def add_Route3RoadServicer_to_server(servicer, server):
                     request_deserializer=route3__road__pb2.Empty.FromString,
                     response_serializer=route3__road__pb2.VersionResponse.SerializeToString,
             ),
-            'GraphInfo': grpc.unary_unary_rpc_method_handler(
-                    servicer.GraphInfo,
+            'ListGraphs': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListGraphs,
                     request_deserializer=route3__road__pb2.Empty.FromString,
-                    response_serializer=route3__road__pb2.GraphInfoResponse.SerializeToString,
+                    response_serializer=route3__road__pb2.ListGraphsResponse.SerializeToString,
             ),
             'ListDatasets': grpc.unary_unary_rpc_method_handler(
                     servicer.ListDatasets,
@@ -148,7 +148,7 @@ class Route3Road(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GraphInfo(request,
+    def ListGraphs(request,
             target,
             options=(),
             channel_credentials=None,
@@ -158,9 +158,9 @@ class Route3Road(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/route3.road.Route3Road/GraphInfo',
+        return grpc.experimental.unary_unary(request, target, '/route3.road.Route3Road/ListGraphs',
             route3__road__pb2.Empty.SerializeToString,
-            route3__road__pb2.GraphInfoResponse.FromString,
+            route3__road__pb2.ListGraphsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

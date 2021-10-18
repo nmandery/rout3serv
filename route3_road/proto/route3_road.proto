@@ -121,7 +121,7 @@ message GraphInfo {
   uint64 num_nodes = 4;
 }
 
-message GraphInfoResponse {
+message ListGraphsResponse {
   repeated GraphInfo graphs = 1;
 }
 
@@ -132,7 +132,7 @@ message ListDatasetsResponse {
 service Route3Road {
   // general methods -------------------------------------
   rpc Version(Empty) returns (VersionResponse) {}
-  rpc GraphInfo(Empty) returns (GraphInfoResponse) {}
+  rpc ListGraphs(Empty) returns (ListGraphsResponse) {}
   rpc ListDatasets(Empty) returns (ListDatasetsResponse) {}
 
   /** differential shortest path based on the population dataset */

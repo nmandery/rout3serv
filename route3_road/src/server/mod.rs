@@ -15,8 +15,8 @@ use crate::io::s3::FoundOption;
 use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
-    DifferentialShortestPathRoutesRequest, Empty, GraphInfo, GraphInfoResponse, IdRef,
-    ListDatasetsResponse, VersionResponse,
+    DifferentialShortestPathRoutesRequest, Empty, GraphInfo, IdRef, ListDatasetsResponse,
+    ListGraphsResponse, VersionResponse,
 };
 use crate::server::storage::S3Storage;
 use crate::server::util::{
@@ -53,11 +53,11 @@ impl Route3Road for ServerImpl {
             build_timestamp: crate::build_info::build_timestamp().to_string(),
         }))
     }
-    async fn graph_info(
+    async fn list_graphs(
         &self,
         _request: Request<Empty>,
-    ) -> Result<Response<GraphInfoResponse>, Status> {
-        let mut resp = GraphInfoResponse { graphs: vec![] };
+    ) -> Result<Response<ListGraphsResponse>, Status> {
+        let mut resp = ListGraphsResponse { graphs: vec![] };
 
         for gck in self.storage.load_graph_cache_keys().await? {
             let graph = self.storage.graph_store.load_cached(&gck).await;

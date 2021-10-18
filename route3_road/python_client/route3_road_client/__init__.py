@@ -40,8 +40,8 @@ class Server:
     def version(self) -> route3_road_pb2.VersionResponse:
         return self.stub.Version(route3_road_pb2.Empty())
 
-    def graph_info(self) -> route3_road_pb2.GraphInfoResponse:
-        return self.stub.GraphInfo(route3_road_pb2.Empty())
+    def list_graphs(self) -> route3_road_pb2.ListGraphsResponse:
+        return self.stub.ListGraphs(route3_road_pb2.Empty())
 
     def list_datasets(self) -> typing.List[str]:
         return self.stub.ListDatasets(route3_road_pb2.Empty()).dataset_name
