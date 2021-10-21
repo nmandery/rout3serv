@@ -84,8 +84,9 @@ message DifferentialShortestPathRoutesRequest {
 message RouteWKB {
   uint64 origin_cell = 1;
   uint64 destination_cell = 2;
-  double cost = 3;
-  bytes wkb = 4;
+  double travel_duration_secs = 3;
+  double category_weight = 4;
+  bytes wkb = 5;
 }
 
 /** A single Arrow RecordBatch in Arrow IPC File format */

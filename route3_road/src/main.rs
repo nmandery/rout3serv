@@ -9,14 +9,16 @@ use std::path::Path;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
 use h3ron::io::{deserialize_from, serialize_into};
+use h3ron::H3Edge;
 use h3ron_graph::algorithm::covered_area::CoveredArea;
 use h3ron_graph::formats::osm::OsmPbfH3EdgeGraphBuilder;
 use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
 use h3ron_graph::io::gdal::OgrWrite;
 use mimalloc::MiMalloc;
+use uom::si::f32::Length;
+use uom::si::length::meter;
 
-use crate::osm::way_properties;
-use crate::weight::Weight;
+use crate::weight::RoadWeight;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -121,7 +123,7 @@ fn main() -> Result<()> {
         ("graph", Some(graph_sc_matches)) => match graph_sc_matches.subcommand() {
             ("stats", Some(sc_matches)) => {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-                let prepared_graph: PreparedH3EdgeGraph<Weight> =
+                let prepared_graph: PreparedH3EdgeGraph<RoadWeight> =
                     deserialize_from(File::open(graph_filename)?)?;
                 println!("{}", toml::to_string(&prepared_graph.get_stats())?);
             }
@@ -142,9 +144,9 @@ fn main() -> Result<()> {
 
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let prepared_graph: PreparedH3EdgeGraph<Weight> =
+    let prepared_graph: PreparedH3EdgeGraph<RoadWeight> =
         deserialize_from(File::open(graph_filename)?)?;
-    let graph: H3EdgeGraph<Weight> = prepared_graph.into();
+    let graph: H3EdgeGraph<RoadWeight> = prepared_graph.into();
     graph.ogr_write(
         sc_matches.value_of("driver").unwrap(),
         sc_matches.value_of("OUTPUT").unwrap(),
@@ -155,7 +157,7 @@ fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let prepared_graph: PreparedH3EdgeGraph<Weight> =
+    let prepared_graph: PreparedH3EdgeGraph<RoadWeight> =
         deserialize_from(File::open(graph_filename)?)?;
 
     let mut outfile = File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?;
@@ -178,7 +180,10 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
     let h3_resolution: u8 = sc_matches.value_of("h3_resolution").unwrap().parse()?;
     let graph_output = sc_matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
 
-    let mut builder = OsmPbfH3EdgeGraphBuilder::new(h3_resolution, way_properties);
+    let edge_length = Length::new::<meter>(H3Edge::edge_length_m(h3_resolution) as f32);
+    let mut builder = OsmPbfH3EdgeGraphBuilder::new(h3_resolution, |tags| {
+        osm::car::way_properties(tags, edge_length)
+    });
     for pbf_input in sc_matches.values_of("OSM-PBF").unwrap() {
         builder.read_pbf(Path::new(&pbf_input))?;
     }

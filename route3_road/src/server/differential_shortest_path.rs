@@ -17,6 +17,7 @@ use rayon::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tonic::Status;
+use uom::si::time::second;
 
 use crate::io::graph_store::GraphCacheKey;
 use crate::io::s3::S3H3Dataset;
@@ -26,7 +27,7 @@ use crate::server::api::generated::{
 use crate::server::storage::S3Storage;
 use crate::server::util::{extract_h3indexes, StrId};
 use crate::server::vector::{buffer_meters, gdal_geom_to_h3, read_wkb_to_gdal};
-use crate::weight::ToFloatWeight;
+use crate::weight::Weight;
 
 pub struct DspInput<W: Send + Sync> {
     /// the cells within the disturbance
@@ -295,13 +296,33 @@ fn disturbance_statistics_internal<W: Send + Sync>(
     output: &DspOutput<W>,
 ) -> Result<Vec<RecordBatch>>
 where
-    W: ToFloatWeight,
+    W: Weight,
 {
-    let avg_cost = |paths: &[Path<W>]| -> Option<f64> {
+    let avg_travel_duration = |paths: &[Path<W>]| -> Option<f64> {
         if paths.is_empty() {
             None
         } else {
-            Some(paths.iter().map(|p| p.cost.to_float_weight()).sum::<f64>() / paths.len() as f64)
+            Some(
+                paths
+                    .iter()
+                    .map(|p| p.cost.travel_duration().get::<second>() as f64)
+                    .sum::<f64>()
+                    / paths.len() as f64,
+            )
+        }
+    };
+
+    let avg_category_weight = |paths: &[Path<W>]| -> Option<f64> {
+        if paths.is_empty() {
+            None
+        } else {
+            Some(
+                paths
+                    .iter()
+                    .map(|p| p.cost.category_weight() as f64)
+                    .sum::<f64>()
+                    / paths.len() as f64,
+            )
         }
     };
 
@@ -318,9 +339,13 @@ where
         Vec::with_capacity(output.differential_shortest_paths.len());
     let mut num_reached_with_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
-    let mut avg_cost_without_disturbance =
+    let mut avg_travel_duration_without_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
-    let mut avg_cost_with_disturbance =
+    let mut avg_travel_duration_with_disturbance =
+        Vec::with_capacity(output.differential_shortest_paths.len());
+    let mut avg_category_weight_without_disturbance =
+        Vec::with_capacity(output.differential_shortest_paths.len());
+    let mut avg_category_weight_with_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
     let mut preferred_destination_without_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
@@ -331,10 +356,14 @@ where
         //population_at_origin.push(output.population_at_origins.get(origin_cell).cloned());
 
         num_reached_without_disturbance.push(diff.before_cell_exclusion.len() as u64);
-        avg_cost_without_disturbance.push(avg_cost(&diff.before_cell_exclusion));
+        avg_travel_duration_without_disturbance
+            .push(avg_travel_duration(&diff.before_cell_exclusion));
+        avg_category_weight_without_disturbance
+            .push(avg_category_weight(&diff.before_cell_exclusion));
 
         num_reached_with_disturbance.push(diff.after_cell_exclusion.len() as u64);
-        avg_cost_with_disturbance.push(avg_cost(&diff.after_cell_exclusion));
+        avg_travel_duration_with_disturbance.push(avg_travel_duration(&diff.after_cell_exclusion));
+        avg_category_weight_with_disturbance.push(avg_category_weight(&diff.after_cell_exclusion));
 
         preferred_destination_without_disturbance
             .push(preferred_destination(&diff.before_cell_exclusion));
@@ -353,8 +382,12 @@ where
             &num_reached_without_disturbance,
         ),
         Series::new(
-            "avg_cost_without_disturbance",
-            &avg_cost_without_disturbance,
+            "avg_travel_duration_without_disturbance",
+            &avg_travel_duration_without_disturbance,
+        ),
+        Series::new(
+            "avg_category_weight_without_disturbance",
+            &avg_category_weight_without_disturbance,
         ),
         Series::new(
             "preferred_dest_h3index_with_disturbance",
@@ -364,7 +397,14 @@ where
             "num_reached_with_disturbance",
             &num_reached_with_disturbance,
         ),
-        Series::new("avg_cost_with_disturbance", &avg_cost_with_disturbance),
+        Series::new(
+            "avg_travel_duration_with_disturbance",
+            &avg_travel_duration_with_disturbance,
+        ),
+        Series::new(
+            "avg_category_weight_with_disturbance",
+            &avg_category_weight_with_disturbance,
+        ),
     ])?;
     let df = df.inner_join(
         &output.ref_dataframe,
@@ -379,7 +419,7 @@ pub fn disturbance_statistics<W: Send + Sync>(
     output: &DspOutput<W>,
 ) -> std::result::Result<Vec<RecordBatch>, Status>
 where
-    W: ToFloatWeight,
+    W: Weight,
 {
     let rbs = disturbance_statistics_internal(output).map_err(|e| {
         log::error!("calculating population movement stats failed: {:?}", e);
@@ -392,7 +432,7 @@ pub fn build_routes_response<W: Send + Sync>(
     diff: &ExclusionDiff<Path<W>>,
 ) -> Result<DifferentialShortestPathRoutes, Status>
 where
-    W: ToFloatWeight,
+    W: Weight,
 {
     let response = DifferentialShortestPathRoutes {
         routes_without_disturbance: diff

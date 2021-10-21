@@ -22,7 +22,7 @@ use crate::server::storage::S3Storage;
 use crate::server::util::{
     respond_recordbatches_stream, spawn_blocking_status, ArrowRecordBatchStream,
 };
-use crate::weight::Weight;
+use crate::weight::RoadWeight;
 
 mod api;
 mod differential_shortest_path;
@@ -31,12 +31,12 @@ mod util;
 mod vector;
 
 struct ServerImpl {
-    storage: Arc<S3Storage<Weight>>,
+    storage: Arc<S3Storage<RoadWeight>>,
 }
 
 impl ServerImpl {
     pub async fn create(config: ServerConfig) -> Result<Self> {
-        let storage = Arc::new(S3Storage::<Weight>::from_config(Arc::new(config))?);
+        let storage = Arc::new(S3Storage::<RoadWeight>::from_config(Arc::new(config))?);
         Ok(Self { storage })
     }
 }
@@ -129,7 +129,7 @@ impl Route3Road for ServerImpl {
         let inner = request.into_inner();
         if let FoundOption::Found(output) = self
             .storage
-            .retrieve_output::<_, differential_shortest_path::DspOutput<Weight>>(
+            .retrieve_output::<_, differential_shortest_path::DspOutput<RoadWeight>>(
                 inner.object_id.as_str(),
             )
             .await?
@@ -155,7 +155,7 @@ impl Route3Road for ServerImpl {
         let inner = request.into_inner();
         let output = if let FoundOption::Found(output) = self
             .storage
-            .retrieve_output::<_, differential_shortest_path::DspOutput<Weight>>(
+            .retrieve_output::<_, differential_shortest_path::DspOutput<RoadWeight>>(
                 inner.object_id.as_str(),
             )
             .await?

@@ -27,6 +27,11 @@ itertools = "0.10"
 geo-types = "0.7"
 lru = "0.7.0"
 num-traits = "0.2"
+approx = "0.5"
+
+[dependencies.uom]
+version = "0.31"
+features = ["use_serde"]
 
 [dependencies.polars-core]
 version = "0.16.0"
@@ -52,10 +57,6 @@ features = ["io", "use-rayon", "use-roaring"]
 git = "https://github.com/nmandery/h3ron.git"
 rev = "eb54dd85d2da51f4d8079309351f484a04a0979c"
 features = ["use-gdal", "osm"]
-
-[dependencies.ordered-float]
-version = "2.7"
-features = ["serde"]
 
 [dependencies.uuid]
 version = "0.8"
