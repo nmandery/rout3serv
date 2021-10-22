@@ -91,7 +91,8 @@ class Server:
         geoms = []
         h3index_origin = []
         h3index_destination = []
-        cost = []
+        travel_duration_secs = []
+        category_weight = []
         with_disturbance_list = []
         for stream_item in response:
             for with_disturbance, route_list in (
@@ -100,14 +101,16 @@ class Server:
                     h3index_origin.append(route.origin_cell)
                     h3index_destination.append(route.destination_cell)
                     with_disturbance_list.append(with_disturbance)
-                    cost.append(route.cost)
+                    travel_duration_secs.append(route.travel_duration_secs)
+                    category_weight.append(route.category_weight)
                     geoms.append(shapely.wkb.loads(route.wkb))
 
         gdf = gpd.GeoDataFrame({
             "geometry": geoms,
             "h3index_origin": np.asarray(h3index_origin, dtype=np.uint64),
             "h3index_destination": np.asarray(h3index_destination, dtype=np.uint64),
-            "cost": np.asarray(cost, dtype=np.float64),
+            "travel_duration_secs": np.asarray(travel_duration_secs, dtype=np.float64),
+            "category_weight": np.asarray(category_weight, dtype=np.float64),
             "with_disturbance": np.asarray(with_disturbance_list, dtype=np.int),
         }, crs=4326)
         return gdf
