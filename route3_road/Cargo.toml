@@ -21,7 +21,6 @@ rusoto_core = { version = "0.47" }
 rusoto_s3 = { version = "0.47" }
 toml = "0.5"
 tonic = "0.5"
-wkb = "0.7"
 tokio-stream = "0.1"
 itertools = "0.10"
 geo-types = "0.7"

@@ -3,7 +3,7 @@
 use std::convert::TryInto;
 
 use gdal::spatial_ref::SpatialRef;
-use gdal::vector::Geometry;
+use gdal::vector::{Geometry, ToGdal};
 use geo::algorithm::centroid::Centroid;
 use geo_types::Geometry as GTGeometry;
 use h3ron::collections::indexvec::IndexVec;
@@ -68,4 +68,9 @@ fn buffer_meters_internal(geom: &Geometry, meters: f64) -> eyre::Result<Geometry
     };
     geom_sm_buffered.set_spatial_ref(srs_spherical_mercator);
     Ok(geom_sm_buffered.transform_to(&srs_wgs84)?)
+}
+
+/// convert a geotypes `Geometry` to WKB using GDAL
+pub fn to_wkb(geom: &GTGeometry<f64>) -> eyre::Result<Vec<u8>> {
+    Ok(geom.to_gdal()?.wkb()?)
 }
