@@ -2,7 +2,7 @@ use std::cmp::max;
 use std::ops::Add;
 use std::sync::Arc;
 
-use arrow2::record_batch::RecordBatch;
+use arrow::record_batch::RecordBatch;
 use geo_types::Coordinate;
 use h3ron::collections::{H3CellSet, H3Treemap};
 use h3ron::iter::change_cell_resolution;

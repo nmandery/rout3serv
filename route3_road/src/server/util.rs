@@ -3,7 +3,7 @@
 
 use std::iter::FromIterator;
 
-use arrow2::record_batch::RecordBatch;
+use arrow::record_batch::RecordBatch;
 use h3ron::Index;
 use polars_core::frame::DataFrame;
 use tokio::sync::mpsc;

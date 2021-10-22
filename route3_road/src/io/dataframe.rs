@@ -1,7 +1,7 @@
 use std::iter::FromIterator;
 
-use arrow2::io::ipc::write::FileWriter;
-use arrow2::record_batch::RecordBatch;
+use arrow::io::ipc::write::FileWriter;
+use arrow::record_batch::RecordBatch;
 use eyre::Result;
 use h3ron::Index;
 use polars_core::frame::DataFrame;

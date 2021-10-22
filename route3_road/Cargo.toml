@@ -34,12 +34,16 @@ version = "0.31"
 features = ["use_serde"]
 
 [dependencies.polars-core]
-version = "0.16.0"
-features = ["serde", "dtype-u64"]
+git = "https://github.com/pola-rs/polars.git"
+rev = "573477f80ea42b74ff41200e6ca79898cb383bca"
+features = ["serde"]
 
-[dependencies.arrow2]
-version = "0.5.3" # matches version polars-core depends on
-features = ["io_ipc"]
+[dependencies.arrow] # matches dependency of polars-code
+package = "arrow2"
+git = "https://github.com/jorgecarleitao/arrow2"
+rev = "b62184d32a56465f145e4692e1a90fc4fe418d82"
+default-features = false
+features=["io_ipc"]
 
 [dependencies.bytes]
 version = "1"
@@ -50,12 +54,12 @@ default_features = false
 
 [dependencies.h3ron]
 git = "https://github.com/nmandery/h3ron.git"
-rev = "eb54dd85d2da51f4d8079309351f484a04a0979c"
-features = ["io", "use-rayon", "use-roaring"]
+rev = "13afab5475cfc9d16fda0f804462e6e1f5bcb6a6"
+features = ["io", "use-rayon", "use-roaring", "use-serde"]
 
 [dependencies.h3ron-graph]
 git = "https://github.com/nmandery/h3ron.git"
-rev = "eb54dd85d2da51f4d8079309351f484a04a0979c"
+rev = "13afab5475cfc9d16fda0f804462e6e1f5bcb6a6"
 features = ["use-gdal", "osm"]
 
 [dependencies.uuid]
@@ -89,7 +93,7 @@ features = ["client"]
 version = "0.2"
 
 [dependencies.gdal]
-version = "0.9.0"
+version = "0.10.0"
 features = ["bindgen"]
 
 [build-dependencies]

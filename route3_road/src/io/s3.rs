@@ -6,8 +6,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrow2::io::ipc::read::{read_file_metadata, FileReader};
-use arrow2::record_batch::RecordBatch;
+use arrow::io::ipc::read::{read_file_metadata, FileReader};
+use arrow::record_batch::RecordBatch;
 use bytes::Bytes;
 use bytesize::ByteSize;
 use eyre::{Report, Result};
@@ -25,8 +25,6 @@ use rusoto_core::{ByteStream, HttpClient, Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, ListObjectsRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
-
-//use crate::io::recordbatch_array;
 
 /// a minimal option type to indicate if something has been found or not
 pub enum FoundOption<T> {
