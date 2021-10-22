@@ -30,13 +30,17 @@ fn infer_max_speed(tags: &Tags, highway_class: &str) -> Velocity {
 
     match highway_class {
         // TODO: use this to derive the category
-        "motorway" | "motorway_link" | "primary" | "primary_link" => max_kmh.unwrap_or(kmh!(120)),
-        "rural" | "tertiary" | "tertiary_link" => max_kmh.unwrap_or(kmh!(80)),
-        "trunk" | "trunk_link" | "secondary" | "secondary_link" => max_kmh.unwrap_or(kmh!(100)),
-        "urban" | "road" | "unclassified" => max_kmh.unwrap_or(kmh!(50)),
-        "pedestrian" | "footway" | "path" => max_kmh.unwrap_or(kmh!(5)),
-        "living_street" => max_kmh.unwrap_or(kmh!(7)),
-        "bicycle_road" | "service" | "residential" | "track" => max_kmh.unwrap_or(kmh!(30)),
+        "motorway" | "motorway_link" | "primary" | "primary_link" => {
+            max_kmh.unwrap_or_else(|| kmh!(120))
+        }
+        "rural" | "tertiary" | "tertiary_link" => max_kmh.unwrap_or_else(|| kmh!(80)),
+        "trunk" | "trunk_link" | "secondary" | "secondary_link" => {
+            max_kmh.unwrap_or_else(|| kmh!(100))
+        }
+        "urban" | "road" | "unclassified" => max_kmh.unwrap_or_else(|| kmh!(50)),
+        "pedestrian" | "footway" | "path" => max_kmh.unwrap_or_else(|| kmh!(5)),
+        "living_street" => max_kmh.unwrap_or_else(|| kmh!(7)),
+        "bicycle_road" | "service" | "residential" | "track" => max_kmh.unwrap_or_else(|| kmh!(30)),
         //"track" => max_kmh.unwrap_or(kmh!(20.0)), // mostly non-public agriculture/forestry roads
         _ => kmh!(30), // well, better than 0
     }

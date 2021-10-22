@@ -3,7 +3,6 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use arrow2::record_batch::RecordBatch;
-use eyre::Result;
 use geo_types::Coordinate;
 use h3ron::collections::{H3CellSet, H3Treemap};
 use h3ron::iter::change_cell_resolution;
@@ -119,7 +118,7 @@ where
         within_buffer,
         destinations: destination_cells(request.destinations, graph.h3_resolution())?,
         store_output: request.store_output,
-        options: request.options.unwrap_or_else(Default::default),
+        options: request.options.unwrap_or_default(),
         graph,
         downsampled_graph,
         ref_dataframe,
@@ -136,7 +135,7 @@ fn destination_cells(
     let mut destination_cells = destinations
         .iter()
         .map(|pt| H3Cell::from_coordinate(&Coordinate::from((pt.x, pt.y)), h3_resolution))
-        .collect::<Result<Vec<_>, _>>()
+        .collect::<std::result::Result<Vec<_>, _>>()
         .map_err(|e| {
             log::error!("can not convert the target_points to h3: {:?}", e);
             Status::internal("can not convert the target_points to h3")
@@ -186,7 +185,7 @@ impl<W: Send + Sync> StrId for DspOutput<W> {
 
 ///
 ///
-pub fn calculate<W>(input: DspInput<W>) -> Result<DspOutput<W>>
+pub fn calculate<W>(input: DspInput<W>) -> eyre::Result<DspOutput<W>>
 where
     W: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
 {
@@ -294,7 +293,7 @@ fn change_cell_resolution_dedup(cells: &[H3Cell], h3_resolution: u8) -> Vec<H3Ce
 /// build an arrow dataset with some basic stats for each of the origin cells
 fn disturbance_statistics_internal<W: Send + Sync>(
     output: &DspOutput<W>,
-) -> Result<Vec<RecordBatch>>
+) -> eyre::Result<Vec<RecordBatch>>
 where
     W: Weight,
 {
@@ -430,7 +429,7 @@ where
 
 pub fn build_routes_response<W: Send + Sync>(
     diff: &ExclusionDiff<Path<W>>,
-) -> Result<DifferentialShortestPathRoutes, Status>
+) -> std::result::Result<DifferentialShortestPathRoutes, Status>
 where
     W: Weight,
 {
@@ -439,12 +438,12 @@ where
             .before_cell_exclusion
             .iter()
             .map(|path| RouteWkb::from_path(path))
-            .collect::<Result<_, _>>()?,
+            .collect::<std::result::Result<_, _>>()?,
         routes_with_disturbance: diff
             .after_cell_exclusion
             .iter()
             .map(|path| RouteWkb::from_path(path))
-            .collect::<Result<_, _>>()?,
+            .collect::<std::result::Result<_, _>>()?,
     };
     Ok(response)
 }
