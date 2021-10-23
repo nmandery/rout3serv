@@ -25,11 +25,7 @@ impl RouteWkb {
                 log::error!("can not build linestring from path: {:?}", e);
                 Status::internal("can not build linestring from path")
             },
-        )?))
-        .map_err(|e| {
-            log::error!("can not encode route to wkb: {:?}", e);
-            Status::internal("can not encode wkb")
-        })?;
+        )?))?;
         Ok(Self {
             origin_cell: path.origin_cell().map(|c| c.h3index()).unwrap_or(0),
             destination_cell: path.destination_cell().map(|c| c.h3index()).unwrap_or(0),

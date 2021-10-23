@@ -71,6 +71,15 @@ fn buffer_meters_internal(geom: &Geometry, meters: f64) -> eyre::Result<Geometry
 }
 
 /// convert a geotypes `Geometry` to WKB using GDAL
-pub fn to_wkb(geom: &GTGeometry<f64>) -> eyre::Result<Vec<u8>> {
+pub fn to_wkb(geom: &GTGeometry<f64>) -> std::result::Result<Vec<u8>, Status> {
+    let bytes = to_wkb_internal(geom).map_err(|e| {
+        log::error!("can not encode geometry to wkb: {:?}", e);
+        Status::internal("can not encode wkb")
+    })?;
+    Ok(bytes)
+}
+
+#[inline]
+pub fn to_wkb_internal(geom: &GTGeometry<f64>) -> eyre::Result<Vec<u8>> {
     Ok(geom.to_gdal()?.wkb()?)
 }
