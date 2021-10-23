@@ -168,7 +168,7 @@ where
         cells: &[H3Cell],
         data_h3_resolution: u8,
     ) -> Result<DataFrame, Status> {
-        let dataframe = self
+        let mut dataframe = self
             .recordbatch_loader
             .load_h3_dataset_dataframe(dataset_config, cells, data_h3_resolution)
             .await
@@ -176,6 +176,7 @@ where
                 log::error!("loading from s3 failed: {:?}", e);
                 Status::internal("dataset is inaccessible")
             })?;
+        dataframe.rechunk();
         Ok(dataframe)
     }
 
