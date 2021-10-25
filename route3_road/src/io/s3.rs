@@ -23,7 +23,7 @@ use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{ByteStream, HttpClient, Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, ListObjectsRequest, PutObjectRequest, S3};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::task;
 
 /// a minimal option type to indicate if something has been found or not
@@ -276,6 +276,16 @@ lazy_static! {
     static ref RE_S3KEY_H3_CELL: Regex = Regex::new(r"\{\s*h3cell\s*\}").unwrap();
 }
 
+/// wrapper around a `DataFrame` to store a bit of metainformation
+#[derive(Serialize, Deserialize)]
+pub struct H3DataFrame {
+    /// the dataframe itself
+    pub dataframe: DataFrame,
+
+    /// name of the column containing the h3indexes.
+    pub h3index_column_name: String,
+}
+
 pub struct S3RecordBatchLoader {
     s3_client: Arc<S3Client>,
 }
@@ -340,23 +350,23 @@ impl S3RecordBatchLoader {
         dataset: &D,
         cells: &[H3Cell],
         data_h3_resolution: u8,
-    ) -> Result<DataFrame> {
-        let df = DataFrame::try_from(
+    ) -> Result<H3DataFrame> {
+        let dataframe = DataFrame::try_from(
             self.load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
                 .await?,
         )?;
-        let h3index_column = dataset.h3index_column();
+        let h3index_column_name = dataset.h3index_column();
         log::info!(
             "loaded dataframe with {:?} shape, columns: {}",
-            df.shape(),
-            df.get_column_names().join(", ")
+            dataframe.shape(),
+            dataframe.get_column_names().join(", ")
         );
-        match df.column(&h3index_column) {
+        match dataframe.column(&h3index_column_name) {
             Ok(column) => {
                 if column.dtype() != &DataType::UInt64 {
                     return Err(Report::msg(format!(
                         "dataframe h3index column '{}' is typed as {}, but should be UInt64",
-                        h3index_column,
+                        h3index_column_name,
                         column.dtype().to_string()
                     )));
                 }
@@ -364,11 +374,14 @@ impl S3RecordBatchLoader {
             Err(_) => {
                 return Err(Report::msg(format!(
                     "dataframe contains no column named '{}'",
-                    h3index_column
-                )))
+                    h3index_column_name
+                )));
             }
         };
-        Ok(df)
+        Ok(H3DataFrame {
+            dataframe,
+            h3index_column_name,
+        })
     }
 
     fn build_h3_key<D: S3H3Dataset>(

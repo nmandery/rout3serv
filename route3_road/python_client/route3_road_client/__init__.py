@@ -3,26 +3,36 @@ __version__ = '0.2.0'
 import typing
 from typing import Optional, Iterable, Tuple
 
-import geopandas as gpd
 import grpc
 import numpy as np
-import pandas as pd
 import pyarrow as pa
 import shapely.wkb
 from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 
 from . import route3_road_pb2
-from .route3_road_pb2_grpc import Route3RoadStub
 from .route3_road_pb2 import GraphHandle
+from .route3_road_pb2_grpc import Route3RoadStub
 
 DEFAULT_PORT = 7088
 
 
-class DataFrameWithId:
-    object_id: str
-    population_within_disturbance: float
-    dataframe: pd.DataFrame
+def cell_selection(cells: Iterable[int], dataset_name: str = None) -> route3_road_pb2.CellSelection:
+    cs = route3_road_pb2.CellSelection()
+    if dataset_name is not None:
+        cs.dataset_name = dataset_name
+    for cell in cells:
+        cs.cells.append(cell)
+    return cs
+
+
+def _to_cell_selection(arg, **kwargs) -> route3_road_pb2.CellSelection:
+    if isinstance(arg, route3_road_pb2.CellSelection):
+        return arg
+    dataset_name = kwargs.get("dataset_name")
+    if hasattr(arg, '__iter__'):
+        return cell_selection(arg, dataset_name=dataset_name)
+    raise Exception("unsupported type for cell_selection")
 
 
 class Server:
@@ -46,6 +56,21 @@ class Server:
     def list_datasets(self) -> typing.List[str]:
         return self.stub.ListDatasets(route3_road_pb2.Empty()).dataset_name
 
+    def h3_shortest_path(self, graph_handle: GraphHandle, origin_cells, destination_cells,
+                         num_destinations_to_reach: int = 3,
+                         num_gap_cells_to_graph: int = 1,
+                         ) -> Tuple[str, Optional[pa.Table]]:
+        shortest_path_options = route3_road_pb2.ShortestPathOptions()
+        shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
+        shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
+
+        req = route3_road_pb2.H3ShortestPathRequest()
+        req.graph_handle.MergeFrom(graph_handle)
+        req.options.MergeFrom(shortest_path_options)
+        req.origins.MergeFrom(_to_cell_selection(origin_cells))
+        req.destinations.MergeFrom(_to_cell_selection(destination_cells))
+        return _arrowrecordbatch_to_table(self.stub.H3ShortestPath(req))
+
     def differential_shortest_path(self, graph_handle: GraphHandle, disturbance_geom: BaseGeometry,
                                    radius_meters: float,
                                    destination_points: Iterable[Point],
@@ -54,7 +79,7 @@ class Server:
                                    num_gap_cells_to_graph: int = 1,
                                    downsampled_prerouting: bool = False,
                                    store_output: bool = True,
-                                   ) -> Tuple[str, pd.DataFrame]:
+                                   ) -> Tuple[str, Optional[pa.Table]]:
         shortest_path_options = route3_road_pb2.ShortestPathOptions()
         shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
         shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
@@ -73,14 +98,20 @@ class Server:
             pt.x = destination_point.x
             pt.y = destination_point.y
 
-        return _arrowrecordbatch_to_dataframe(self.stub.DifferentialShortestPath(req))
+        return _arrowrecordbatch_to_table(self.stub.DifferentialShortestPath(req))
 
-    def get_differential_shortest_path(self, object_id: str) -> Tuple[str, pd.DataFrame]:
+    def get_differential_shortest_path(self, object_id: str) -> Tuple[str, Optional[pa.Table]]:
         req = route3_road_pb2.IdRef()
         req.object_id = object_id
-        return _arrowrecordbatch_to_dataframe(self.stub.GetDifferentialShortestPath(req))
+        return _arrowrecordbatch_to_table(self.stub.GetDifferentialShortestPath(req))
 
-    def get_differential_shortest_path_routes(self, object_id: str, cells: Iterable[int]) -> gpd.GeoDataFrame:
+    def get_differential_shortest_path_routes(self, object_id: str, cells: Iterable[int]):
+        """returns a `GeoDataframe` containing the linestrings of the routes originating from the given cells.
+
+        requires geopandas
+        """
+        import geopandas as gpd
+
         req = route3_road_pb2.DifferentialShortestPathRoutesRequest()
         req.object_id = object_id
         for cell in cells:
@@ -116,9 +147,10 @@ class Server:
         return gdf
 
 
-def _arrowrecordbatch_to_dataframe(response: route3_road_pb2.ArrowRecordBatch) -> Tuple[str, pd.DataFrame]:
+def _arrowrecordbatch_to_table(response: route3_road_pb2.ArrowRecordBatch) -> Tuple[str, Optional[pa.Table]]:
+    """convert a streamed ArrowRecordBatch response to a pyarrow.Table"""
     object_id = None
-    df = None
+    table = None
     batches = []
     for stream_item in response:
         if object_id is None:
@@ -127,8 +159,8 @@ def _arrowrecordbatch_to_dataframe(response: route3_road_pb2.ArrowRecordBatch) -
         for i in range(reader.num_record_batches):
             batches.append(reader.get_batch(i))
     if len(batches) > 0:
-        df = pa.Table.from_batches(batches).to_pandas()
-    return object_id, df
+        table = pa.Table.from_batches(batches)
+    return object_id, table
 
 
 def make_graph_handle(name: str, h3_resolution: int) -> GraphHandle:

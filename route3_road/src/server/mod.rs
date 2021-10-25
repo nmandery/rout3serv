@@ -15,17 +15,18 @@ use crate::io::s3::FoundOption;
 use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
-    DifferentialShortestPathRoutesRequest, Empty, GraphInfo, IdRef, ListDatasetsResponse,
-    ListGraphsResponse, VersionResponse,
+    DifferentialShortestPathRoutesRequest, Empty, GraphInfo, H3ShortestPathRequest, IdRef,
+    ListDatasetsResponse, ListGraphsResponse, VersionResponse,
 };
 use crate::server::storage::S3Storage;
 use crate::server::util::{
-    respond_recordbatches_stream, spawn_blocking_status, ArrowRecordBatchStream,
+    respond_dataframe_recordbatches_stream, spawn_blocking_status, ArrowRecordBatchStream,
 };
 use crate::weight::RoadWeight;
 
 mod api;
 mod differential_shortest_path;
+mod shortest_path;
 mod storage;
 mod util;
 mod vector;
@@ -85,6 +86,17 @@ impl Route3Road for ServerImpl {
         Ok(Response::new(response))
     }
 
+    type H3ShortestPathStream = ArrowRecordBatchStream;
+
+    async fn h3_shortest_path(
+        &self,
+        request: Request<H3ShortestPathRequest>,
+    ) -> std::result::Result<Response<Self::H3ShortestPathStream>, Status> {
+        let parameters =
+            shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        shortest_path::h3_shortest_path(parameters).await
+    }
+
     type DifferentialShortestPathStream = ArrowRecordBatchStream;
 
     async fn differential_shortest_path(
@@ -103,7 +115,7 @@ impl Route3Road for ServerImpl {
                 Status::internal("calculating routes failed")
             })?;
 
-        let response_fut = respond_recordbatches_stream(
+        let response_fut = respond_dataframe_recordbatches_stream(
             output.object_id.clone(),
             differential_shortest_path::disturbance_statistics(&output)?,
         );
@@ -134,7 +146,7 @@ impl Route3Road for ServerImpl {
             )
             .await?
         {
-            respond_recordbatches_stream(
+            respond_dataframe_recordbatches_stream(
                 output.object_id.clone(),
                 differential_shortest_path::disturbance_statistics(&output)?,
             )

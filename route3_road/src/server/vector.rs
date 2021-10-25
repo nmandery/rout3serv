@@ -56,6 +56,12 @@ pub fn buffer_meters(geom: &Geometry, meters: f64) -> Result<Geometry, Status> {
     })
 }
 
+/// mainly used for debugging
+#[allow(dead_code)]
+pub fn to_geojson(geom: GTGeometry<f64>) -> eyre::Result<String> {
+    Ok(geom.to_gdal()?.json()?)
+}
+
 fn buffer_meters_internal(geom: &Geometry, meters: f64) -> eyre::Result<Geometry> {
     let srs_wgs84 = SpatialRef::from_epsg(4326)?;
     let srs_spherical_mercator = SpatialRef::from_epsg(3857)?;
@@ -80,6 +86,6 @@ pub fn to_wkb(geom: &GTGeometry<f64>) -> std::result::Result<Vec<u8>, Status> {
 }
 
 #[inline]
-pub fn to_wkb_internal(geom: &GTGeometry<f64>) -> eyre::Result<Vec<u8>> {
+fn to_wkb_internal(geom: &GTGeometry<f64>) -> eyre::Result<Vec<u8>> {
     Ok(geom.to_gdal()?.wkb()?)
 }

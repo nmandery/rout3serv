@@ -2,7 +2,6 @@ use std::cmp::max;
 use std::ops::Add;
 use std::sync::Arc;
 
-use arrow::record_batch::RecordBatch;
 use geo_types::Coordinate;
 use h3ron::collections::{H3CellSet, H3Treemap};
 use h3ron::iter::change_cell_resolution;
@@ -19,12 +18,12 @@ use tonic::Status;
 use uom::si::time::second;
 
 use crate::io::graph_store::GraphCacheKey;
-use crate::io::s3::S3H3Dataset;
+use crate::io::s3::H3DataFrame;
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes, RouteWkb, ShortestPathOptions,
 };
 use crate::server::storage::S3Storage;
-use crate::server::util::{extract_h3indexes, StrId};
+use crate::server::util::{change_cell_resolution_dedup, index_collection_from_dataframe, StrId};
 use crate::server::vector::{buffer_meters, gdal_geom_to_h3, read_wkb_to_gdal};
 use crate::weight::Weight;
 
@@ -48,8 +47,7 @@ pub struct DspInput<W: Send + Sync> {
     /// running time in most cases.
     /// The reduction should be no more than two resolutions.
     pub downsampled_graph: Option<Arc<PreparedH3EdgeGraph<W>>>,
-    pub ref_dataframe: DataFrame,
-    pub ref_dataframe_h3index_column: String,
+    pub ref_dataframe: H3DataFrame,
     pub ref_dataframe_cells: H3CellSet,
 }
 
@@ -106,12 +104,17 @@ where
         })?
     };
 
-    let ref_dataset_config = storage.get_dataset_config(request.ref_dataset_name)?;
     let ref_dataframe = storage
-        .load_dataset_dataframe(ref_dataset_config, &within_buffer, graph.h3_resolution())
+        .load_dataset_dataframe(
+            storage.get_dataset_config(request.ref_dataset_name)?,
+            &within_buffer,
+            graph.h3_resolution(),
+        )
         .await?;
-    let ref_dataframe_cells: H3CellSet =
-        extract_h3indexes(&ref_dataframe, &ref_dataset_config.h3index_column())?;
+    let ref_dataframe_cells: H3CellSet = index_collection_from_dataframe(
+        &ref_dataframe.dataframe,
+        &ref_dataframe.h3index_column_name,
+    )?;
 
     Ok(DspInput {
         disturbance,
@@ -122,7 +125,6 @@ where
         graph,
         downsampled_graph,
         ref_dataframe,
-        ref_dataframe_h3index_column: ref_dataset_config.h3index_column(),
         ref_dataframe_cells,
     })
 }
@@ -169,8 +171,7 @@ fn disturbance_and_buffered_cells(
 #[derive(Serialize, Deserialize)]
 pub struct DspOutput<W: Send + Sync> {
     pub object_id: String,
-    pub ref_dataframe: DataFrame,
-    pub ref_dataframe_h3index_column: String,
+    pub ref_dataframe: H3DataFrame,
     pub ref_dataframe_cells: H3CellSet,
 
     /// tuple: (origin h3 cell, diff)
@@ -277,23 +278,13 @@ where
     Ok(DspOutput {
         object_id: uuid::Uuid::new_v4().to_string(),
         ref_dataframe: input.ref_dataframe,
-        ref_dataframe_h3index_column: input.ref_dataframe_h3index_column,
         ref_dataframe_cells: input.ref_dataframe_cells,
         differential_shortest_paths: diff,
     })
 }
 
-fn change_cell_resolution_dedup(cells: &[H3Cell], h3_resolution: u8) -> Vec<H3Cell> {
-    let mut out_cells: Vec<_> = change_cell_resolution(cells, h3_resolution).collect();
-    out_cells.sort_unstable();
-    out_cells.dedup();
-    out_cells
-}
-
 /// build an arrow dataset with some basic stats for each of the origin cells
-fn disturbance_statistics_internal<W: Send + Sync>(
-    output: &DspOutput<W>,
-) -> eyre::Result<Vec<RecordBatch>>
+fn disturbance_statistics_internal<W: Send + Sync>(output: &DspOutput<W>) -> eyre::Result<DataFrame>
 where
     W: Weight,
 {
@@ -406,17 +397,16 @@ where
         ),
     ])?;
     let df = df.inner_join(
-        &output.ref_dataframe,
+        &output.ref_dataframe.dataframe,
         "h3index_origin",
-        &output.ref_dataframe_h3index_column,
+        &output.ref_dataframe.h3index_column_name,
     )?;
-
-    Ok(df.as_record_batches()?)
+    Ok(df)
 }
 
 pub fn disturbance_statistics<W: Send + Sync>(
     output: &DspOutput<W>,
-) -> std::result::Result<Vec<RecordBatch>, Status>
+) -> std::result::Result<DataFrame, Status>
 where
     W: Weight,
 {

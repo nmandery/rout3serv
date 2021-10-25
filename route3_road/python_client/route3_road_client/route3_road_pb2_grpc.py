@@ -29,6 +29,11 @@ class Route3RoadStub(object):
                 request_serializer=route3__road__pb2.Empty.SerializeToString,
                 response_deserializer=route3__road__pb2.ListDatasetsResponse.FromString,
                 )
+        self.H3ShortestPath = channel.unary_stream(
+                '/route3.road.Route3Road/H3ShortestPath',
+                request_serializer=route3__road__pb2.H3ShortestPathRequest.SerializeToString,
+                response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
+                )
         self.DifferentialShortestPath = channel.unary_stream(
                 '/route3.road.Route3Road/DifferentialShortestPath',
                 request_serializer=route3__road__pb2.DifferentialShortestPathRequest.SerializeToString,
@@ -63,6 +68,12 @@ class Route3RoadServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def ListDatasets(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def H3ShortestPath(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -104,6 +115,11 @@ def add_Route3RoadServicer_to_server(servicer, server):
                     servicer.ListDatasets,
                     request_deserializer=route3__road__pb2.Empty.FromString,
                     response_serializer=route3__road__pb2.ListDatasetsResponse.SerializeToString,
+            ),
+            'H3ShortestPath': grpc.unary_stream_rpc_method_handler(
+                    servicer.H3ShortestPath,
+                    request_deserializer=route3__road__pb2.H3ShortestPathRequest.FromString,
+                    response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
             ),
             'DifferentialShortestPath': grpc.unary_stream_rpc_method_handler(
                     servicer.DifferentialShortestPath,
@@ -178,6 +194,23 @@ class Route3Road(object):
         return grpc.experimental.unary_unary(request, target, '/route3.road.Route3Road/ListDatasets',
             route3__road__pb2.Empty.SerializeToString,
             route3__road__pb2.ListDatasetsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def H3ShortestPath(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/H3ShortestPath',
+            route3__road__pb2.H3ShortestPathRequest.SerializeToString,
+            route3__road__pb2.ArrowRecordBatch.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

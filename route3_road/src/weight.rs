@@ -24,9 +24,11 @@ pub struct RoadWeight {
     /// the higher the preference for the edge is, the lower is the `edge_category_weight`.
     ///
     /// Must be positive.
+    #[serde(rename = "rcw")]
     road_category_weight: f32,
 
     /// travel duration
+    #[serde(rename = "td")]
     travel_duration: Time,
 }
 
@@ -88,7 +90,7 @@ impl Zero for RoadWeight {
     fn zero() -> Self {
         Self {
             road_category_weight: 10.0,
-            travel_duration: Time::new::<second>(10.0),
+            travel_duration: Time::new::<second>(1.0),
         }
     }
 

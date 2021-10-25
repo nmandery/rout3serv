@@ -1,12 +1,14 @@
 use std::borrow::Borrow;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::io::Cursor;
 use std::sync::Arc;
 
+use h3ron::collections::H3CellSet;
 use h3ron::io::{deserialize_from, serialize_into};
+use h3ron::iter::change_cell_resolution;
 use h3ron::H3Cell;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
-use polars_core::frame::DataFrame;
+use polars_core::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::task::block_in_place;
@@ -14,8 +16,8 @@ use tonic::Status;
 
 use crate::config::{GenericDataset, ServerConfig};
 use crate::io::graph_store::{GraphCacheKey, GraphStore};
-use crate::io::s3::{FoundOption, S3Client, S3RecordBatchLoader};
-use crate::server::api::generated::GraphHandle;
+use crate::io::s3::{FoundOption, H3DataFrame, S3Client, S3RecordBatchLoader};
+use crate::server::api::generated::{CellSelection, GraphHandle};
 use crate::server::util::StrId;
 
 /// storage backend to use in the server.
@@ -147,7 +149,10 @@ where
         }
     }
 
-    pub fn get_dataset_config<B>(&self, dataset_name: B) -> Result<&GenericDataset, Status>
+    pub fn get_dataset_config<B>(
+        &self,
+        dataset_name: B,
+    ) -> std::result::Result<&GenericDataset, Status>
     where
         B: Borrow<String>,
     {
@@ -167,8 +172,8 @@ where
         dataset_config: &GenericDataset,
         cells: &[H3Cell],
         data_h3_resolution: u8,
-    ) -> Result<DataFrame, Status> {
-        let mut dataframe = self
+    ) -> std::result::Result<H3DataFrame, Status> {
+        let mut h3dataframe = self
             .recordbatch_loader
             .load_h3_dataset_dataframe(dataset_config, cells, data_h3_resolution)
             .await
@@ -176,11 +181,83 @@ where
                 log::error!("loading from s3 failed: {:?}", e);
                 Status::internal("dataset is inaccessible")
             })?;
-        dataframe.rechunk();
-        Ok(dataframe)
+        h3dataframe.dataframe.rechunk();
+        Ok(h3dataframe)
     }
 
     pub fn list_datasets(&self) -> Vec<String> {
         self.config.datasets.keys().cloned().collect()
     }
+
+    /// fetch all contents required for the `cell_selection`.
+    ///
+    /// Input cells will get:
+    /// * transformed to `h3_resolution`
+    /// * filtered by the dataset given using the `dataset_name` in the `CellSelection`
+    /// * invalid cells will get removed
+    ///
+    /// In case the `dataset_name` is set, the `DataFrame` for this dataset will
+    /// be returned as well.
+    pub async fn load_cell_selection(
+        &self,
+        cell_selection: &CellSelection,
+        h3_resolution: u8,
+    ) -> std::result::Result<(Vec<H3Cell>, Option<H3DataFrame>), Status> {
+        // build a complete list of the requested h3cells transformed to the
+        // correct resolution
+        let mut cells: Vec<_> = change_cell_resolution(
+            cell_selection
+                .cells
+                .iter()
+                .filter_map(|v| match H3Cell::try_from(*v) {
+                    Ok(cell) => Some(cell),
+                    Err(_) => {
+                        log::warn!("invalid h3 index {} ignored", v);
+                        None
+                    }
+                }),
+            h3_resolution,
+        )
+        .collect();
+        cells.sort_unstable();
+        cells.dedup();
+
+        if cells.is_empty() || cell_selection.dataset_name.is_empty() {
+            Ok((cells, None))
+        } else {
+            let df = self
+                .load_dataset_dataframe(
+                    self.get_dataset_config(&cell_selection.dataset_name)?,
+                    &cells,
+                    h3_resolution,
+                )
+                .await?;
+
+            let reduced_cells =
+                filter_cells_by_dataframe_contents(&df.dataframe, cells, &df.h3index_column_name)
+                    .map_err(|e| {
+                    log::error!("reducing input cell selection failed: {:?}", e);
+                    Status::internal("reducing input cell selection failed")
+                })?;
+            Ok((reduced_cells, Some(df)))
+        }
+    }
+}
+
+fn filter_cells_by_dataframe_contents(
+    df: &DataFrame,
+    mut input_cells: Vec<H3Cell>,
+    h3index_column_name: &str,
+) -> eyre::Result<Vec<H3Cell>> {
+    let df_cells_lookup: H3CellSet = df
+        .column(h3index_column_name)?
+        .u64()?
+        .into_iter()
+        .filter_map(|v| v.map(|i| H3Cell::try_from(i).ok()).flatten())
+        .collect();
+
+    Ok(input_cells
+        .drain(..)
+        .filter(|cell| df_cells_lookup.contains(cell))
+        .collect())
 }

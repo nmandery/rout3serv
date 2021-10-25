@@ -1,9 +1,9 @@
-pub mod car;
-
 use h3ron_graph::formats::osm::osmpbfreader::Tags;
 use regex::{Captures, Regex};
 use uom::si::f32::Velocity;
 use uom::si::velocity::{kilometer_per_hour, knot, meter_per_second, mile_per_hour};
+
+pub mod car;
 
 macro_rules! kmh {
     ($val:expr) => {

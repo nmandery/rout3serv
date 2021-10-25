@@ -6,10 +6,11 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use crate::osm::car::CarAnalyzer;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
+use h3ron::algorithm::cell_centroid_distance_m_at_resolution;
 use h3ron::io::{deserialize_from, serialize_into};
-use h3ron::H3Edge;
 use h3ron_graph::algorithm::covered_area::CoveredArea;
 use h3ron_graph::formats::osm::OsmPbfH3EdgeGraphBuilder;
 use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
@@ -180,10 +181,14 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
     let h3_resolution: u8 = sc_matches.value_of("h3_resolution").unwrap().parse()?;
     let graph_output = sc_matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
 
-    let edge_length = Length::new::<meter>(H3Edge::edge_length_m(h3_resolution) as f32);
-    let mut builder = OsmPbfH3EdgeGraphBuilder::new(h3_resolution, |tags| {
-        osm::car::way_properties(tags, edge_length)
-    });
+    let edge_length =
+        Length::new::<meter>(cell_centroid_distance_m_at_resolution(h3_resolution) as f32);
+    log::info!(
+        "Building graph using resolution {} with edge length ~= {:?}",
+        h3_resolution,
+        edge_length
+    );
+    let mut builder = OsmPbfH3EdgeGraphBuilder::new(h3_resolution, CarAnalyzer {});
     for pbf_input in sc_matches.values_of("OSM-PBF").unwrap() {
         builder.read_pbf(Path::new(&pbf_input))?;
     }

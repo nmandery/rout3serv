@@ -70,14 +70,20 @@ message IdRef {
   string object_id = 1;
 }
 
-enum CellInRoutePosition {
-  Origin = 0;
-  Destination = 1;
+message CellSelection {
+  // h3 cells part of the selection
+  repeated uint64 cells = 1;
+
+  /* optional name of a dataset.
+     when this is set the `cells` get reduced to the cells present in this dataset
+
+   */
+  string dataset_name = 2;
+
 }
 
 message DifferentialShortestPathRoutesRequest {
   string object_id = 1;
-  //CellInRoutePosition cell_position = 2;
   repeated uint64 cells = 3;
 }
 
@@ -88,6 +94,18 @@ message RouteWKB {
   double category_weight = 4;
   bytes wkb = 5;
 }
+
+message H3ShortestPathRequest {
+
+  /** the graph to use */
+  GraphHandle graph_handle = 1;
+
+  CellSelection origins = 2;
+  CellSelection destinations = 3;
+
+  ShortestPathOptions options = 4;
+}
+
 
 /** A single Arrow RecordBatch in Arrow IPC File format */
 message ArrowRecordBatch {
@@ -135,6 +153,8 @@ service Route3Road {
   rpc Version(Empty) returns (VersionResponse) {}
   rpc ListGraphs(Empty) returns (ListGraphsResponse) {}
   rpc ListDatasets(Empty) returns (ListDatasetsResponse) {}
+
+  rpc H3ShortestPath(H3ShortestPathRequest) returns (stream ArrowRecordBatch);
 
   /** differential shortest path based on the population dataset */
   rpc DifferentialShortestPath(DifferentialShortestPathRequest)
