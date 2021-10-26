@@ -1,12 +1,12 @@
 use std::ops::Add;
 use std::sync::Arc;
 
-use h3ron::algorithm::cell_centroid_distance_m;
 use h3ron::{H3Cell, HasH3Resolution, Index};
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::algorithm::shortest_path::{ShortestPathManyToMany, ShortestPathOptions};
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
+use ordered_float::OrderedFloat;
 use polars_core::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -104,8 +104,8 @@ where
                 p.cost,
                 p.edges
                     .iter()
-                    .map(|edge| (cell_centroid_distance_m(*edge) * 10.0) as u64)
-                    .sum::<u64>(),
+                    .map(|edge| OrderedFloat::from(edge.cell_centroid_distance_m()))
+                    .sum::<OrderedFloat<f64>>(),
                 p.destination_cell().ok(),
             )
         },
@@ -138,7 +138,7 @@ where
                 for (cost, path_length_dm, destination) in paths.iter() {
                     origin_cell_vec.push(origin_cell.h3index() as u64);
                     destination_cell_vec.push(destination.map(|c| c.h3index() as u64));
-                    path_cell_length_m_vec.push(Some(*path_length_dm as f64 / 10.0));
+                    path_cell_length_m_vec.push(Some(path_length_dm.into_inner()));
                     travel_duration_secs_vec
                         .push(Some(cost.travel_duration().get::<second>() as f32));
                     road_category_weight_vec.push(Some(cost.category_weight()));

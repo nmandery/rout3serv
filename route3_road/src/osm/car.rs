@@ -1,4 +1,3 @@
-use h3ron::algorithm::cell_centroid_distance_m;
 use h3ron::H3Edge;
 use h3ron_graph::formats::osm::osmpbfreader::Tags;
 use h3ron_graph::formats::osm::{EdgeProperties, WayAnalyzer};
@@ -63,7 +62,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
     ) -> EdgeProperties<RoadWeight> {
         let weight = RoadWeight::new(
             way_properties.category_weight,
-            Length::new::<meter>(cell_centroid_distance_m(edge) as f32)
+            Length::new::<meter>(edge.cell_centroid_distance_m() as f32)
                 / way_properties.max_speed
                 / 0.9, /* you never reach max_speed on average roads*/
         );
