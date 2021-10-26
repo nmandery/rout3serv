@@ -19,9 +19,7 @@ use crate::server::api::generated::{
     ListDatasetsResponse, ListGraphsResponse, VersionResponse,
 };
 use crate::server::storage::S3Storage;
-use crate::server::util::{
-    respond_dataframe_recordbatches_stream, spawn_blocking_status, ArrowRecordBatchStream,
-};
+use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
 use crate::weight::RoadWeight;
 
 mod api;
@@ -115,7 +113,7 @@ impl Route3Road for ServerImpl {
                 Status::internal("calculating routes failed")
             })?;
 
-        let response_fut = respond_dataframe_recordbatches_stream(
+        let response_fut = stream_dataframe(
             output.object_id.clone(),
             differential_shortest_path::disturbance_statistics(&output)?,
         );
@@ -146,7 +144,7 @@ impl Route3Road for ServerImpl {
             )
             .await?
         {
-            respond_dataframe_recordbatches_stream(
+            stream_dataframe(
                 output.object_id.clone(),
                 differential_shortest_path::disturbance_statistics(&output)?,
             )

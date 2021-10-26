@@ -16,9 +16,7 @@ use uom::si::time::second;
 use crate::io::dataframe::prefix_column_names;
 use crate::io::s3::H3DataFrame;
 use crate::server::storage::S3Storage;
-use crate::server::util::{
-    respond_dataframe_recordbatches_stream, spawn_blocking_status, ArrowRecordBatchStream,
-};
+use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
 use crate::weight::Weight;
 
 pub struct H3ShortestPathParameters<W: Send + Sync> {
@@ -83,7 +81,7 @@ where
             log::error!("calculating h3 shortest path failed: {:?}", e);
             Status::internal("calculating h3 shortest path failed")
         })?;
-    respond_dataframe_recordbatches_stream(uuid::Uuid::new_v4().to_string(), df).await
+    stream_dataframe(uuid::Uuid::new_v4().to_string(), df).await
 }
 
 static COL_H3INDEX_DESTINATION: &str = "h3index_cell_destination";
