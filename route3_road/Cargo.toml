@@ -2,7 +2,7 @@
 name = "route3_road"
 version = "0.3.0"
 authors = ["Nico Mandery <nico@nmandery.net>"]
-edition = "2021"
+edition = "2018"
 license = "MIT"
 
 [dependencies]
