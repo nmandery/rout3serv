@@ -4,7 +4,6 @@ import typing
 from typing import Optional, Iterable, Tuple
 
 import grpc
-import numpy as np
 import pyarrow as pa
 import shapely.wkb
 from shapely.geometry import Point
@@ -111,6 +110,7 @@ class Server:
         requires geopandas
         """
         import geopandas as gpd
+        import numpy as np
 
         req = route3_road_pb2.DifferentialShortestPathRoutesRequest()
         req.object_id = object_id
