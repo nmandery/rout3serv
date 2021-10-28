@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use crate::config::ServerConfig;
 use crate::osm::car::CarAnalyzer;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use eyre::Result;
@@ -172,7 +173,8 @@ fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_server(sc_matches: &ArgMatches) -> Result<()> {
     let config_contents = std::fs::read_to_string(sc_matches.value_of("CONFIG-FILE").unwrap())?;
-    let config = toml::from_str(&config_contents)?;
+    let config: ServerConfig = toml::from_str(&config_contents)?;
+    config.validate()?;
     crate::server::launch_server(config)?;
     Ok(())
 }

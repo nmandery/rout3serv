@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use eyre::Result;
 use serde::Deserialize;
 
 use crate::io::s3::{S3Config, S3H3Dataset};
@@ -54,4 +55,13 @@ pub struct ServerConfig {
     pub graph_store: GraphStoreConfig,
     pub output: OutputConfig,
     pub datasets: HashMap<String, GenericDataset>,
+}
+
+impl ServerConfig {
+    pub fn validate(&self) -> Result<()> {
+        for dataset in self.datasets.values() {
+            dataset.validate()?;
+        }
+        Ok(())
+    }
 }

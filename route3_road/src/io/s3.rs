@@ -1,12 +1,10 @@
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::env;
-use std::io::Cursor;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrow::io::ipc::read::{read_file_metadata, FileReader};
 use arrow::record_batch::RecordBatch;
 use bytes::Bytes;
 use bytesize::ByteSize;
@@ -25,6 +23,8 @@ use rusoto_core::{ByteStream, HttpClient, Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, ListObjectsRequest, PutObjectRequest, S3};
 use serde::{Deserialize, Serialize};
 use tokio::task;
+
+use crate::io::format::FileFormat;
 
 /// a minimal option type to indicate if something has been found or not
 pub enum FoundOption<T> {
@@ -266,6 +266,12 @@ pub trait S3H3Dataset {
     fn key_pattern(&self) -> String;
     fn file_h3_resolution(&self) -> u8;
     fn h3index_column(&self) -> String;
+
+    fn validate(&self) -> Result<()> {
+        // try to check if the format is understood
+        FileFormat::from_filename(&self.key_pattern())?;
+        Ok(())
+    }
 }
 
 lazy_static! {
@@ -274,6 +280,24 @@ lazy_static! {
     static ref RE_S3KEY_FILE_H3_RESOLUTION: Regex =
         Regex::new(r"\{\s*file_h3_resolution\s*\}").unwrap();
     static ref RE_S3KEY_H3_CELL: Regex = Regex::new(r"\{\s*h3cell\s*\}").unwrap();
+}
+
+fn build_h3_key<D>(dataset: &D, cell: &H3Cell, data_h3_resolution: u8) -> String
+where
+    D: S3H3Dataset,
+{
+    RE_S3KEY_H3_CELL
+        .replace_all(
+            &RE_S3KEY_FILE_H3_RESOLUTION.replace_all(
+                &RE_S3KEY_DATA_H3_RESOLUTION.replace_all(
+                    dataset.key_pattern().as_ref(),
+                    data_h3_resolution.to_string(),
+                ),
+                dataset.file_h3_resolution().to_string(),
+            ),
+            cell.to_string(),
+        )
+        .to_string()
 }
 
 /// wrapper around a `DataFrame` to store a bit of metainformation
@@ -309,7 +333,7 @@ impl S3RecordBatchLoader {
 
         let mut keys: Vec<_> = file_cells
             .iter()
-            .map(|cell| self.build_h3_key(dataset, cell, data_h3_resolution))
+            .map(|cell| build_h3_key(dataset, cell, data_h3_resolution))
             .collect();
         keys.sort_unstable(); // remove duplicates when the keys are not grouped using a file resolution
         keys.dedup();
@@ -318,19 +342,16 @@ impl S3RecordBatchLoader {
             let bucket_name = dataset.bucket_name();
             let s3_client = self.s3_client.clone();
             task::spawn(async move {
+                let format = FileFormat::from_filename(&key)?;
                 s3_client
                     .get_object_bytes(bucket_name, key)
                     .await
                     .and_then(|object_bytes| {
-                        let mut record_batches = vec![];
                         if let FoundOption::Found(bytes) = object_bytes {
-                            let mut cursor = Cursor::new(&bytes);
-                            let metadata = read_file_metadata(&mut cursor)?;
-                            for record_batch in FileReader::new(&mut cursor, metadata, None) {
-                                record_batches.push(record_batch?);
-                            }
-                        };
-                        Ok(record_batches)
+                            Ok(format.recordbatches_from_slice(&bytes)?)
+                        } else {
+                            Ok(vec![])
+                        }
                     })
             })
         }))
@@ -382,25 +403,5 @@ impl S3RecordBatchLoader {
             dataframe,
             h3index_column_name,
         })
-    }
-
-    fn build_h3_key<D: S3H3Dataset>(
-        &self,
-        dataset: &D,
-        cell: &H3Cell,
-        data_h3_resolution: u8,
-    ) -> String {
-        RE_S3KEY_H3_CELL
-            .replace_all(
-                &RE_S3KEY_FILE_H3_RESOLUTION.replace_all(
-                    &RE_S3KEY_DATA_H3_RESOLUTION.replace_all(
-                        dataset.key_pattern().as_ref(),
-                        data_h3_resolution.to_string(),
-                    ),
-                    dataset.file_h3_resolution().to_string(),
-                ),
-                cell.to_string(),
-            )
-            .to_string()
     }
 }
