@@ -6,7 +6,6 @@ edition = "2018"
 license = "MIT"
 
 [dependencies]
-backoff = { version = "0.3", features = ["tokio_1", "futures", "tokio"] }
 bytesize = "1"
 clap = "^2.33"
 env_logger = "0.9"
@@ -35,14 +34,16 @@ version = "0.31"
 features = ["use_serde"]
 
 [dependencies.polars-core]
-git = "https://github.com/pola-rs/polars.git"
-rev = "573477f80ea42b74ff41200e6ca79898cb383bca"
+version = "0.17.0"
+#git = "https://github.com/pola-rs/polars.git"
+#rev = "573477f80ea42b74ff41200e6ca79898cb383bca"
 features = ["serde"]
 
 [dependencies.arrow] # matches dependency of polars-code
 package = "arrow2"
-git = "https://github.com/jorgecarleitao/arrow2"
-rev = "b62184d32a56465f145e4692e1a90fc4fe418d82"
+version = "0.7"
+#git = "https://github.com/jorgecarleitao/arrow2"
+#rev = "b62184d32a56465f145e4692e1a90fc4fe418d82"
 default-features = false
 features=["io_ipc", "io_parquet"]
 
@@ -96,6 +97,10 @@ version = "0.2"
 [dependencies.gdal]
 version = "0.10.0"
 features = ["bindgen"]
+
+[dependencies.backoff]
+version = "0.3"
+features = ["tokio_1", "futures", "tokio"]
 
 [build-dependencies]
 tonic-build = "0.5"
