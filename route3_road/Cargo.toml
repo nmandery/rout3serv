@@ -33,27 +33,29 @@ version = "0.31"
 features = ["use_serde"]
 
 [dependencies.polars-core]
-version = "0.17.0"
+version = "0.17"
 features = ["serde"]
 
-[dependencies.arrow] # matches dependency of polars-code
+[dependencies.arrow] # matches dependency of polars-core
 package = "arrow2"
 version = "0.7"
 default-features = false
-features=["io_ipc", "io_parquet", "io_ipc_compression", "io_parquet_compression"]
+features = []
 
 [dependencies.mimalloc]
 version = "0.1"
 default_features = false
 
 [dependencies.h3ron]
-git = "https://github.com/nmandery/h3ron.git"
-rev = "05acba1f88865301feecd19383643705fc755db8"
+version = "0.13"
+#git = "https://github.com/nmandery/h3ron.git"
+#rev = "05acba1f88865301feecd19383643705fc755db8"
 features = ["io", "use-rayon", "use-roaring", "use-serde"]
 
 [dependencies.h3ron-graph]
-git = "https://github.com/nmandery/h3ron.git"
-rev = "05acba1f88865301feecd19383643705fc755db8"
+version = "0.1"
+#git = "https://github.com/nmandery/h3ron.git"
+#rev = "05acba1f88865301feecd19383643705fc755db8"
 features = ["use-gdal", "osm"]
 
 [dependencies.uuid]

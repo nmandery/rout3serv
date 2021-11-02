@@ -3,7 +3,6 @@ name = "h3io"
 version = "0.1.0"
 edition = "2021"
 
-
 [dependencies]
 bytesize = "1"
 futures = "0.3"
@@ -19,7 +18,7 @@ itertools = "0.10"
 version = "0.17.0"
 features = ["serde"]
 
-[dependencies.arrow] # matches dependency of polars-code
+[dependencies.arrow] # matches dependency of polars-core
 package = "arrow2"
 version = "0.7"
 default-features = false
@@ -30,8 +29,7 @@ version = "1"
 features = ["derive"]
 
 [dependencies.h3ron]
-git = "https://github.com/nmandery/h3ron.git"
-rev = "05acba1f88865301feecd19383643705fc755db8"
+version = "0.13"
 features = ["io", "use-rayon", "use-roaring", "use-serde"]
 
 [dependencies.hyper-tls]
