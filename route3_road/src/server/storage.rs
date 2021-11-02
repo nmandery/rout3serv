@@ -181,7 +181,9 @@ where
                 log::error!("loading from s3 failed: {:?}", e);
                 Status::internal("dataset is inaccessible")
             })?;
-        h3dataframe.dataframe.rechunk();
+        if !h3dataframe.dataframe.is_empty() {
+            h3dataframe.dataframe.rechunk();
+        }
         Ok(h3dataframe)
     }
 
@@ -249,6 +251,10 @@ fn filter_cells_by_dataframe_contents(
     mut input_cells: Vec<H3Cell>,
     h3index_column_name: &str,
 ) -> eyre::Result<Vec<H3Cell>> {
+    if df.is_empty() {
+        return Ok(Default::default());
+    }
+
     let df_cells_lookup: H3CellSet = df
         .column(h3index_column_name)?
         .u64()?

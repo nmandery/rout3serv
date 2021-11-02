@@ -372,33 +372,43 @@ impl S3RecordBatchLoader {
         cells: &[H3Cell],
         data_h3_resolution: u8,
     ) -> Result<H3DataFrame> {
-        let dataframe = DataFrame::try_from(
-            self.load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
-                .await?,
-        )?;
+        let recordbatches = self
+            .load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
+            .await?;
+
         let h3index_column_name = dataset.h3index_column();
-        log::info!(
-            "loaded dataframe with {:?} shape, columns: {}",
-            dataframe.shape(),
-            dataframe.get_column_names().join(", ")
-        );
-        match dataframe.column(&h3index_column_name) {
-            Ok(column) => {
-                if column.dtype() != &DataType::UInt64 {
+
+        let dataframe = if recordbatches.is_empty() {
+            DataFrame::default()
+        } else {
+            let dataframe = DataFrame::try_from(recordbatches)?;
+
+            log::info!(
+                "loaded dataframe with {:?} shape, columns: {}",
+                dataframe.shape(),
+                dataframe.get_column_names().join(", ")
+            );
+            match dataframe.column(&h3index_column_name) {
+                Ok(column) => {
+                    if column.dtype() != &DataType::UInt64 {
+                        return Err(Report::msg(format!(
+                            "dataframe h3index column '{}' is typed as {}, but should be UInt64",
+                            h3index_column_name,
+                            column.dtype().to_string()
+                        )));
+                    }
+                }
+                Err(_) => {
                     return Err(Report::msg(format!(
-                        "dataframe h3index column '{}' is typed as {}, but should be UInt64",
-                        h3index_column_name,
-                        column.dtype().to_string()
+                        "dataframe contains no column named '{}'",
+                        h3index_column_name
                     )));
                 }
-            }
-            Err(_) => {
-                return Err(Report::msg(format!(
-                    "dataframe contains no column named '{}'",
-                    h3index_column_name
-                )));
-            }
+            };
+
+            dataframe
         };
+
         Ok(H3DataFrame {
             dataframe,
             h3index_column_name,

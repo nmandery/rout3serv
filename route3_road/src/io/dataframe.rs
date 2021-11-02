@@ -88,7 +88,12 @@ where
     C: FromIterator<I>,
     I: Index,
 {
-    Ok(series_iter_indexes(df.column(column_name)?)?.collect::<C>())
+    let collection: C = if df.is_empty() {
+        std::iter::empty().collect()
+    } else {
+        series_iter_indexes(df.column(column_name)?)?.collect()
+    };
+    Ok(collection)
 }
 
 /// add a prefix to all columns in the dataframe
