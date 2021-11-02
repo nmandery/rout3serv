@@ -43,4 +43,7 @@ pub enum Error {
 
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
+
+    #[error("Unsupported H3 resolution: {0}")]
+    UnsupportedH3Resolution(u8),
 }

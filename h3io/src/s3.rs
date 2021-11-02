@@ -267,13 +267,25 @@ fn build_http_client(insecure: bool) -> Result<HttpClient, Error> {
 pub trait S3H3Dataset {
     fn bucket_name(&self) -> String;
     fn key_pattern(&self) -> String;
-    fn file_h3_resolution(&self) -> u8;
     fn h3index_column(&self) -> String;
 
     fn validate(&self) -> Result<(), Error> {
         // try to check if the format is understood
         FileFormat::from_filename(&self.key_pattern())?;
         Ok(())
+    }
+
+    fn file_h3_resolution(&self, data_h3_resolution: u8) -> Option<u8>;
+
+    fn file_h3_resolution_checked(&self, data_h3_resolution: u8) -> Result<u8, Error> {
+        let fr = self.file_h3_resolution(data_h3_resolution).ok_or_else(|| {
+            log::error!(
+                "unsupported h3 resolution for building a key: {}",
+                data_h3_resolution
+            );
+            Error::UnsupportedH3Resolution(data_h3_resolution)
+        })?;
+        Ok(fr)
     }
 }
 
@@ -285,22 +297,24 @@ lazy_static! {
     static ref RE_S3KEY_H3_CELL: Regex = Regex::new(r"\{\s*h3cell\s*\}").unwrap();
 }
 
-fn build_h3_key<D>(dataset: &D, cell: &H3Cell, data_h3_resolution: u8) -> String
+fn build_h3_key<D>(dataset: &D, cell: &H3Cell, data_h3_resolution: u8) -> Result<String, Error>
 where
     D: S3H3Dataset,
 {
-    RE_S3KEY_H3_CELL
+    Ok(RE_S3KEY_H3_CELL
         .replace_all(
             &RE_S3KEY_FILE_H3_RESOLUTION.replace_all(
                 &RE_S3KEY_DATA_H3_RESOLUTION.replace_all(
                     dataset.key_pattern().as_ref(),
                     data_h3_resolution.to_string(),
                 ),
-                dataset.file_h3_resolution().to_string(),
+                dataset
+                    .file_h3_resolution_checked(data_h3_resolution)
+                    .map(|r| r.to_string())?,
             ),
             cell.to_string(),
         )
-        .to_string()
+        .to_string())
 }
 
 pub struct S3RecordBatchLoader {
@@ -321,13 +335,16 @@ impl S3RecordBatchLoader {
         if cells.is_empty() {
             return Ok(Default::default());
         }
-        let file_cells = change_cell_resolution(cells.iter(), dataset.file_h3_resolution())
-            .collect::<HashSet<_>>();
+        let file_cells = change_cell_resolution(
+            cells.iter(),
+            dataset.file_h3_resolution_checked(data_h3_resolution)?,
+        )
+        .collect::<HashSet<_>>();
 
-        let mut keys: Vec<_> = file_cells
+        let mut keys = file_cells
             .iter()
             .map(|cell| build_h3_key(dataset, cell, data_h3_resolution))
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
         keys.sort_unstable(); // remove duplicates when the keys are not grouped using a file resolution
         keys.dedup();
 
@@ -365,10 +382,10 @@ impl S3RecordBatchLoader {
         cells: &[H3Cell],
         data_h3_resolution: u8,
     ) -> Result<H3DataFrame, Error> {
-        let recordbatches = self
-            .load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
-            .await?;
-
-        H3DataFrame::from_recordbatches(recordbatches, dataset.h3index_column())
+        H3DataFrame::from_recordbatches(
+            self.load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
+                .await?,
+            dataset.h3index_column(),
+        )
     }
 }

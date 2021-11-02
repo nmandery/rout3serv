@@ -24,7 +24,9 @@ pub struct OutputConfig {
 pub struct GenericDataset {
     pub key_pattern: String,
     pub bucket: String,
-    pub file_h3_resolution: u8,
+    /// maps data resolutions to the file h3 resolutions
+    pub resolutions: HashMap<u8, u8>,
+
     pub h3index_column_name: Option<String>,
 }
 
@@ -37,14 +39,14 @@ impl S3H3Dataset for GenericDataset {
         self.key_pattern.clone()
     }
 
-    fn file_h3_resolution(&self) -> u8 {
-        self.file_h3_resolution
-    }
-
     fn h3index_column(&self) -> String {
         self.h3index_column_name
             .clone()
             .unwrap_or_else(|| "h3index".to_string())
+    }
+
+    fn file_h3_resolution(&self, data_h3_resolution: u8) -> Option<u8> {
+        self.resolutions.get(&data_h3_resolution).copied()
     }
 }
 
