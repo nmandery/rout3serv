@@ -1,10 +1,10 @@
 use std::collections::HashSet;
-use std::convert::TryFrom;
 use std::env;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::io::dataframe::H3DataFrame;
 use arrow::record_batch::RecordBatch;
 use bytes::Bytes;
 use bytesize::ByteSize;
@@ -15,13 +15,11 @@ use h3ron::H3Cell;
 use hyper::client::HttpConnector;
 use hyper_tls::HttpsConnector;
 use native_tls::TlsConnector;
-use polars_core::datatypes::DataType;
-use polars_core::frame::DataFrame;
 use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{ByteStream, HttpClient, Region, RusotoError};
 use rusoto_s3::{GetObjectRequest, ListObjectsRequest, PutObjectRequest, S3};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio::task;
 
 use crate::io::format::FileFormat;
@@ -300,16 +298,6 @@ where
         .to_string()
 }
 
-/// wrapper around a `DataFrame` to store a bit of metainformation
-#[derive(Serialize, Deserialize)]
-pub struct H3DataFrame {
-    /// the dataframe itself
-    pub dataframe: DataFrame,
-
-    /// name of the column containing the h3indexes.
-    pub h3index_column_name: String,
-}
-
 pub struct S3RecordBatchLoader {
     s3_client: Arc<S3Client>,
 }
@@ -372,36 +360,10 @@ impl S3RecordBatchLoader {
         cells: &[H3Cell],
         data_h3_resolution: u8,
     ) -> Result<H3DataFrame> {
-        let dataframe = DataFrame::try_from(
-            self.load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
-                .await?,
-        )?;
-        let h3index_column_name = dataset.h3index_column();
-        log::info!(
-            "loaded dataframe with {:?} shape, columns: {}",
-            dataframe.shape(),
-            dataframe.get_column_names().join(", ")
-        );
-        match dataframe.column(&h3index_column_name) {
-            Ok(column) => {
-                if column.dtype() != &DataType::UInt64 {
-                    return Err(Report::msg(format!(
-                        "dataframe h3index column '{}' is typed as {}, but should be UInt64",
-                        h3index_column_name,
-                        column.dtype().to_string()
-                    )));
-                }
-            }
-            Err(_) => {
-                return Err(Report::msg(format!(
-                    "dataframe contains no column named '{}'",
-                    h3index_column_name
-                )));
-            }
-        };
-        Ok(H3DataFrame {
-            dataframe,
-            h3index_column_name,
-        })
+        let recordbatches = self
+            .load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
+            .await?;
+
+        H3DataFrame::from_recordbatches(recordbatches, dataset.h3index_column())
     }
 }
