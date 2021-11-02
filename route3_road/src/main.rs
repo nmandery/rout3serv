@@ -127,7 +127,7 @@ fn main() -> Result<()> {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
                 let prepared_graph: PreparedH3EdgeGraph<RoadWeight> =
                     deserialize_from(File::open(graph_filename)?)?;
-                println!("{}", toml::to_string(&prepared_graph.get_stats())?);
+                println!("{}", serde_yaml::to_string(&prepared_graph.get_stats())?);
             }
             ("to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
             ("covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
@@ -173,7 +173,7 @@ fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_server(sc_matches: &ArgMatches) -> Result<()> {
     let config_contents = std::fs::read_to_string(sc_matches.value_of("CONFIG-FILE").unwrap())?;
-    let config: ServerConfig = toml::from_str(&config_contents)?;
+    let config: ServerConfig = serde_yaml::from_str(&config_contents)?;
     config.validate()?;
     crate::server::launch_server(config)?;
     Ok(())
