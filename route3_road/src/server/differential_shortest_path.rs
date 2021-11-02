@@ -2,6 +2,7 @@ use std::cmp::max;
 use std::ops::Add;
 use std::sync::Arc;
 
+use crate::io::dataframe::H3DataFrame;
 use geo_types::Coordinate;
 use h3ron::collections::{H3CellSet, H3Treemap};
 use h3ron::iter::change_cell_resolution;
@@ -18,12 +19,11 @@ use tonic::Status;
 use uom::si::time::second;
 
 use crate::io::graph_store::GraphCacheKey;
-use crate::io::s3::H3DataFrame;
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes, RouteWkb, ShortestPathOptions,
 };
 use crate::server::storage::S3Storage;
-use crate::server::util::{change_cell_resolution_dedup, index_collection_from_dataframe, StrId};
+use crate::server::util::{change_cell_resolution_dedup, index_collection_from_h3dataframe, StrId};
 use crate::server::vector::{buffer_meters, gdal_geom_to_h3, read_wkb_to_gdal};
 use crate::weight::Weight;
 
@@ -111,10 +111,7 @@ where
             graph.h3_resolution(),
         )
         .await?;
-    let ref_dataframe_cells: H3CellSet = index_collection_from_dataframe(
-        &ref_dataframe.dataframe,
-        &ref_dataframe.h3index_column_name,
-    )?;
+    let ref_dataframe_cells: H3CellSet = index_collection_from_h3dataframe(&ref_dataframe)?;
 
     Ok(DspInput {
         disturbance,

@@ -1,13 +1,15 @@
 use std::borrow::Borrow;
+use std::convert::TryFrom;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 
 use arrow::io::ipc::write::FileWriter;
 use arrow::record_batch::RecordBatch;
-use eyre::Result;
+use eyre::{Report, Result};
 use h3ron::Index;
 use itertools::Itertools;
 use polars_core::prelude::*;
+use serde::{Deserialize, Serialize};
 
 /// serialize a [`RecordBatch`] into arrow IPC format
 pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>> {
@@ -18,6 +20,86 @@ pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>> {
         filewriter.finish()?;
     }
     Ok(buf)
+}
+
+/// wrapper around a `DataFrame` to store a bit of metainformation
+#[derive(Serialize, Deserialize)]
+pub struct H3DataFrame {
+    /// the dataframe itself
+    pub dataframe: DataFrame,
+
+    /// name of the column containing the h3indexes.
+    pub h3index_column_name: String,
+}
+
+impl H3DataFrame {
+    pub fn from_recordbatches(
+        recordbatches: Vec<RecordBatch>,
+        h3index_column_name: String,
+    ) -> Result<Self> {
+        let dataframe = if recordbatches.is_empty() {
+            DataFrame::default()
+        } else {
+            let dataframe = DataFrame::try_from(recordbatches)?;
+
+            log::info!(
+                "loaded dataframe with {:?} shape, columns: {}",
+                dataframe.shape(),
+                dataframe.get_column_names().join(", ")
+            );
+            match dataframe.column(&h3index_column_name) {
+                Ok(column) => {
+                    if column.dtype() != &DataType::UInt64 {
+                        return Err(Report::msg(format!(
+                            "dataframe h3index column '{}' is typed as {}, but should be UInt64",
+                            h3index_column_name,
+                            column.dtype().to_string()
+                        )));
+                    }
+                }
+                Err(_) => {
+                    return Err(Report::msg(format!(
+                        "dataframe contains no column named '{}'",
+                        h3index_column_name
+                    )));
+                }
+            };
+
+            dataframe
+        };
+
+        Ok(H3DataFrame {
+            dataframe,
+            h3index_column_name,
+        })
+    }
+
+    /// build a collection from a [`Series`] of `u64` from a [`DataFrame`] values.
+    /// values will be validated and invalid values will be ignored.
+    #[inline]
+    pub fn index_collection_from_column<C, I>(&self, column_name: &str) -> eyre::Result<C>
+    where
+        C: FromIterator<I>,
+        I: Index,
+    {
+        let collection: C = if self.dataframe.is_empty() {
+            std::iter::empty().collect()
+        } else {
+            series_iter_indexes(self.dataframe.column(column_name)?)?.collect()
+        };
+        Ok(collection)
+    }
+
+    /// build a collection from the `h3index_column` of this [`DataFrame`].
+    /// values will be validated and invalid values will be ignored.
+    #[inline]
+    pub fn index_collection<C, I>(&self) -> eyre::Result<C>
+    where
+        C: FromIterator<I>,
+        I: Index,
+    {
+        self.index_collection_from_column(&self.h3index_column_name)
+    }
 }
 
 /// create a `Series` from an iterator of `Index`-implementing values
@@ -78,22 +160,6 @@ where
         phantom_data: PhantomData::<I>::default(),
         inner_iter: inner,
     })
-}
-
-/// build a collection from a [`Series`] of `u64` from a [`DataFrame`] values.
-/// values will be validated and invalid values will be ignored.
-#[inline]
-pub fn index_collection_from_dataframe<C, I>(df: &DataFrame, column_name: &str) -> eyre::Result<C>
-where
-    C: FromIterator<I>,
-    I: Index,
-{
-    let collection: C = if df.is_empty() {
-        std::iter::empty().collect()
-    } else {
-        series_iter_indexes(df.column(column_name)?)?.collect()
-    };
-    Ok(collection)
 }
 
 /// add a prefix to all columns in the dataframe

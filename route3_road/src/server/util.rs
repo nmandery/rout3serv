@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 
-use crate::io::dataframe::recordbatch_to_bytes;
+use crate::io::dataframe::{recordbatch_to_bytes, H3DataFrame};
 use crate::server::api::generated::ArrowRecordBatch;
 
 /// wrapper around tokios `spawn_blocking` to directly
@@ -86,24 +86,21 @@ async fn stream_recordbatches(
     Ok(Response::new(ReceiverStream::new(rx)))
 }
 
-pub fn index_collection_from_dataframe<C, I>(
-    dataframe: &DataFrame,
-    column_name: &str,
-) -> Result<C, Status>
+pub fn index_collection_from_h3dataframe<C, I>(h3dataframe: &H3DataFrame) -> Result<C, Status>
 where
     C: FromIterator<I>,
     I: Index,
 {
-    crate::io::dataframe::index_collection_from_dataframe(dataframe, column_name).map_err(|e| {
+    h3dataframe.index_collection().map_err(|e| {
         log::error!(
             "extracting {} from column {} failed: {:?}",
             std::any::type_name::<I>(),
-            column_name,
+            h3dataframe.h3index_column_name,
             e
         );
         Status::invalid_argument(format!(
             "extracting indexes from column {} failed",
-            column_name
+            h3dataframe.h3index_column_name
         ))
     })
 }
