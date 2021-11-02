@@ -13,10 +13,10 @@ use serde::Serialize;
 use tonic::{Response, Status};
 use uom::si::time::second;
 
-use crate::io::dataframe::{prefix_column_names, H3DataFrame};
 use crate::server::storage::S3Storage;
 use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
 use crate::weight::Weight;
+use h3io::dataframe::{prefix_column_names, H3DataFrame};
 
 pub struct H3ShortestPathParameters<W: Send + Sync> {
     graph: Arc<PreparedH3EdgeGraph<W>>,

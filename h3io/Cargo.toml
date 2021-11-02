@@ -1,0 +1,61 @@
+[package]
+name = "h3io"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+bytesize = "1"
+futures = "0.3"
+lazy_static = "1.4"
+log = "0.4"
+regex = "1.5"
+rusoto_core = { version = "0.47" }
+rusoto_s3 = { version = "0.47" }
+thiserror = "1"
+itertools = "0.10"
+
+[dependencies.polars-core]
+version = "0.17.0"
+features = ["serde"]
+
+[dependencies.arrow] # matches dependency of polars-code
+package = "arrow2"
+version = "0.7"
+default-features = false
+features=["io_ipc", "io_parquet", "io_ipc_compression", "io_parquet_compression"]
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.h3ron]
+git = "https://github.com/nmandery/h3ron.git"
+rev = "05acba1f88865301feecd19383643705fc755db8"
+features = ["io", "use-rayon", "use-roaring", "use-serde"]
+
+[dependencies.hyper-tls]
+version = "0.5.0"
+
+[dependencies.hyper]
+version = "0.14"
+features = ["client"]
+
+[dependencies.native-tls]
+version = "0.2"
+
+[dependencies.bytes]
+version = "1"
+
+[dependencies.tokio]
+version = "1"
+features = [
+    #"rt-multi-thread",
+    #"macros",
+    #"sync"
+]
+
+[dependencies.backoff]
+version = "0.3"
+features = ["tokio_1", "futures", "tokio"]
+

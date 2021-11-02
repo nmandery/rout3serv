@@ -2,8 +2,8 @@ use std::cmp::max;
 use std::ops::Add;
 use std::sync::Arc;
 
-use crate::io::dataframe::H3DataFrame;
 use geo_types::Coordinate;
+use h3io::dataframe::H3DataFrame;
 use h3ron::collections::{H3CellSet, H3Treemap};
 use h3ron::iter::change_cell_resolution;
 use h3ron::{H3Cell, H3Edge, HasH3Resolution, Index};

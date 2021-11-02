@@ -1,18 +1,21 @@
 use std::borrow::Borrow;
-use std::convert::TryFrom;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 
 use arrow::io::ipc::write::FileWriter;
 use arrow::record_batch::RecordBatch;
-use eyre::{Report, Result};
 use h3ron::Index;
 use itertools::Itertools;
-use polars_core::prelude::*;
+use polars_core::chunked_array::iterator::PolarsIterator;
+use polars_core::datatypes::DataType;
+use polars_core::frame::DataFrame;
+use polars_core::series::{NamedFrom, Series};
 use serde::{Deserialize, Serialize};
 
+use crate::Error;
+
 /// serialize a [`RecordBatch`] into arrow IPC format
-pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>> {
+pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>, Error> {
     let mut buf: Vec<u8> = vec![];
     {
         let mut filewriter = FileWriter::try_new(&mut buf, &*recordbatch.schema())?;
@@ -36,7 +39,7 @@ impl H3DataFrame {
     pub fn from_recordbatches(
         recordbatches: Vec<RecordBatch>,
         h3index_column_name: String,
-    ) -> Result<Self> {
+    ) -> Result<Self, Error> {
         let dataframe = if recordbatches.is_empty() {
             DataFrame::default()
         } else {
@@ -50,18 +53,14 @@ impl H3DataFrame {
             match dataframe.column(&h3index_column_name) {
                 Ok(column) => {
                     if column.dtype() != &DataType::UInt64 {
-                        return Err(Report::msg(format!(
-                            "dataframe h3index column '{}' is typed as {}, but should be UInt64",
+                        return Err(Error::DataframeInvalidH3IndexType(
                             h3index_column_name,
-                            column.dtype().to_string()
-                        )));
+                            column.dtype().to_string(),
+                        ));
                     }
                 }
                 Err(_) => {
-                    return Err(Report::msg(format!(
-                        "dataframe contains no column named '{}'",
-                        h3index_column_name
-                    )));
+                    return Err(Error::DataframeMissingColumn(h3index_column_name));
                 }
             };
 
@@ -77,7 +76,7 @@ impl H3DataFrame {
     /// build a collection from a [`Series`] of `u64` from a [`DataFrame`] values.
     /// values will be validated and invalid values will be ignored.
     #[inline]
-    pub fn index_collection_from_column<C, I>(&self, column_name: &str) -> eyre::Result<C>
+    pub fn index_collection_from_column<C, I>(&self, column_name: &str) -> Result<C, Error>
     where
         C: FromIterator<I>,
         I: Index,
@@ -93,7 +92,7 @@ impl H3DataFrame {
     /// build a collection from the `h3index_column` of this [`DataFrame`].
     /// values will be validated and invalid values will be ignored.
     #[inline]
-    pub fn index_collection<C, I>(&self) -> eyre::Result<C>
+    pub fn index_collection<C, I>(&self) -> Result<C, Error>
     where
         C: FromIterator<I>,
         I: Index,
@@ -151,7 +150,7 @@ where
 /// build a `Iterator` of [`Index`] values from a [`Series`] of `u64` values.
 ///
 /// values will be validated and invalid values will be ignored.
-pub fn series_iter_indexes<I>(series: &Series) -> eyre::Result<SeriesIndexIter<I>>
+pub fn series_iter_indexes<I>(series: &Series) -> Result<SeriesIndexIter<I>, Error>
 where
     I: Index,
 {
@@ -163,7 +162,7 @@ where
 }
 
 /// add a prefix to all columns in the dataframe
-pub fn prefix_column_names(dataframe: &mut DataFrame, prefix: &str) -> eyre::Result<()> {
+pub fn prefix_column_names(dataframe: &mut DataFrame, prefix: &str) -> Result<(), Error> {
     let col_names = dataframe
         .get_column_names()
         .iter()
@@ -182,7 +181,7 @@ mod tests {
     use h3ron::{H3Cell, Index};
     use polars_core::prelude::*;
 
-    use crate::io::dataframe::{series_iter_indexes, to_index_series};
+    use super::{series_iter_indexes, to_index_series};
 
     #[test]
     fn test_to_index_series() {

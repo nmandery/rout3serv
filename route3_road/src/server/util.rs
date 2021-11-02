@@ -11,8 +11,8 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 
-use crate::io::dataframe::{recordbatch_to_bytes, H3DataFrame};
 use crate::server::api::generated::ArrowRecordBatch;
+use h3io::dataframe::{recordbatch_to_bytes, H3DataFrame};
 
 /// wrapper around tokios `spawn_blocking` to directly
 /// return the `JoinHandle` as a tonic `Status`.

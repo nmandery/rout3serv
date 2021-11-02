@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 use tokio::task::block_in_place;
 
 use crate::config::GraphStoreConfig;
-use crate::io::s3::{FoundOption, S3Client};
+use h3io::s3::{FoundOption, S3Client};
 
 const GRAPH_SUFFIX: &str = ".bincode.lz";
 

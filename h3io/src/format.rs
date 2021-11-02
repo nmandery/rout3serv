@@ -3,7 +3,8 @@ use std::path::Path;
 
 use arrow::io::{ipc, parquet};
 use arrow::record_batch::RecordBatch;
-use eyre::{Report, Result};
+
+use crate::Error;
 
 #[derive(PartialEq, Debug)]
 pub enum FileFormat {
@@ -12,20 +13,17 @@ pub enum FileFormat {
 }
 
 impl FileFormat {
-    pub fn from_filename(filename: &str) -> Result<Self> {
+    pub fn from_filename(filename: &str) -> Result<Self, Error> {
         let normalized_filename = filename.trim().to_lowercase();
         let path = Path::new(normalized_filename.as_str());
         match path.extension().map(|os| os.to_str()).flatten() {
             Some("arrow") => Ok(Self::ArrowIPC),
             Some("parquet") | Some("pq") => Ok(Self::Parquet),
-            _ => Err(Report::msg(format!(
-                "unidentified fileformat: {}",
-                filename
-            ))),
+            _ => Err(Error::UnidentifiedFileFormat(filename.to_string())),
         }
     }
 
-    pub fn recordbatches_from_slice(&self, bytes: &[u8]) -> Result<Vec<RecordBatch>> {
+    pub fn recordbatches_from_slice(&self, bytes: &[u8]) -> Result<Vec<RecordBatch>, Error> {
         let mut recordbatches = vec![];
         let mut cursor = Cursor::new(bytes);
         match self {

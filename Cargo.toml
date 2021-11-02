@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "route3_road",
+    "h3io"
 ]
 
 [profile.release]

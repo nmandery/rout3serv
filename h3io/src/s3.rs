@@ -4,11 +4,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::io::dataframe::H3DataFrame;
 use arrow::record_batch::RecordBatch;
 use bytes::Bytes;
 use bytesize::ByteSize;
-use eyre::{Report, Result};
 use futures::TryStreamExt;
 use h3ron::iter::change_cell_resolution;
 use h3ron::H3Cell;
@@ -22,7 +20,9 @@ use rusoto_s3::{GetObjectRequest, ListObjectsRequest, PutObjectRequest, S3};
 use serde::Deserialize;
 use tokio::task;
 
-use crate::io::format::FileFormat;
+use crate::dataframe::H3DataFrame;
+use crate::format::FileFormat;
+use crate::Error;
 
 /// a minimal option type to indicate if something has been found or not
 pub enum FoundOption<T> {
@@ -70,7 +70,7 @@ pub struct S3Client {
 }
 
 impl S3Client {
-    pub fn from_config(config: &S3Config) -> Result<Self> {
+    pub fn from_config(config: &S3Config) -> Result<Self, Error> {
         let region_string = config
             .region
             .clone()
@@ -103,7 +103,7 @@ impl S3Client {
         &self,
         bucket: String,
         key: String,
-    ) -> Result<FoundOption<Vec<u8>>> {
+    ) -> Result<FoundOption<Vec<u8>>, Error> {
         log::debug!("get_object_bytes: bucket={}, key={}", bucket, key);
         let ob = backoff::future::retry(
             backoff::ExponentialBackoff {
@@ -123,7 +123,7 @@ impl S3Client {
                                 .map_ok(|b| b.to_vec())
                                 .try_concat()
                                 .await
-                                .map_err(Report::from)?;
+                                .map_err(Error::from)?;
                             log::info!(
                                 "get_object_bytes: bucket={}, key={} -> received {} bytes ({})",
                                 bucket,
@@ -152,7 +152,7 @@ impl S3Client {
                                 key,
                                 e.to_string()
                             );
-                            Err(Report::from(e))
+                            Err(Error::S3GetObject(e))
                         }
                     },
                 }?)
@@ -162,7 +162,12 @@ impl S3Client {
         Ok(ob)
     }
 
-    pub async fn put_object_bytes(&self, bucket: String, key: String, data: Vec<u8>) -> Result<()> {
+    pub async fn put_object_bytes(
+        &self,
+        bucket: String,
+        key: String,
+        data: Vec<u8>,
+    ) -> Result<(), Error> {
         log::info!(
             "put_object_bytes: bucket={}, key={}, num_bytes={}",
             bucket,
@@ -212,7 +217,7 @@ impl S3Client {
         &self,
         bucket: String,
         prefix: Option<String>,
-    ) -> Result<Vec<String>> {
+    ) -> Result<Vec<String>, Error> {
         let list_req = ListObjectsRequest {
             bucket: bucket.clone(),
             delimiter: None,
@@ -241,7 +246,7 @@ impl S3Client {
     }
 }
 
-fn build_http_client(insecure: bool) -> Result<HttpClient> {
+fn build_http_client(insecure: bool) -> Result<HttpClient, Error> {
     let http_client = if insecure {
         // from https://rusoto.org/disable-ssl-cert-check.html
         let tls_connector = TlsConnector::builder()
@@ -265,7 +270,7 @@ pub trait S3H3Dataset {
     fn file_h3_resolution(&self) -> u8;
     fn h3index_column(&self) -> String;
 
-    fn validate(&self) -> Result<()> {
+    fn validate(&self) -> Result<(), Error> {
         // try to check if the format is understood
         FileFormat::from_filename(&self.key_pattern())?;
         Ok(())
@@ -312,7 +317,7 @@ impl S3RecordBatchLoader {
         dataset: &D,
         cells: &[H3Cell],
         data_h3_resolution: u8,
-    ) -> Result<Vec<RecordBatch>> {
+    ) -> Result<Vec<RecordBatch>, Error> {
         if cells.is_empty() {
             return Ok(Default::default());
         }
@@ -359,7 +364,7 @@ impl S3RecordBatchLoader {
         dataset: &D,
         cells: &[H3Cell],
         data_h3_resolution: u8,
-    ) -> Result<H3DataFrame> {
+    ) -> Result<H3DataFrame, Error> {
         let recordbatches = self
             .load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
             .await?;

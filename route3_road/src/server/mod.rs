@@ -11,7 +11,6 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::config::ServerConfig;
-use crate::io::s3::FoundOption;
 use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
@@ -21,6 +20,7 @@ use crate::server::api::generated::{
 use crate::server::storage::S3Storage;
 use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
 use crate::weight::RoadWeight;
+use h3io::s3::FoundOption;
 
 mod api;
 mod differential_shortest_path;

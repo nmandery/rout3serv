@@ -2,23 +2,20 @@
 name = "route3_road"
 version = "0.3.0"
 authors = ["Nico Mandery <nico@nmandery.net>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 
 [dependencies]
-bytesize = "1"
 clap = "^2.33"
 env_logger = "0.9"
 eyre = "0.6"
-futures = "0.3"
+#futures = "0.3"
 geo = "0.18"
 lazy_static = "1.4"
 log = "0.4"
 prost = "0.8"
 rayon = "^1.5"
 regex = "1.5"
-rusoto_core = { version = "0.47" }
-rusoto_s3 = { version = "0.47" }
 toml = "0.5"
 tonic = "0.5"
 tokio-stream = "0.1"
@@ -28,6 +25,9 @@ lru = "0.7.0"
 num-traits = "0.2"
 approx = "0.5"
 ordered-float = "2.8.0"
+
+[dependencies.h3io]
+path = "../h3io"
 
 [dependencies.uom]
 version = "0.31"
@@ -42,9 +42,6 @@ package = "arrow2"
 version = "0.7"
 default-features = false
 features=["io_ipc", "io_parquet", "io_ipc_compression", "io_parquet_compression"]
-
-[dependencies.bytes]
-version = "1"
 
 [dependencies.mimalloc]
 version = "0.1"
@@ -80,23 +77,9 @@ features = ["derive"]
 version = "0.22"
 features = ["geo-types"]
 
-[dependencies.hyper-tls]
-version = "0.5.0"
-
-[dependencies.hyper]
-version = "0.14"
-features = ["client"]
-
-[dependencies.native-tls]
-version = "0.2"
-
 [dependencies.gdal]
 version = "0.10.0"
 features = ["bindgen"]
-
-[dependencies.backoff]
-version = "0.3"
-features = ["tokio_1", "futures", "tokio"]
 
 [build-dependencies]
 tonic-build = "0.5"

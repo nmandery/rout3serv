@@ -15,11 +15,11 @@ use tokio::task::block_in_place;
 use tonic::Status;
 
 use crate::config::{GenericDataset, ServerConfig};
-use crate::io::dataframe::H3DataFrame;
 use crate::io::graph_store::{GraphCacheKey, GraphStore};
-use crate::io::s3::{FoundOption, S3Client, S3RecordBatchLoader};
 use crate::server::api::generated::{CellSelection, GraphHandle};
 use crate::server::util::StrId;
+use h3io::dataframe::H3DataFrame;
+use h3io::s3::{FoundOption, S3Client, S3RecordBatchLoader};
 
 /// storage backend to use in the server.
 ///
