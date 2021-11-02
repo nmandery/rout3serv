@@ -1,0 +1,53 @@
+[package]
+name = "til3serv"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.2"
+clap = "^2.33"
+env_logger = "0.9"
+eyre = "0.6"
+geo = "0.18"
+geo-types = "^0.7"
+lazy_static = "1.4"
+log = "0.4"
+regex = "1.5"
+serde_yaml = "^0.8"
+
+[dependencies.tokio]
+version = "1"
+features = [
+    "rt-multi-thread",
+    "macros",
+    "sync"
+]
+
+[dependencies.h3ron]
+version = "0.13"
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.polars-core]
+version = "0.17"
+features = ["serde"]
+
+[dependencies.polars-io]
+version = "0.17"
+features = ["ipc", "json", "parquet", "csv-file", "csv-core"]
+
+[dependencies.tower-http]
+version = "^0.1"
+features = ["compression-full"]
+
+[dependencies.h3io]
+path = "../h3io"
+
+[build-dependencies]
+vergen = { version = "5", features = ["rustc", "build"] }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
