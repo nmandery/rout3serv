@@ -41,7 +41,7 @@ features = ["serde"]
 package = "arrow2"
 version = "0.7"
 default-features = false
-features=["io_ipc", "io_parquet"]
+features=["io_ipc", "io_parquet", "io_ipc_compression", "io_parquet_compression"]
 
 [dependencies.bytes]
 version = "1"
