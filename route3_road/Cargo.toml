@@ -15,7 +15,6 @@ log = "0.4"
 prost = "0.8"
 rayon = "^1.5"
 regex = "1.5"
-tonic = "0.5"
 tokio-stream = "0.1"
 itertools = "0.10"
 geo-types = "0.7"
@@ -70,6 +69,10 @@ features = [
     "sync"
 ]
 
+[dependencies.tonic]
+version = "0.5"
+features = ["compression"]
+
 [dependencies.serde]
 version = "1"
 features = ["derive"]
@@ -83,5 +86,5 @@ version = "0.10.0"
 features = ["bindgen"]
 
 [build-dependencies]
-tonic-build = "0.5"
+tonic-build = { version = "0.5", features = ["compression"] }
 vergen = { version = "5", features = ["rustc", "build"] }
