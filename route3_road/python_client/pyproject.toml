@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "route3_road_client"
-version = "0.1.0"
+version = "0.2.0"
 description = "api client for route3"
 authors = ["Nico Mandery <nico@nmandery.net>"]
 
