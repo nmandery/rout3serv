@@ -12,7 +12,7 @@ eyre = "0.6"
 geo = "0.18"
 lazy_static = "1.4"
 log = "0.4"
-prost = "0.8"
+prost = "0.9"
 rayon = "^1.5"
 regex = "1.5"
 tokio-stream = "0.1"
@@ -70,7 +70,7 @@ features = [
 ]
 
 [dependencies.tonic]
-version = "0.5"
+version = "0.6"
 features = ["compression"]
 
 [dependencies.serde]
@@ -86,5 +86,5 @@ version = "0.10.0"
 features = ["bindgen"]
 
 [build-dependencies]
-tonic-build = { version = "0.5", features = ["compression"] }
+tonic-build = { version = "0.6", features = ["compression"] }
 vergen = { version = "5", features = ["rustc", "build"] }
