@@ -47,7 +47,3 @@ path = "../h3io"
 
 [build-dependencies]
 vergen = { version = "5", features = ["rustc", "build"] }
-
-[profile.release]
-lto = "fat"
-codegen-units = 1

@@ -11,6 +11,6 @@ members = [
 # for this tool
 debug = 1
 # enable lto. increases compilation time
-#lto = true
+#lto = "fat"
 # just few codegen units. slower compilation, but faster code
 #codegen-units = 1
