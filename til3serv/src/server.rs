@@ -3,7 +3,8 @@ use std::sync::Arc;
 
 use axum::extract::{Extension, Path};
 use axum::http::StatusCode;
-use axum::{handler::get, AddExtensionLayer, Json, Router};
+use axum::routing::get;
+use axum::{AddExtensionLayer, Json, Router};
 use eyre::Result;
 use h3io::s3::S3Client;
 use h3ron::Index;
