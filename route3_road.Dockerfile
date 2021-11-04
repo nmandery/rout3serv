@@ -17,7 +17,7 @@ FROM basesystem
 # "0" -> let rayon determinate how many threads to use. Defaults to one per CPU core
 ENV RAYON_NUM_THREADS="0"
 ENV RUST_BACKTRACE=1
-ENV RUST_LOG="route3_road=info,h3io=info"
+ENV RUST_LOG="route3_road=info,h3io=info,tower_http::trace=debug"
 COPY --from=builder /usr/local/bin/route3_road /usr/bin/
 COPY ./route3_road/server-config.example.yaml /server-config.yaml
 COPY ./route3_road/proto /

@@ -9,6 +9,9 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
+use tower_http::trace::TraceLayer;
+
+use h3io::s3::FoundOption;
 
 use crate::config::ServerConfig;
 use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
@@ -20,7 +23,6 @@ use crate::server::api::generated::{
 use crate::server::storage::S3Storage;
 use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
 use crate::weight::RoadWeight;
-use h3io::s3::FoundOption;
 
 mod api;
 mod differential_shortest_path;
@@ -220,6 +222,7 @@ async fn run_server(server_config: ServerConfig) -> Result<()> {
     log::info!("{} is listening on {}", env!("CARGO_PKG_NAME"), addr);
 
     Server::builder()
+        .layer(TraceLayer::new_for_grpc())
         .add_service(Route3RoadServer::new(server_impl))
         .serve(addr)
         .await?;

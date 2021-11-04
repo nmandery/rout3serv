@@ -40,7 +40,7 @@ features = ["ipc", "json", "parquet", "csv-file", "csv-core"]
 
 [dependencies.tower-http]
 version = "^0.1"
-features = ["compression-full"]
+features = ["compression-full", "trace"]
 
 [dependencies.h3io]
 path = "../h3io"

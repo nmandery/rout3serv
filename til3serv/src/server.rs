@@ -9,6 +9,8 @@ use eyre::Result;
 use h3io::s3::S3Client;
 use h3ron::Index;
 use polars_core::prelude::{DataFrame, NamedFrom, Series};
+use tower_http::compression::CompressionLayer;
+use tower_http::trace::TraceLayer;
 
 use crate::config::{ServerConfig, TileDataset};
 use crate::response::{Msg, OutDataFrame, OutputFormat};
@@ -108,12 +110,15 @@ pub async fn run_server(server_config: ServerConfig) -> Result<()> {
         .route("/tiles", get(list_datasets))
         .route("/tiles/:dataset_name", get(dataset_metadata))
         .route("/tiles/:dataset_name/:x/:y/:z", get(serve_tile))
+        /*
         .route(
             "/tiles/:dataset/:x/:y/:z/:format",
             get(serve_tile_with_format),
         )
+         */
+        .layer(TraceLayer::new_for_http())
         .layer(AddExtensionLayer::new(registry))
-        .layer(tower_http::compression::CompressionLayer::new());
+        .layer(CompressionLayer::new());
 
     // run it with hyper
     axum::Server::bind(&addr)

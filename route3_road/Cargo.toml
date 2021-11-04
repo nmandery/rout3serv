@@ -85,6 +85,10 @@ features = ["geo-types"]
 version = "0.10.0"
 features = ["bindgen"]
 
+[dependencies.tower-http]
+version = "^0.1"
+features = ["trace"]
+
 [build-dependencies]
 tonic-build = { version = "0.6", features = ["compression"] }
 vergen = { version = "5", features = ["rustc", "build"] }
