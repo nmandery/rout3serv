@@ -80,7 +80,10 @@ async fn stream_recordbatches(
                     object_id: id.clone(),
                     data: rb_bytes,
                 });
-            tx.send(serialization_result).await.unwrap();
+            if let Err(e) = tx.send(serialization_result).await {
+                log::warn!("Streaming recordbatches aborted. reason: {}", e);
+                break;
+            }
         }
     });
     Ok(Response::new(ReceiverStream::new(rx)))

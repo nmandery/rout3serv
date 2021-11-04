@@ -190,9 +190,13 @@ impl Route3Road for ServerImpl {
 
             for (origin_cell, diff) in output.differential_shortest_paths.iter() {
                 if cell_lookup.contains(origin_cell) {
-                    tx.send(differential_shortest_path::build_routes_response(diff))
+                    if let Err(e) = tx
+                        .send(differential_shortest_path::build_routes_response(diff))
                         .await
-                        .unwrap();
+                    {
+                        log::warn!("streaming of routes aborted. reason: {}", e);
+                        break;
+                    }
                 }
             }
         });
