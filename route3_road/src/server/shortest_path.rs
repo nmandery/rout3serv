@@ -98,8 +98,8 @@ where
         &parameters.options,
         |p: Path<W>| {
             (
-                p.cost,
-                p.edges
+                *p.cost(),
+                p.edges()
                     .iter()
                     .map(|edge| OrderedFloat::from(edge.cell_centroid_distance_m()))
                     .sum::<OrderedFloat<f64>>(),

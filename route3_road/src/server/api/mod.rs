@@ -29,8 +29,8 @@ impl RouteWkb {
         Ok(Self {
             origin_cell: path.origin_cell().map(|c| c.h3index()).unwrap_or(0),
             destination_cell: path.destination_cell().map(|c| c.h3index()).unwrap_or(0),
-            travel_duration_secs: path.cost.travel_duration().get::<second>() as f64,
-            category_weight: path.cost.category_weight() as f64,
+            travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
+            category_weight: path.cost().category_weight() as f64,
             wkb: wkb_bytes,
         })
     }

@@ -7,7 +7,7 @@ s3:
   secret_key: "password"
 
 datasets:
-  "pop":
+  "population":
     bucket: "population"
     key_pattern: "{ file_h3_resolution }/{ data_h3_resolution }/{ h3cell }.arrow"
     resolutions:

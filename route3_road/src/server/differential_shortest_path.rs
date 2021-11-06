@@ -218,7 +218,7 @@ where
                 &destinations_ds,
                 &disturbance_ds,
                 &input.options,
-                |path| (path.cost, path.len()),
+                |path| (*path.cost(), path.len()),
             )?;
 
             // determinate the size of the k-ring to use to include enough full-resolution
@@ -292,7 +292,7 @@ where
             Some(
                 paths
                     .iter()
-                    .map(|p| p.cost.travel_duration().get::<second>() as f64)
+                    .map(|p| p.cost().travel_duration().get::<second>() as f64)
                     .sum::<f64>()
                     / paths.len() as f64,
             )
@@ -306,7 +306,7 @@ where
             Some(
                 paths
                     .iter()
-                    .map(|p| p.cost.category_weight() as f64)
+                    .map(|p| p.cost().category_weight() as f64)
                     .sum::<f64>()
                     / paths.len() as f64,
             )
