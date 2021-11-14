@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::fmt::Display;
 use std::hash::Hash;
 use std::sync::Arc;
 
@@ -48,7 +49,7 @@ enum CacheEntry<V, E> {
 /// even when teh value is requested from multiple tasks.
 pub struct FetchCache<F>
 where
-    F::Key: Eq + Hash + Clone,
+    F::Key: Eq + Hash + Clone + Display,
     F: AsyncFetcher,
     F::Error: Error,
 {
@@ -61,7 +62,7 @@ where
 
 impl<F> FetchCache<F>
 where
-    F::Key: Eq + Hash + Clone,
+    F::Key: Eq + Hash + Clone + Display,
     F: AsyncFetcher,
     F::Error: Error,
 {
@@ -111,15 +112,25 @@ where
             // check if the value is already cached or the fetch is in progress
             if let Some(entry) = guard.get(&key) {
                 match entry {
-                    CacheEntry::Available(v) => return Ok(v.clone()),
-                    CacheEntry::Error(e) => return Err(FetchError::Fetch(e.clone())),
-                    CacheEntry::Fetching(tx) => (None, Some(tx.subscribe())),
+                    CacheEntry::Available(v) => {
+                        log::debug!("cache hit (available) for {}", key);
+                        return Ok(v.clone());
+                    }
+                    CacheEntry::Error(e) => {
+                        log::debug!("cache hit (error) for {}", key);
+                        return Err(FetchError::Fetch(e.clone()));
+                    }
+                    CacheEntry::Fetching(tx) => {
+                        log::debug!("cache hit (fetching) for {}", key);
+                        (None, Some(tx.subscribe()))
+                    }
                 }
             } else {
                 // no fetch is in progress
                 //
                 // create a cache key containing the allow future `get` calls to obtain
                 // a receiver for this fetch
+                log::debug!("cache miss for {}", key);
                 let (tx, _) = broadcast::channel(1);
                 guard.insert(key.clone(), CacheEntry::Fetching(tx.clone()));
                 (Some(tx), None)
