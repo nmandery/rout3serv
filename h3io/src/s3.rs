@@ -24,12 +24,6 @@ use crate::dataframe::H3DataFrame;
 use crate::format::FileFormat;
 use crate::Error;
 
-/// a minimal option type to indicate if something has been found or not
-pub enum FoundOption<T> {
-    Found(T),
-    NotFound,
-}
-
 #[derive(Deserialize)]
 pub struct S3Config {
     pub endpoint: Option<String>,
@@ -61,6 +55,25 @@ impl S3Config {
     /// environment variable
     pub fn get_secret_key(&self) -> String {
         env_override("S3_SECRET_KEY", || self.secret_key.clone())
+    }
+}
+
+/// reference to a S3 object
+#[derive(PartialOrd, PartialEq, Clone, Hash, Eq)]
+pub struct ObjectRef {
+    pub bucket: String,
+    pub key: String,
+}
+
+impl ObjectRef {
+    pub fn new(bucket: String, key: String) -> Self {
+        Self { bucket, key }
+    }
+}
+
+impl std::fmt::Display for ObjectRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "ObjectRef(bucket={}, key={})", self.bucket, self.key)
     }
 }
 
@@ -99,12 +112,8 @@ impl S3Client {
         })
     }
 
-    pub async fn get_object_bytes(
-        &self,
-        bucket: String,
-        key: String,
-    ) -> Result<FoundOption<Vec<u8>>, Error> {
-        log::debug!("get_object_bytes: bucket={}, key={}", bucket, key);
+    pub async fn get_object_bytes(&self, object_ref: ObjectRef) -> Result<Vec<u8>, Error> {
+        log::debug!("get_object_bytes: {}", object_ref);
         let ob = backoff::future::retry(
             backoff::ExponentialBackoff {
                 max_elapsed_time: Some(self.retry_duration),
@@ -112,8 +121,8 @@ impl S3Client {
             },
             || async {
                 let get_object_req = GetObjectRequest {
-                    bucket: bucket.clone(),
-                    key: key.clone(),
+                    bucket: object_ref.bucket.clone(),
+                    key: object_ref.key.clone(),
                     ..Default::default()
                 };
                 Ok(match self.s3.get_object(get_object_req).await {
@@ -125,33 +134,23 @@ impl S3Client {
                                 .await
                                 .map_err(Error::from)?;
                             log::info!(
-                                "get_object_bytes: bucket={}, key={} -> received {} bytes ({})",
-                                bucket,
-                                key,
+                                "get_object_bytes: {} -> received {} bytes ({})",
+                                object_ref,
                                 byte_content.len(),
                                 ByteSize(byte_content.len() as u64)
                             );
-                            Ok(FoundOption::Found(byte_content))
+                            Ok(byte_content)
                         } else {
-                            Ok(FoundOption::Found(vec![])) // has no body
+                            Ok(vec![]) // has no body
                         }
                     }
                     Err(e) => match e {
                         RusotoError::Service(_get_object_error) => {
-                            log::warn!(
-                                "get_object_bytes: bucket={}, key={} -> not found",
-                                bucket,
-                                key
-                            );
-                            Ok(FoundOption::NotFound)
+                            log::warn!("get_object_bytes: {} -> not found", object_ref);
+                            Err(Error::NotFound)
                         }
                         _ => {
-                            log::error!(
-                                "get_object_bytes: bucket={}, key={} -> {}",
-                                bucket,
-                                key,
-                                e.to_string()
-                            );
+                            log::error!("get_object_bytes: {} -> {}", object_ref, e.to_string());
                             Err(Error::S3GetObject(e))
                         }
                     },
@@ -164,16 +163,10 @@ impl S3Client {
 
     pub async fn put_object_bytes(
         &self,
-        bucket: String,
-        key: String,
+        object_ref: ObjectRef,
         data: Vec<u8>,
     ) -> Result<(), Error> {
-        log::info!(
-            "put_object_bytes: bucket={}, key={}, num_bytes={}",
-            bucket,
-            key,
-            data.len()
-        );
+        log::info!("put_object_bytes: {}, num_bytes={}", object_ref, data.len());
 
         let data_bytes = Bytes::from(data);
 
@@ -190,20 +183,15 @@ impl S3Client {
                 );
 
                 let put_object_req = PutObjectRequest {
-                    bucket: bucket.clone(),
-                    key: key.clone(),
+                    bucket: object_ref.bucket.clone(),
+                    key: object_ref.key.clone(),
                     body: Some(byte_stream),
                     ..Default::default()
                 };
                 match self.s3.put_object(put_object_req).await {
                     Ok(_) => Ok(()),
                     Err(e) => {
-                        log::error!(
-                            "put_object_bytes: bucket={}, key={} -> {}",
-                            bucket,
-                            key,
-                            e.to_string()
-                        );
+                        log::error!("put_object_bytes: {} -> {}", object_ref, e.to_string());
                         Err(e.into())
                     }
                 }
@@ -349,20 +337,15 @@ impl S3RecordBatchLoader {
         keys.dedup();
 
         let mut task_results = futures::future::try_join_all(keys.drain(..).map(|key| {
-            let bucket_name = dataset.bucket_name();
+            let object_ref = ObjectRef::new(dataset.bucket_name(), key);
             let s3_client = self.s3_client.clone();
             task::spawn(async move {
-                let format = FileFormat::from_filename(&key)?;
-                s3_client
-                    .get_object_bytes(bucket_name, key)
-                    .await
-                    .and_then(|object_bytes| {
-                        if let FoundOption::Found(bytes) = object_bytes {
-                            Ok(format.recordbatches_from_slice(&bytes)?)
-                        } else {
-                            Ok(vec![])
-                        }
-                    })
+                let format = FileFormat::from_filename(&object_ref.key)?;
+                match s3_client.get_object_bytes(object_ref).await {
+                    Ok(bytes) => Ok(format.recordbatches_from_slice(&bytes)?),
+                    Err(Error::NotFound) => Ok(vec![]),
+                    Err(e) => Err(e),
+                }
             })
         }))
         .await?;

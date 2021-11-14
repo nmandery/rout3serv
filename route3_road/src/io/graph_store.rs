@@ -1,17 +1,17 @@
 use std::io::Cursor;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
-use eyre::Result;
+use h3io::fetch::{AsyncFetcher, FetchCache, FetchError};
+use h3io::Error;
 use h3ron::io::deserialize_from;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
-use lru::LruCache;
 use regex::Regex;
 use serde::de::DeserializeOwned;
-use tokio::sync::Mutex;
 use tokio::task::block_in_place;
 
 use crate::config::GraphStoreConfig;
-use h3io::s3::{FoundOption, S3Client};
+use h3io::s3::{ObjectRef, S3Client};
 
 const GRAPH_SUFFIX: &str = ".bincode.lz";
 
@@ -41,11 +41,39 @@ fn filename_to_gck(filename: &str) -> Option<GraphCacheKey> {
     })
 }
 
+struct GraphFetcher<W: Send + Sync>
+where
+    W: DeserializeOwned,
+{
+    phantom_weight: PhantomData<W>,
+    s3_client: Arc<S3Client>,
+}
+
+#[async_trait::async_trait]
+impl<W: Send + Sync> AsyncFetcher for GraphFetcher<W>
+where
+    W: DeserializeOwned,
+{
+    type Key = ObjectRef;
+    type Value = PreparedH3EdgeGraph<W>;
+    type Error = h3io::Error;
+
+    async fn fetch(&self, key: Self::Key) -> Result<Self::Value, Self::Error> {
+        let graph_bytes = self.s3_client.get_object_bytes(key).await?;
+        let graph: PreparedH3EdgeGraph<W> =
+            block_in_place(move || deserialize_from(Cursor::new(graph_bytes)))?;
+        Ok(graph)
+    }
+}
+
 /// a graphcache
-pub struct GraphStore<W: Send + Sync> {
+pub struct GraphStore<W: Send + Sync>
+where
+    W: DeserializeOwned,
+{
     s3_client: Arc<S3Client>,
     graph_store_config: GraphStoreConfig,
-    cache: Arc<Mutex<LruCache<GraphCacheKey, Arc<PreparedH3EdgeGraph<W>>>>>,
+    fetch_cache: FetchCache<GraphFetcher<W>>,
 }
 
 impl<W: Send + Sync> GraphStore<W>
@@ -53,21 +81,26 @@ where
     W: DeserializeOwned,
 {
     pub fn new(s3_client: Arc<S3Client>, graph_store_config: GraphStoreConfig) -> Self {
-        let cache = Arc::new(Mutex::new(LruCache::new(
+        let fetch_cache = FetchCache::new(
             graph_store_config.cache_size.unwrap_or(4),
-        )));
+            GraphFetcher {
+                phantom_weight: Default::default(),
+                s3_client: s3_client.clone(),
+            },
+        );
         Self {
             s3_client,
             graph_store_config,
-            cache,
+            fetch_cache,
         }
     }
 
-    pub async fn list(&self) -> Result<Vec<GraphCacheKey>> {
+    pub async fn list(&self) -> Result<Vec<GraphCacheKey>, Error> {
         let prefix_re = Regex::new(&format!(
             "^{}",
             regex::escape(self.graph_store_config.prefix.as_str())
-        ))?;
+        ))
+        .map_err(|e| Error::Generic(format!("escaping regex failed: {:?}", e)))?;
 
         let keys = self
             .s3_client
@@ -82,50 +115,22 @@ where
         Ok(keys)
     }
 
-    /// get a graph from the cache if it is available
-    pub async fn load_cached(
-        &self,
-        graph_cache_key: &GraphCacheKey,
-    ) -> Option<Arc<PreparedH3EdgeGraph<W>>> {
-        // attempt to get the graph from the cache
-        let mut guard = self.cache.lock().await;
-        guard.get(graph_cache_key).cloned()
-    }
-
     /// get a graph from the cache or from remote when its not loaded in the cache
     pub async fn load(
         &self,
         graph_cache_key: &GraphCacheKey,
-    ) -> Result<Option<Arc<PreparedH3EdgeGraph<W>>>> {
-        // attempt to get the graph from the cache
-        if let Some(graph) = self.load_cached(graph_cache_key).await {
-            return Ok(Some(graph));
-        }
-
+    ) -> Result<Arc<PreparedH3EdgeGraph<W>>, FetchError<h3io::Error>> {
         let s3_key = format!(
             "{}{}",
             self.graph_store_config.prefix,
             gck_to_filename(graph_cache_key)
         );
-        // could not get the graph from the cache, so try to fetch it
-        match self
-            .s3_client
-            .get_object_bytes(self.graph_store_config.bucket.clone(), s3_key.clone())
-            .await?
-        {
-            FoundOption::Found(graph_bytes) => {
-                let graph: Arc<PreparedH3EdgeGraph<W>> = Arc::new(block_in_place(move || {
-                    deserialize_from(Cursor::new(graph_bytes))
-                })?);
-                let mut guard = self.cache.lock().await;
-                guard.put(graph_cache_key.clone(), graph.clone());
-                Ok(Some(graph))
-            }
-            FoundOption::NotFound => {
-                log::warn!("could not find graph {:?}", graph_cache_key);
-                Ok(None)
-            }
-        }
+        self.fetch_cache
+            .get(ObjectRef::new(
+                self.graph_store_config.bucket.clone(),
+                s3_key,
+            ))
+            .await
     }
 }
 

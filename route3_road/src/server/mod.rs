@@ -11,8 +11,6 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 use tower_http::trace::TraceLayer;
 
-use h3io::s3::FoundOption;
-
 use crate::config::ServerConfig;
 use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::generated::{
@@ -61,8 +59,9 @@ impl Route3Road for ServerImpl {
         let mut resp = ListGraphsResponse { graphs: vec![] };
 
         for gck in self.storage.load_graph_cache_keys().await? {
-            let graph = self.storage.graph_store.load_cached(&gck).await;
+            //let graph = self.storage.graph_store.load_cached(&gck).await;
             let mut gi: GraphInfo = gck.into();
+            /*
             if let Some(g) = graph {
                 gi.is_cached = true;
                 let stats = g.get_stats();
@@ -71,6 +70,8 @@ impl Route3Road for ServerImpl {
             } else {
                 gi.is_cached = false;
             }
+
+             */
             resp.graphs.push(gi);
         }
         Ok(Response::new(resp))
@@ -139,21 +140,16 @@ impl Route3Road for ServerImpl {
         request: Request<IdRef>,
     ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
         let inner = request.into_inner();
-        if let FoundOption::Found(output) = self
+        let output: differential_shortest_path::DspOutput<RoadWeight> = self
             .storage
-            .retrieve_output::<_, differential_shortest_path::DspOutput<RoadWeight>>(
-                inner.object_id.as_str(),
-            )
-            .await?
-        {
-            stream_dataframe(
-                output.object_id.clone(),
-                differential_shortest_path::disturbance_statistics(&output)?,
-            )
-            .await
-        } else {
-            Err(Status::not_found("not found"))
-        }
+            .retrieve_output(inner.object_id.as_str())
+            .await?;
+
+        stream_dataframe(
+            output.object_id.clone(),
+            differential_shortest_path::disturbance_statistics(&output)?,
+        )
+        .await
     }
 
     type GetDifferentialShortestPathRoutesStream =
@@ -165,17 +161,10 @@ impl Route3Road for ServerImpl {
     ) -> Result<Response<Self::GetDifferentialShortestPathRoutesStream>, Status> {
         let (tx, rx) = mpsc::channel(20);
         let inner = request.into_inner();
-        let output = if let FoundOption::Found(output) = self
+        let output: differential_shortest_path::DspOutput<RoadWeight> = self
             .storage
-            .retrieve_output::<_, differential_shortest_path::DspOutput<RoadWeight>>(
-                inner.object_id.as_str(),
-            )
-            .await?
-        {
-            output
-        } else {
-            return Err(Status::not_found("not found"));
-        };
+            .retrieve_output(inner.object_id.as_str())
+            .await?;
 
         tokio::spawn(async move {
             let cell_lookup: H3CellSet = inner
