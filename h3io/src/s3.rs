@@ -21,6 +21,7 @@ use serde::Deserialize;
 use tokio::task;
 
 use crate::dataframe::H3DataFrame;
+use crate::fetch::{AsyncFetcher, FetchCache};
 use crate::format::FileFormat;
 use crate::Error;
 
@@ -305,13 +306,38 @@ where
         .to_string())
 }
 
-pub struct S3RecordBatchLoader {
+struct RecordBatchFetcher {
     s3_client: Arc<S3Client>,
 }
 
+#[async_trait::async_trait]
+impl AsyncFetcher for RecordBatchFetcher {
+    type Key = ObjectRef;
+    type Value = Vec<RecordBatch>;
+    type Error = Error;
+
+    async fn fetch(&self, object_ref: Self::Key) -> Result<Self::Value, Self::Error> {
+        let format = FileFormat::from_filename(&object_ref.key)?;
+        match self.s3_client.get_object_bytes(object_ref).await {
+            Ok(bytes) => Ok(format.recordbatches_from_slice(&bytes)?),
+            Err(Error::NotFound) => Ok(vec![]),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+pub struct S3RecordBatchLoader {
+    fetch_cache: Arc<FetchCache<RecordBatchFetcher>>,
+}
+
 impl S3RecordBatchLoader {
-    pub fn new(s3_client: Arc<S3Client>) -> Self {
-        Self { s3_client }
+    pub fn new(s3_client: Arc<S3Client>, cache_capacity: usize) -> Self {
+        Self {
+            fetch_cache: Arc::new(FetchCache::new(
+                cache_capacity,
+                RecordBatchFetcher { s3_client },
+            )),
+        }
     }
 
     async fn load_h3_dataset_recordbatches<D: S3H3Dataset>(
@@ -338,22 +364,16 @@ impl S3RecordBatchLoader {
 
         let mut task_results = futures::future::try_join_all(keys.drain(..).map(|key| {
             let object_ref = ObjectRef::new(dataset.bucket_name(), key);
-            let s3_client = self.s3_client.clone();
-            task::spawn(async move {
-                let format = FileFormat::from_filename(&object_ref.key)?;
-                match s3_client.get_object_bytes(object_ref).await {
-                    Ok(bytes) => Ok(format.recordbatches_from_slice(&bytes)?),
-                    Err(Error::NotFound) => Ok(vec![]),
-                    Err(e) => Err(e),
-                }
-            })
+            let fc = self.fetch_cache.clone();
+            task::spawn(async move { fc.get(object_ref).await })
         }))
         .await?;
 
         let mut record_batches = Vec::with_capacity(file_cells.len());
         for task_result in task_results.drain(..) {
-            for rb in task_result?.drain(..) {
-                record_batches.push(rb);
+            match task_result {
+                Ok(rbs) => record_batches.extend(rbs.iter().cloned()),
+                Err(e) => return Err(Error::Generic(format!("recordbatch fetch failed: {:?}", e))),
             }
         }
         Ok(record_batches)

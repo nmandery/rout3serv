@@ -43,7 +43,7 @@ where
     pub fn from_config(config: Arc<ServerConfig>) -> eyre::Result<Self> {
         let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
         let graph_store = GraphStore::new(s3_client.clone(), config.graph_store.clone());
-        let recordbatch_loader = S3RecordBatchLoader::new(s3_client.clone());
+        let recordbatch_loader = S3RecordBatchLoader::new(s3_client.clone(), 10);
         Ok(Self {
             s3_client,
             graph_store,
