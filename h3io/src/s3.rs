@@ -140,15 +140,17 @@ impl S3Client {
                                 byte_content.len(),
                                 ByteSize(byte_content.len() as u64)
                             );
-                            Ok(byte_content)
+                            Ok(Some(byte_content))
                         } else {
-                            Ok(vec![]) // has no body
+                            Ok(Some(vec![])) // has no body
                         }
                     }
                     Err(e) => match e {
                         RusotoError::Service(_get_object_error) => {
                             log::warn!("get_object_bytes: {} -> not found", object_ref);
-                            Err(Error::NotFound)
+                            // using an option here, as a error will result in retires, which will not
+                            // change that the object is not found.
+                            Ok(None)
                         }
                         _ => {
                             log::error!("get_object_bytes: {} -> {}", object_ref, e.to_string());
@@ -159,7 +161,11 @@ impl S3Client {
             },
         )
         .await?;
-        Ok(ob)
+        if let Some(bytes) = ob {
+            Ok(bytes)
+        } else {
+            Err(Error::NotFound)
+        }
     }
 
     pub async fn put_object_bytes(
