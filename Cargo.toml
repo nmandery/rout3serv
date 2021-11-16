@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "route3_road",
-    "h3io",
-    "til3serv",
+    "crates/route3_road",
+    "crates/h3io",
+    "crates/til3serv",
 ]
 
 [profile.release]
