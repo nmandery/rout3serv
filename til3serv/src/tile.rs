@@ -28,7 +28,21 @@ impl fmt::Display for Tile {
 
 impl Tile {
     pub fn area_m2(&self) -> f64 {
-        area_m2(&self.bounding_rect())
+        // TODO: look at the tiles and decide which area calculation to use
+        //area_m2(&self.bounding_rect())
+        let wbr = self.webmercator_bounding_rect();
+        wbr.width() * wbr.height()
+    }
+
+    /// Get the web mercator bounding box of a tile
+    pub fn webmercator_bounding_rect(&self) -> Rect<f64> {
+        let tile_size = CE / 2.0f64.powi(self.z as i32);
+        let left = (self.x as f64 * tile_size) - (CE / 2.0);
+        let top = (CE / 2.0) - (self.y as f64 * tile_size);
+        Rect::new(
+            Coordinate::from((left, top)),
+            Coordinate::from((left + tile_size, top - tile_size)),
+        )
     }
 }
 
@@ -64,12 +78,7 @@ impl ToH3Cells for Tile {
         // web-mercator uses meters as units.
         let buffered_bbox = {
             let buffer_meters = H3Edge::edge_length_m(h3_resolution) * 1.2;
-            let bbox = self.bounding_rect();
-
-            let wm_bbox = Rect::new(
-                lnglat_to_webmercator(&bbox.min()),
-                lnglat_to_webmercator(&bbox.max()),
-            );
+            let wm_bbox = self.webmercator_bounding_rect();
 
             Rect::new(
                 webmercator_to_lnglat(&truncate_to(
@@ -98,6 +107,7 @@ impl ToH3Cells for Tile {
 
 const EARTH_RADIUS_EQUATOR: f64 = 6378137.0;
 const R2D: f64 = 180.0 / PI;
+const CE: f64 = 2.0 * PI * EARTH_RADIUS_EQUATOR;
 const HALF_SIZE: f64 = EARTH_RADIUS_EQUATOR * PI;
 
 // spherical mercator

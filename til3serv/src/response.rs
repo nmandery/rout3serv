@@ -77,6 +77,10 @@ impl IntoResponse for OutDataFrame {
     type BodyError = Infallible;
 
     fn into_response(self) -> Response<Self::Body> {
+        log::debug!(
+            "responding with dataframe with shape {:?}",
+            self.dataframe.shape()
+        );
         match outdf_to_response(self) {
             Ok(response) => response,
             Err(err) => Response::builder()

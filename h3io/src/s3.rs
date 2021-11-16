@@ -147,7 +147,7 @@ impl S3Client {
                     }
                     Err(e) => match e {
                         RusotoError::Service(_get_object_error) => {
-                            log::warn!("get_object_bytes: {} -> not found", object_ref);
+                            log::info!("get_object_bytes: {} -> not found", object_ref);
                             // using an option here, as a error will result in retires, which will not
                             // change that the object is not found.
                             Ok(None)

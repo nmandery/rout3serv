@@ -26,7 +26,7 @@ pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>, Error>
 }
 
 /// wrapper around a `DataFrame` to store a bit of metainformation
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct H3DataFrame {
     /// the dataframe itself
     pub dataframe: DataFrame,
