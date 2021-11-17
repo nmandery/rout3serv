@@ -114,6 +114,9 @@ fn condense_response_dataframe(
     loaded_dataframe: H3DataFrame,
     selected_cells: &[H3Cell],
 ) -> eyre::Result<DataFrame> {
+    if loaded_dataframe.dataframe.is_empty() {
+        return Ok(Default::default());
+    }
     let selection_df = DataFrame::new(vec![Series::new(
         OutDataFrame::h3index_column_name(),
         selected_cells
@@ -122,14 +125,11 @@ fn condense_response_dataframe(
             .collect::<Vec<_>>()
             .as_slice(),
     )])?;
-    Ok(selection_df
-        .inner_join(
-            &loaded_dataframe.dataframe,
-            OutDataFrame::h3index_column_name(),
-            loaded_dataframe.h3index_column_name.as_str(),
-        )?
-        // sort dataframe for better compression
-        .sort(OutDataFrame::h3index_column_name(), false)?)
+    Ok(selection_df.inner_join(
+        &loaded_dataframe.dataframe,
+        OutDataFrame::h3index_column_name(),
+        loaded_dataframe.h3index_column_name.as_str(),
+    )?)
 }
 
 async fn list_datasets(
