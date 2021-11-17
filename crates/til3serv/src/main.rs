@@ -9,7 +9,9 @@ mod build_info;
 mod config;
 mod response;
 mod server;
+mod state;
 mod tile;
+mod ui;
 mod util;
 
 fn main() -> Result<()> {
@@ -24,7 +26,7 @@ fn main() -> Result<()> {
         crate::build_info::build_timestamp()
     );
 
-    let app = App::new(env!("CARGO_PKG_NAME"))
+    let app = App::new(crate::build_info::app_name())
         .version(crate::build_info::version())
         .long_version(long_version.as_str())
         .about(env!("CARGO_PKG_DESCRIPTION"))

@@ -5,13 +5,13 @@ use axum::body::{Bytes, Full};
 use axum::http::header::CONTENT_TYPE;
 use axum::http::{Response, StatusCode};
 use axum::response::IntoResponse;
-use polars_core::prelude::DataFrame;
+use h3ron::{FromH3Index, H3Cell};
+use polars_core::prelude::{DataFrame, Utf8Chunked};
 use polars_io::SerWriter;
-use serde::Serialize;
 
 #[derive(Copy, Clone)]
 pub enum OutputFormat {
-    Json,
+    JsonLines,
     ArrowIPC,
     Parquet,
     Csv,
@@ -20,7 +20,7 @@ pub enum OutputFormat {
 impl OutputFormat {
     pub fn from_name(name: &str) -> Result<Self, StatusCode> {
         match name.to_lowercase().as_str() {
-            "json" => Ok(Self::Json),
+            "jsonl" => Ok(Self::JsonLines),
             "arrow" | "ipc" => Ok(Self::ArrowIPC),
             "parquet" | "pq" => Ok(Self::Parquet),
             "csv" => Ok(Self::Csv),
@@ -33,7 +33,7 @@ impl OutputFormat {
 
     pub fn content_type(&self) -> &'static str {
         match self {
-            OutputFormat::Json => "application/jsonlines+json",
+            OutputFormat::JsonLines => "application/jsonlines+json",
             OutputFormat::ArrowIPC => "application/vnd.apache.arrow.file",
             OutputFormat::Parquet => "application/parquet",
             OutputFormat::Csv => "text/csv",
@@ -47,29 +47,16 @@ impl Default for OutputFormat {
     }
 }
 
-#[derive(Serialize)]
-pub struct Msg {
-    pub message: String,
-}
-
-impl Msg {
-    pub fn new(message: String) -> Self {
-        Self { message }
-    }
-}
-
-impl Default for Msg {
-    fn default() -> Self {
-        Self {
-            message: "something went wrong :(".to_string(),
-        }
-    }
-}
-
 pub struct OutDataFrame {
     pub output_format: OutputFormat,
     pub h3_resolution: u8,
     pub dataframe: DataFrame,
+}
+
+impl OutDataFrame {
+    pub fn h3index_column_name() -> &'static str {
+        "h3index"
+    }
 }
 
 impl IntoResponse for OutDataFrame {
@@ -92,13 +79,25 @@ impl IntoResponse for OutDataFrame {
     }
 }
 
-fn outdf_to_response(outdf: OutDataFrame) -> eyre::Result<Response<Full<Bytes>>> {
+fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<Full<Bytes>>> {
     let mut bytes = vec![];
     let status = if outdf.dataframe.is_empty() {
         StatusCode::NO_CONTENT
     } else {
+        // convert h3indexes to hex-strings as UInt64-support in browsers is still somewhat recent
+        outdf.dataframe.replace_or_add(
+            OutDataFrame::h3index_column_name(),
+            outdf
+                .dataframe
+                .column(OutDataFrame::h3index_column_name())?
+                .u64()?
+                .into_iter()
+                .map(|o| o.map(|h3index| H3Cell::from_h3index(h3index).to_string()))
+                .collect::<Utf8Chunked>(),
+        )?;
+
         match &outdf.output_format {
-            OutputFormat::Json => {
+            OutputFormat::JsonLines => {
                 let writer = polars_io::json::JsonWriter::new(&mut bytes);
                 writer.finish(&outdf.dataframe)?;
             }

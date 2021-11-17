@@ -14,7 +14,7 @@ Features:
 
 ## til3serv
 
-Experimental tileserver to be used with Web maps in Web-Mercator projection.
+Tileserver to be used with Web maps in Web-Mercator projection.
 
 **DRAFT**
 
@@ -24,7 +24,8 @@ Features:
 - S3 storage backend.
 - Compression for HTTP responses.
 - In-memory Cache for datasets.
+- Bundled web viewer to inspect the tiles.
 
 ## h3io
 
-Support library shared by the previous applications.
+Support library shared by the previously listed applications.

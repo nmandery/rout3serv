@@ -2,7 +2,7 @@
 members = [
     "crates/route3_road",
     "crates/h3io",
-    "crates/til3serv",
+    "crates/til3serv"
 ]
 
 [profile.release]

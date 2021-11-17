@@ -9,3 +9,7 @@ pub fn version() -> &'static str {
 pub fn build_timestamp() -> &'static str {
     env!("VERGEN_BUILD_TIMESTAMP")
 }
+
+pub fn app_name() -> &'static str {
+    env!("CARGO_PKG_NAME")
+}

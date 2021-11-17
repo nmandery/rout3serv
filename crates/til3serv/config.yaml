@@ -1,5 +1,6 @@
 ---
 bind_to: "127.0.0.1:9001"
+enable_ui: true
 s3:
   endpoint: "http://127.0.0.1:9000"
   region: "us-east-1"

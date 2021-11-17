@@ -135,6 +135,7 @@ fn restrict_between(value_min: f64, value_max: f64, value: f64) -> f64 {
 }
 
 /// Convert longitude and latitude to web mercator
+#[allow(dead_code)]
 fn lnglat_to_webmercator(c: &Coordinate<f64>) -> Coordinate<f64> {
     let c = truncate_to(c, &EXTEND_EPSG_4326);
     Coordinate::from((
@@ -202,11 +203,13 @@ impl CellBuilder {
         }
     }
 
+    #[allow(dead_code)]
     pub fn h3_resolutions(&self) -> &[u8] {
         self.h3_resolutions.as_slice()
     }
 }
 
+/*
 /// Calculate the approximate area of the given linestring ring (wgs84 coordinates) in square meters
 ///
 /// Roughly taken from [stackoverflow](https://gis.stackexchange.com/questions/711/how-can-i-measure-area-from-geographic-coordinates).
@@ -227,6 +230,8 @@ fn area_m2(rect: &Rect<f64>) -> f64 {
         * EARTH_RADIUS_EQUATOR.powi(2)
         / 2.0
 }
+
+ */
 
 #[cfg(test)]
 mod tests {

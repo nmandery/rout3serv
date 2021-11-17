@@ -15,6 +15,10 @@ log = "0.4"
 regex = "1.5"
 serde_yaml = "^0.8"
 
+[dependencies.minijinja]
+version = "^0.8"
+features = ["builtin_filters", "json"]
+
 [dependencies.tokio]
 version = "1"
 features = [
@@ -47,3 +51,4 @@ path = "../h3io"
 
 [build-dependencies]
 vergen = { version = "5", features = ["rustc", "build"] }
+npm_rs = "^0.2"

@@ -21,6 +21,7 @@ pub struct TileDataset {
 pub struct ServerConfig {
     pub bind_to: String,
     pub cache_capacity: Option<usize>,
+    pub enable_ui: Option<bool>,
     pub s3: S3Config,
     pub datasets: HashMap<String, TileDataset>,
 }
