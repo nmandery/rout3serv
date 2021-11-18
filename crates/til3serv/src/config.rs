@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::ui::ViewerStyleConfig;
 use eyre::Result;
 use h3io::s3::{S3Config, S3H3Dataset};
 use serde::Deserialize;
@@ -15,6 +16,9 @@ pub struct TileDataset {
     pub resolutions: HashMap<u8, u8>,
 
     pub h3index_column_name: Option<String>,
+
+    /// optional styling for the tileset in the integrated viewer
+    pub style: Option<ViewerStyleConfig>,
 }
 
 #[derive(Deserialize)]

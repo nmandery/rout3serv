@@ -1,5 +1,6 @@
 ---
-bind_to: "127.0.0.1:9001"
+#bind_to: "127.0.0.1:9001"
+bind_to: "0.0.0.0:9001"
 enable_ui: true
 s3:
   endpoint: "http://127.0.0.1:9000"
@@ -18,3 +19,14 @@ datasets:
     ## must be type UInt64
     ## default: "h3index"
     h3index_column_name: "h3index"
+
+    # optional styling for the tileset in the integrated viewer
+    style:
+      # property used for styling
+      property_name: "population"
+
+      # the value range to apply the colors to
+      value_range: [0, 150]
+
+      # the colors for the range. can be anything d3 understands
+      color_range: ["white", "green"]

@@ -8,6 +8,10 @@ import {Fill, Stroke, Style, Text} from "ol/style";
 import VectorTileLayer from "ol/layer/VectorTile";
 import VectorTileSource from 'ol/source/VectorTile'
 import JsonLH3 from "./format/jsonlh3";
+import {Feature} from "ol";
+import {Geometry} from "ol/geom";
+import {scaleLinear} from 'd3-scale'
+import {getViewerConfig} from "./config";
 
 const countryStyle = new Style({
     fill: new Fill({
@@ -28,28 +32,6 @@ const countryStyle = new Style({
         }),
     }),
 });
-
-
-const cellStyle = new Style({
-    fill: new Fill({
-        color: 'rgba(5, 255, 255, 0.6)',
-    }),
-    stroke: new Stroke({
-        color: '#319FD3',
-        width: 0.5,
-    }),
-    text: new Text({
-        font: '12px Calibri,sans-serif',
-        fill: new Fill({
-            color: '#000',
-        }),
-        stroke: new Stroke({
-            color: '#fff',
-            width: 3,
-        }),
-    }),
-});
-
 
 const getView = () => {
     let view = new View({
@@ -72,14 +54,42 @@ const getView = () => {
     return view;
 }
 
-const baseUrl = () => {
-    // @ts-ignore
-    return document.viewer_config.baseUrl;
-}
 
-const datasetName = () => {
-    // @ts-ignore
-    return document.viewer_config.datasetName;
+const cellStyleFn = () => {
+    const stroke = new Stroke({
+        color: '#333',
+        width: 0.5,
+    });
+    const styleConfig = getViewerConfig().styleConfig;
+    console.log(styleConfig)
+    if (styleConfig === undefined) {
+        return (feature:Feature<Geometry>) => {
+            return new Style({
+                fill: new Fill({
+                    color: 'green',
+                }),
+                stroke: stroke,
+            });
+        };
+    } else {
+        /*
+        const color = scaleLinear()
+            .domain([-100, 0, +100])
+            .range(["red", "white", "green"]);
+         */
+        const color = scaleLinear()
+            .domain(styleConfig.valueRange)
+            .range(styleConfig.colorRange);
+
+        return (feature: Feature<Geometry>): Style => {
+            return new Style({
+                fill: new Fill({
+                    color: color(feature.get(styleConfig.propertyName)),
+                }),
+                stroke: stroke,
+            });
+        }
+    }
 }
 
 const map = new Map({
@@ -87,7 +97,7 @@ const map = new Map({
     layers: [
         new VectorLayer({
             source: new VectorSource({
-                url: baseUrl() + '/_ui/countries.geojson',
+                url: getViewerConfig().baseUrl + '/_ui/countries.geojson',
                 format: new GeoJSON(),
             }),
             style: function (feature) {
@@ -98,13 +108,11 @@ const map = new Map({
         new VectorTileLayer({
                 declutter: true,
                 source: new VectorTileSource({
-                        url: baseUrl() + "/tiles/" + datasetName() + '/{z}/{x}/{y}/jsonl',
-                        format: new JsonLH3(),
+                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/jsonl',
+                        format: new JsonLH3(getViewerConfig().h3indexPropertyName),
                     }
                 ),
-                style: (feature) => {
-                    return cellStyle
-                }
+                style: cellStyleFn(),
             }
         ),
     ],

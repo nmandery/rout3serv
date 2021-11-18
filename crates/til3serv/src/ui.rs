@@ -3,9 +3,10 @@ use crate::state::Registry;
 use axum::extract::{Extension, Path};
 use axum::http::header::CONTENT_TYPE;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
+use h3io::s3::S3H3Dataset;
 use minijinja::filters::{safe, tojson};
 use minijinja::Environment;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 /// geojson string with a feature collection of country boundaries.
@@ -66,31 +67,62 @@ pub async fn ui_static_files(
     }
 }
 
+#[derive(Deserialize, Serialize, Clone)]
+pub struct ViewerStyleConfig {
+    /// property used for styling
+    #[serde(rename(serialize = "propertyName"))]
+    pub property_name: String,
+
+    /// the value range to apply the colors to
+    #[serde(rename(serialize = "valueRange"))]
+    pub value_range: Vec<f32>,
+
+    /// the colors for the range. can be anything d3 understands
+    #[serde(rename(serialize = "colorRange"))]
+    pub color_range: Vec<String>,
+}
+
 #[derive(Serialize)]
-struct ViewerContext {
+struct ViewerConfig<'a> {
     /// root of the applications routing, or relative path to that
     /// location
+    #[serde(rename(serialize = "baseUrl"))]
     pub base_url: String,
 
+    #[serde(rename(serialize = "datasetName"))]
     pub dataset_name: String,
 
+    #[serde(rename(serialize = "h3indexPropertyName"))]
+    pub h3index_property_name: String,
+
+    #[serde(rename(serialize = "styleConfig"))]
+    pub style_config: Option<&'a ViewerStyleConfig>,
+}
+
+#[derive(Serialize)]
+struct ViewerContext<'a> {
     pub app_name: &'static str,
+    pub viewer_config: ViewerConfig<'a>,
 }
 
 pub async fn tile_viewer(
     Path(dataset_name): Path<String>,
     registry: Extension<Arc<Registry>>,
 ) -> Result<(HeaderMap, String), StatusCode> {
-    let _wrapped_tds = match registry.datasets.get(&dataset_name) {
+    let wrapped_tds = match registry.datasets.get(&dataset_name) {
         Some(wrapped_tds) => wrapped_tds,
         None => return Err(StatusCode::NOT_FOUND),
     };
     respond_html_template(
         "viewer.html",
         &ViewerContext {
-            base_url: "../../..".to_string(),
-            dataset_name,
             app_name: app_name(),
+            viewer_config: ViewerConfig {
+                base_url: "../../..".to_string(),
+                dataset_name,
+                h3index_property_name: wrapped_tds.tile_dataset.h3index_column(),
+                style_config: wrapped_tds.tile_dataset.style.as_ref(),
+            },
         },
     )
 }

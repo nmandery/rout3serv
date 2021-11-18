@@ -1,14 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}{{dataset_name}} - {{app_name}} viewer{% endblock %}
+{% block title %}{{viewer_config.datasetName}} - {{app_name}} viewer{% endblock %}
 
 {% block body %}
 <div id="map" class="map"></div>
 <script lang="javascript">
-    document.viewer_config = {
-        baseUrl: {{base_url|tojson}},
-        datasetName: {{dataset_name|tojson}},
-    };
+    document.viewer_config = {{viewer_config|tojson}};
 </script>
-<script src="{{base_url|safe}}/_ui/viewer.js"></script>
+<script src="{{viewer_config.baseUrl|safe}}/_ui/viewer.js"></script>
 {% endblock %}

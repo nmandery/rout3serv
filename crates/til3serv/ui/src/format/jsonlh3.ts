@@ -7,14 +7,13 @@ import TEXT = _default.TEXT;
 import JSONL from "jsonl-parse-stringify";
 import {H3Index, h3ToGeoBoundary} from 'h3-js';
 
-interface H3IndexedObject {
-    h3index: H3Index
-}
-
 export default class JsonLH3 extends FeatureFormat {
-    constructor() {
+    private h3indexPropertyName: string;
+
+    constructor(h3indexPropertyName: string | undefined) {
         super();
         this.dataProjection = getProjection('EPSG:4326')
+        this.h3indexPropertyName = h3indexPropertyName || "h3index";
         this.supportedMediaTypes = [
             "application/jsonlines+json",
         ]
@@ -39,11 +38,15 @@ export default class JsonLH3 extends FeatureFormat {
         }
         opt_options = this.getReadOptions(source, opt_options)
         let features: Feature<Geometry>[] = []
-        JSONL.parse<H3IndexedObject>(source).forEach((h3indexObj) => {
-            let feature = new Feature<Geometry>()
-            feature.setGeometry(this.readGeometry(h3indexObj.h3index, opt_options))
-            feature.setProperties(h3indexObj)
-            features.push(feature)
+        JSONL.parse<object>(source).forEach((obj) => {
+            if (obj.hasOwnProperty(this.h3indexPropertyName)) {
+                let h3index = obj[this.h3indexPropertyName] as string;
+                obj['h3index'] = h3index;
+                let feature = new Feature<Geometry>()
+                feature.setGeometry(this.readGeometry(h3index, opt_options))
+                feature.setProperties(obj)
+                features.push(feature)
+            }
         })
         return features;
     }

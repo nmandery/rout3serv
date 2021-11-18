@@ -16,8 +16,6 @@ Features:
 
 Tileserver to be used with Web maps in Web-Mercator projection.
 
-**DRAFT**
-
 Features:
 
 - Tiles for Web-Mercator maps in parquet, arrow-ipc, csv and json-lines format.
@@ -25,6 +23,7 @@ Features:
 - Compression for HTTP responses.
 - In-memory Cache for datasets.
 - Bundled web viewer to inspect the tiles.
+  - includes simple styling based on a property, value range and color range.
 
 ## h3io
 
