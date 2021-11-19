@@ -61,26 +61,13 @@ const cellStyleFn = () => {
         width: 0.5,
     });
     const styleConfig = getViewerConfig().styleConfig;
-    console.log(styleConfig)
-    if (styleConfig === undefined) {
-        return (feature:Feature<Geometry>) => {
-            return new Style({
-                fill: new Fill({
-                    color: 'green',
-                }),
-                stroke: stroke,
-            });
-        };
-    } else {
+    if (styleConfig) {
         /*
         const color = scaleLinear()
             .domain([-100, 0, +100])
             .range(["red", "white", "green"]);
          */
-        const color = scaleLinear()
-            .domain(styleConfig.valueRange)
-            .range(styleConfig.colorRange);
-
+        const color = scaleLinear(styleConfig.valueRange, styleConfig.colorRange);
         return (feature: Feature<Geometry>): Style => {
             return new Style({
                 fill: new Fill({
@@ -89,6 +76,15 @@ const cellStyleFn = () => {
                 stroke: stroke,
             });
         }
+    } else {
+        return (feature:Feature<Geometry>) => {
+            return new Style({
+                fill: new Fill({
+                    color: 'green',
+                }),
+                stroke: stroke,
+            });
+        };
     }
 }
 

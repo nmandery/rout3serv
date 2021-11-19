@@ -8,7 +8,7 @@ import JSONL from "jsonl-parse-stringify";
 import {H3Index, h3ToGeoBoundary} from 'h3-js';
 
 export default class JsonLH3 extends FeatureFormat {
-    private h3indexPropertyName: string;
+    private readonly h3indexPropertyName: string;
 
     constructor(h3indexPropertyName: string | undefined) {
         super();
@@ -40,7 +40,9 @@ export default class JsonLH3 extends FeatureFormat {
         let features: Feature<Geometry>[] = []
         JSONL.parse<object>(source).forEach((obj) => {
             if (obj.hasOwnProperty(this.h3indexPropertyName)) {
-                let h3index = obj[this.h3indexPropertyName] as string;
+                // @ts-ignore
+                let h3index = obj[this.h3indexPropertyName].toString() as H3Index;
+                // @ts-ignore
                 obj['h3index'] = h3index;
                 let feature = new Feature<Geometry>()
                 feature.setGeometry(this.readGeometry(h3index, opt_options))
