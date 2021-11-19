@@ -77,7 +77,7 @@ impl ToH3Cells for Tile {
         // are also included.
         // web-mercator uses meters as units.
         let buffered_bbox = {
-            let buffer_meters = H3Edge::edge_length_m(h3_resolution) * 1.2;
+            let buffer_meters = H3Edge::edge_length_m(h3_resolution) * 1.8;
             let wm_bbox = self.webmercator_bounding_rect();
 
             Rect::new(
