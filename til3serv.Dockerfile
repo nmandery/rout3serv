@@ -11,20 +11,11 @@ RUN cd /tmp/ && \
 
 COPY . /build
 RUN cd /build && \
-    python3 docker-cargo-profile.py
+    python3 docker-cargo-profile.py && \
+    cd /build/crates/til3serv && \
+    cargo install --path . --root /usr/local
 
-# build typescript as - somehow - npm does not install a lot
-# of dependencies when running in docker and being triggered by
-# `build.rs`
-# not this issue, but maybe related?
-# https://github.com/nodejs/docker-node/issues/1005
-#RUN cd /build/crates/til3serv/ui && \
-#    npm i && \
-#    npm run build
-
-WORKDIR /build/crates/til3serv
-#ENV SKIP_NPM=1
-RUN cargo install --path . --root /usr/local
+run strip /usr/local/bin/til3serv
 
 FROM debian:bullseye-slim
 ENV RUST_BACKTRACE=1
