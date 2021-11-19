@@ -10,7 +10,7 @@ if (mode === 'development') {
 }
 
 module.exports = {
-    entry: './src/index.ts',
+    entry: './src-web/index.ts',
     mode: mode,
     module: {
         rules: [

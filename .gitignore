@@ -21,4 +21,4 @@ flamegraph*.svg
 .ipynb_checkpoints
 node_modules
 package-lock.json
-/crates/til3serv/ui/dist/viewer.js
+/crates/til3serv/dist/*

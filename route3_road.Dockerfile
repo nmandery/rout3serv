@@ -10,7 +10,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
 COPY . /build
 RUN cd /build && \
     python3 docker-cargo-profile.py && \
-    cd /build/route3_road && \
+    cd /build/crates/route3_road && \
     PATH=$PATH:$HOME/.cargo/bin cargo install --path . --root /usr/local
 
 FROM basesystem
@@ -19,7 +19,7 @@ ENV RAYON_NUM_THREADS="0"
 ENV RUST_BACKTRACE=1
 ENV RUST_LOG="route3_road=info,h3io=info,tower_http::trace=debug"
 COPY --from=builder /usr/local/bin/route3_road /usr/bin/
-COPY ./route3_road/server-config.example.yaml /server-config.yaml
-COPY ./route3_road/proto /
+COPY ./crates/route3_road/server-config.example.yaml /server-config.yaml
+COPY ./crates/route3_road/proto /
 EXPOSE 7088
 ENTRYPOINT ["/usr/bin/route3_road"]

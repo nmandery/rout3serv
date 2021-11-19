@@ -51,4 +51,3 @@ path = "../h3io"
 
 [build-dependencies]
 vergen = { version = "5", features = ["rustc", "build"] }
-npm_rs = "^0.2"

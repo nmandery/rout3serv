@@ -11,17 +11,17 @@ use std::sync::Arc;
 
 /// geojson string with a feature collection of country boundaries.
 /// Strongly simplified shapes.
-const COUNTRIES_GEOJSON: &[u8] = include_bytes!("../ui/data/countries.geojson");
+const COUNTRIES_GEOJSON: &[u8] = include_bytes!("../data/countries.geojson");
 
 /// js bundle of the view
-const VIEWER_JS: &[u8] = include_bytes!("../ui/dist/viewer.js");
+const VIEWER_JS: &[u8] = include_bytes!("../dist/viewer.js");
 
 lazy_static::lazy_static! {
     static ref MJ_ENV: Environment<'static> = {
         let mut env = Environment::new();
-        env.add_template("base.html", include_str!("../ui/templates/base.html")).unwrap();
-        env.add_template("viewer.html", include_str!("../ui/templates/viewer.html")).unwrap();
-        env.add_template("main.html", include_str!("../ui/templates/main.html")).unwrap();
+        env.add_template("base.html", include_str!("../templates/base.html")).unwrap();
+        env.add_template("viewer.html", include_str!("../templates/viewer.html")).unwrap();
+        env.add_template("main.html", include_str!("../templates/main.html")).unwrap();
         env.add_filter("tojson", tojson);
         env.add_filter("safe", safe);
         env
