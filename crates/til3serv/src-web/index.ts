@@ -104,7 +104,7 @@ const map = new Map({
         new VectorTileLayer({
                 declutter: true,
                 source: new VectorTileSource({
-                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/jsonl',
+                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/jl',
                         format: new JsonLH3(getViewerConfig().h3indexPropertyName),
                     }
                 ),

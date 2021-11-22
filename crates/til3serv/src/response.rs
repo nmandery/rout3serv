@@ -20,7 +20,7 @@ pub enum OutputFormat {
 impl OutputFormat {
     pub fn from_name(name: &str) -> Result<Self, StatusCode> {
         match name.to_lowercase().as_str() {
-            "jsonl" => Ok(Self::JsonLines),
+            "jl" | "jsonl" | "jsonlines" => Ok(Self::JsonLines),
             "arrow" | "ipc" => Ok(Self::ArrowIPC),
             "parquet" | "pq" => Ok(Self::Parquet),
             "csv" => Ok(Self::Csv),

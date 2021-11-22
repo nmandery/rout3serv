@@ -26,7 +26,7 @@ datasets:
       property_name: "population"
 
       # the value range to apply the colors to
-      value_range: [0, 150]
+      value_range: [0, 250]
 
       # the colors for the range. can be anything d3 understands
       color_range: ["white", "green"]
