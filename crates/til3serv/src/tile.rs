@@ -9,9 +9,9 @@ use h3ron::collections::indexvec::IndexVec;
 use h3ron::{Error, H3Cell, H3Edge, ToH3Cells, H3_MAX_RESOLUTION};
 
 /// parts of this file have been ported from
-/// https://github.com/mapbox/mercantile/blob/fe3762d14001ca400caf7462f59433b906fc25bd/mercantile/__init__.py#L200
+/// <https://github.com/mapbox/mercantile/blob/fe3762d14001ca400caf7462f59433b906fc25bd/mercantile/__init__.py#L200>
 /// and
-/// https://github.com/openlayers/openlayers/blob/fdba3ecf0e47503dd8e8711a44cf34620be70b2d/src/ol/proj/epsg3857.js#L26
+/// <https://github.com/openlayers/openlayers/blob/fdba3ecf0e47503dd8e8711a44cf34620be70b2d/src/ol/proj/epsg3857.js#L26>
 
 #[derive(PartialEq, Debug)]
 pub struct Tile {

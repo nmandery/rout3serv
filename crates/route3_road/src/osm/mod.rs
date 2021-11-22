@@ -68,7 +68,7 @@ fn parse_maxspeed(maxspeed_str: &str) -> Option<Velocity> {
 
 /// based on parts of the "Implicit max speed values", used to
 /// parse the contents of the "zone:maxspeed" tag.
-/// from  https://wiki.openstreetmap.org/wiki/Key:maxspeed
+/// from <https://wiki.openstreetmap.org/wiki/Key:maxspeed>
 fn parse_zone_maxspeed(zone_name: &str) -> Option<Velocity> {
     match zone_name {
         "AT:bicycle_road" => some_kmh!(30),
