@@ -46,8 +46,8 @@ features = ["ipc", "json", "parquet", "csv-file", "csv-core"]
 version = "^0.1"
 features = ["compression-full", "trace"]
 
-[dependencies.h3io]
-path = "../h3io"
+[dependencies.s3io]
+path = "../s3io"
 
 [build-dependencies]
 vergen = { version = "5", features = ["rustc", "build"] }

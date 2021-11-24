@@ -25,6 +25,6 @@ Features:
 - Bundled web viewer to inspect the tiles.
   - includes simple styling based on a property, value range and color range.
 
-## h3io
+## s3io
 
 Support library shared by the previously listed applications.

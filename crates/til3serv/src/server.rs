@@ -5,12 +5,13 @@ use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{AddExtensionLayer, Json, Router};
 use eyre::Result;
-use h3io::dataframe::H3DataFrame;
 use h3ron::{H3Cell, Index};
 use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use tokio::task::spawn_blocking;
 use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
+
+use s3io::dataframe::H3DataFrame;
 
 use crate::config::ServerConfig;
 use crate::response::{OutDataFrame, OutputFormat};

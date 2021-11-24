@@ -2,16 +2,17 @@ use std::io::Cursor;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use h3io::fetch::{AsyncFetcher, FetchCache, FetchError};
-use h3io::Error;
 use h3ron::io::deserialize_from;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use regex::Regex;
 use serde::de::DeserializeOwned;
 use tokio::task::block_in_place;
 
+use s3io::fetch::{AsyncFetcher, FetchCache, FetchError};
+use s3io::s3::{ObjectRef, S3Client};
+use s3io::Error;
+
 use crate::config::GraphStoreConfig;
-use h3io::s3::{ObjectRef, S3Client};
 
 const GRAPH_SUFFIX: &str = ".bincode.lz";
 
@@ -56,7 +57,7 @@ where
 {
     type Key = ObjectRef;
     type Value = PreparedH3EdgeGraph<W>;
-    type Error = h3io::Error;
+    type Error = s3io::Error;
 
     async fn fetch(&self, key: Self::Key) -> Result<Self::Value, Self::Error> {
         let graph_bytes = self.s3_client.get_object_bytes(key).await?;
@@ -119,7 +120,7 @@ where
     pub async fn load(
         &self,
         graph_cache_key: &GraphCacheKey,
-    ) -> Result<Arc<PreparedH3EdgeGraph<W>>, FetchError<h3io::Error>> {
+    ) -> Result<Arc<PreparedH3EdgeGraph<W>>, FetchError<s3io::Error>> {
         let s3_key = format!(
             "{}{}",
             self.graph_store_config.prefix,

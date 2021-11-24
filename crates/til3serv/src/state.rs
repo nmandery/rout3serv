@@ -1,6 +1,6 @@
 use crate::config::{ServerConfig, TileDataset};
 use crate::tile::CellBuilder;
-use h3io::s3::{S3Client, S3RecordBatchLoader};
+use s3io::s3::{S3Client, S3RecordBatchLoader};
 use std::collections::HashMap;
 use std::sync::Arc;
 

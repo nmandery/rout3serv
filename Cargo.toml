@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "crates/route3_road",
-    "crates/h3io",
+    "crates/s3io",
     "crates/til3serv"
 ]
 

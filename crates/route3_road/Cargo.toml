@@ -24,8 +24,8 @@ num-traits = "0.2"
 approx = "0.5"
 ordered-float = "2.8.0"
 
-[dependencies.h3io]
-path = "../h3io"
+[dependencies.s3io]
+path = "../s3io"
 
 [dependencies.uom]
 version = "0.31"

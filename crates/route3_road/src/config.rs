@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use eyre::Result;
 use serde::Deserialize;
 
-use h3io::s3::{S3Config, S3H3Dataset};
+use s3io::s3::{S3Config, S3H3Dataset};
 
 #[derive(Deserialize, Clone)]
 pub struct GraphStoreConfig {

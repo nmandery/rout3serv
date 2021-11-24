@@ -3,9 +3,9 @@ use crate::state::Registry;
 use axum::extract::{Extension, Path};
 use axum::http::header::CONTENT_TYPE;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
-use h3io::s3::S3H3Dataset;
 use minijinja::filters::{safe, tojson};
 use minijinja::Environment;
+use s3io::s3::S3H3Dataset;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 

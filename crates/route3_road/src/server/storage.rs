@@ -3,7 +3,6 @@ use std::convert::{TryFrom, TryInto};
 use std::io::Cursor;
 use std::sync::Arc;
 
-use h3io::fetch::FetchError;
 use h3ron::collections::H3CellSet;
 use h3ron::io::{deserialize_from, serialize_into};
 use h3ron::iter::change_cell_resolution;
@@ -15,12 +14,14 @@ use serde::Serialize;
 use tokio::task::block_in_place;
 use tonic::Status;
 
+use s3io::dataframe::H3DataFrame;
+use s3io::fetch::FetchError;
+use s3io::s3::{ObjectRef, S3Client, S3RecordBatchLoader};
+
 use crate::config::{GenericDataset, ServerConfig};
 use crate::io::graph_store::{GraphCacheKey, GraphStore};
 use crate::server::api::generated::{CellSelection, GraphHandle};
 use crate::server::util::StrId;
-use h3io::dataframe::H3DataFrame;
-use h3io::s3::{ObjectRef, S3Client, S3RecordBatchLoader};
 
 /// storage backend to use in the server.
 ///
@@ -108,7 +109,7 @@ where
                     })?;
                 Ok(output)
             }
-            Err(h3io::Error::NotFound) => Err(Status::not_found(format!(
+            Err(s3io::Error::NotFound) => Err(Status::not_found(format!(
                 "output with {} not found",
                 object_ref
             ))),
@@ -137,7 +138,7 @@ where
         match self.graph_store.load(graph_cache_key).await {
             Ok(graph) => Ok(graph),
             Err(FetchError::Fetch(inner)) => match inner.as_ref() {
-                h3io::Error::NotFound => Err(Status::not_found("graph not found")),
+                s3io::Error::NotFound => Err(Status::not_found("graph not found")),
                 _ => {
                     log::error!("could not load graph: {:?}", inner);
                     Err(Status::internal("could not load graph"))
