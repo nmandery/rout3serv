@@ -31,7 +31,7 @@ impl OutputFormat {
         }
     }
 
-    pub fn content_type(&self) -> &'static str {
+    pub const fn content_type(&self) -> &'static str {
         match self {
             OutputFormat::JsonLines => "application/jsonlines+json",
             OutputFormat::ArrowIPC => "application/vnd.apache.arrow.file",
@@ -54,7 +54,7 @@ pub struct OutDataFrame {
 }
 
 impl OutDataFrame {
-    pub fn h3index_column_name() -> &'static str {
+    pub const fn h3index_column_name() -> &'static str {
         "h3index"
     }
 }

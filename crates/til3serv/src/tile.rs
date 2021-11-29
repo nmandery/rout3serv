@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::f64::consts::{E, PI};
+use std::f64::consts::PI;
 use std::fmt;
 
 use geo::algorithm::bounding_rect::BoundingRect;
@@ -140,7 +140,7 @@ fn lnglat_to_webmercator(c: &Coordinate<f64>) -> Coordinate<f64> {
     let c = truncate_to(c, &EXTEND_EPSG_4326);
     Coordinate::from((
         EARTH_RADIUS_EQUATOR * c.x.to_radians(),
-        EARTH_RADIUS_EQUATOR * ((PI * 0.25) + (0.5 * c.y.to_radians())).tan().log(E),
+        EARTH_RADIUS_EQUATOR * PI.mul_add(0.25, 0.5 * c.y.to_radians()).tan().ln(),
     ))
 }
 

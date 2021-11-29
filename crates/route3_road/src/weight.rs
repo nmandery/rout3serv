@@ -71,14 +71,16 @@ impl WeightFeatureField for RoadWeight {
 }
 
 impl Add for RoadWeight {
-    type Output = RoadWeight;
+    type Output = Self;
 
     fn add(mut self, rhs: Self) -> Self::Output {
         // change the category proportionally to the travel durations
         let td_self = self.travel_duration.value.abs().max(1.0);
         let td_rhs = rhs.travel_duration.value.abs().max(1.0);
-        self.road_category_weight = ((self.road_category_weight.abs() * td_self)
-            + (rhs.road_category_weight.abs() * td_rhs))
+        self.road_category_weight = self
+            .road_category_weight
+            .abs()
+            .mul_add(td_self, rhs.road_category_weight.abs() * td_rhs)
             / (td_self + td_rhs);
 
         self.travel_duration += rhs.travel_duration;

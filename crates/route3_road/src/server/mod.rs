@@ -4,7 +4,6 @@ use std::sync::Arc;
 use eyre::Result;
 use h3ron::collections::H3CellSet;
 use h3ron::H3Cell;
-use h3ron_graph::graph::GetStats;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
@@ -15,7 +14,7 @@ use crate::config::ServerConfig;
 use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
-    DifferentialShortestPathRoutesRequest, Empty, GraphInfo, H3ShortestPathRequest, IdRef,
+    DifferentialShortestPathRoutesRequest, Empty, H3ShortestPathRequest, IdRef,
     ListDatasetsResponse, ListGraphsResponse, VersionResponse,
 };
 use crate::server::storage::S3Storage;
@@ -59,9 +58,9 @@ impl Route3Road for ServerImpl {
         let mut resp = ListGraphsResponse { graphs: vec![] };
 
         for gck in self.storage.load_graph_cache_keys().await? {
-            //let graph = self.storage.graph_store.load_cached(&gck).await;
-            let mut gi: GraphInfo = gck.into();
             /*
+            let graph = self.storage.graph_store.load_cached(&gck).await;
+            let mut gi: GraphInfo = gck.into();
             if let Some(g) = graph {
                 gi.is_cached = true;
                 let stats = g.get_stats();
@@ -71,8 +70,9 @@ impl Route3Road for ServerImpl {
                 gi.is_cached = false;
             }
 
-             */
             resp.graphs.push(gi);
+             */
+            resp.graphs.push(gck.into());
         }
         Ok(Response::new(resp))
     }

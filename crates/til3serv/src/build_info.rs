@@ -1,15 +1,15 @@
-pub fn git_comit_sha() -> &'static str {
+pub const fn git_comit_sha() -> &'static str {
     env!("VERGEN_GIT_SHA")
 }
 
-pub fn version() -> &'static str {
+pub const fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-pub fn build_timestamp() -> &'static str {
+pub const fn build_timestamp() -> &'static str {
     env!("VERGEN_BUILD_TIMESTAMP")
 }
 
-pub fn app_name() -> &'static str {
+pub const fn app_name() -> &'static str {
     env!("CARGO_PKG_NAME")
 }
