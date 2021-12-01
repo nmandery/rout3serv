@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 
-use arrow::io::ipc::write::FileWriter;
+use arrow::io::ipc::write::{Compression, FileWriter, WriteOptions};
 use arrow::record_batch::RecordBatch;
 use h3ron::Index;
 use itertools::Itertools;
@@ -18,7 +18,13 @@ use crate::Error;
 pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>, Error> {
     let mut buf: Vec<u8> = vec![];
     {
-        let mut filewriter = FileWriter::try_new(&mut buf, &*recordbatch.schema())?;
+        let mut filewriter = FileWriter::try_new(
+            &mut buf,
+            &*recordbatch.schema(),
+            WriteOptions {
+                compression: Some(Compression::LZ4),
+            },
+        )?;
         filewriter.write(recordbatch)?;
         filewriter.finish()?;
     }

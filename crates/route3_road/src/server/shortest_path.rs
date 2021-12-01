@@ -158,7 +158,7 @@ where
         shortest_path_df = shortest_path_df.inner_join(
             &origin_h3df.dataframe,
             COL_H3INDEX_ORIGIN,
-            &format!("origin_{}", origin_h3df.h3index_column_name),
+            format!("origin_{}", origin_h3df.h3index_column_name).as_str(),
         )?;
     }
 
@@ -169,7 +169,7 @@ where
         shortest_path_df = shortest_path_df.left_join(
             &destination_h3df.dataframe,
             COL_H3INDEX_DESTINATION,
-            &format!("dest_{}", destination_h3df.h3index_column_name),
+            format!("dest_{}", destination_h3df.h3index_column_name).as_str(),
         )?;
     }
 

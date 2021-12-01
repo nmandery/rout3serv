@@ -396,7 +396,7 @@ where
     let df = df.inner_join(
         &output.ref_dataframe.dataframe,
         "h3index_origin",
-        &output.ref_dataframe.h3index_column_name,
+        output.ref_dataframe.h3index_column_name.as_str(),
     )?;
     Ok(df)
 }

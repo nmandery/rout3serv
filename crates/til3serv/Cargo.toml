@@ -35,11 +35,11 @@ version = "1"
 features = ["derive"]
 
 [dependencies.polars-core]
-version = "0.17"
+version = "0.18"
 features = ["serde"]
 
 [dependencies.polars-io]
-version = "0.17"
+version = "0.18"
 features = ["ipc", "json", "parquet", "csv-file", "csv-core"]
 
 [dependencies.tower-http]
