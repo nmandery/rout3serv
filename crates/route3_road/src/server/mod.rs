@@ -212,7 +212,7 @@ async fn run_server(server_config: ServerConfig) -> Result<()> {
 
     Server::builder()
         .layer(TraceLayer::new_for_grpc())
-        .add_service(Route3RoadServer::new(server_impl))
+        .add_service(Route3RoadServer::new(server_impl).send_gzip().accept_gzip())
         .serve(addr)
         .await?;
     Ok(())

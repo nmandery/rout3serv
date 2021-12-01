@@ -40,10 +40,11 @@ class Server:
 
     def __init__(self, hostport: str = f"127.0.0.1:{DEFAULT_PORT}",
                  credentials: Optional[grpc.ChannelCredentials] = None):
+        compression = grpc.Compression.Gzip
         if credentials is not None:
-            self.channel = grpc.secure_channel(hostport, credentials)
+            self.channel = grpc.secure_channel(hostport, credentials, compression=compression)
         else:
-            self.channel = grpc.insecure_channel(hostport)
+            self.channel = grpc.insecure_channel(hostport, compression=compression)
         self.stub = Route3RoadStub(self.channel)
 
     def version(self) -> route3_road_pb2.VersionResponse:
