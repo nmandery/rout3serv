@@ -34,6 +34,22 @@ def _to_cell_selection(arg, **kwargs) -> route3_road_pb2.CellSelection:
     raise Exception("unsupported type for cell_selection")
 
 
+def _build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, destination_cells,
+                                    num_destinations_to_reach: int = 3,
+                                    num_gap_cells_to_graph: int = 1,
+                                    ) -> Tuple[str, Optional[pa.Table]]:
+    shortest_path_options = route3_road_pb2.ShortestPathOptions()
+    shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
+    shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
+
+    req = route3_road_pb2.H3ShortestPathRequest()
+    req.graph_handle.MergeFrom(graph_handle)
+    req.options.MergeFrom(shortest_path_options)
+    req.origins.MergeFrom(_to_cell_selection(origin_cells))
+    req.destinations.MergeFrom(_to_cell_selection(destination_cells))
+    return req
+
+
 class Server:
     channel = None
     stub = None
@@ -60,16 +76,42 @@ class Server:
                          num_destinations_to_reach: int = 3,
                          num_gap_cells_to_graph: int = 1,
                          ) -> Tuple[str, Optional[pa.Table]]:
-        shortest_path_options = route3_road_pb2.ShortestPathOptions()
-        shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
-        shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
-
-        req = route3_road_pb2.H3ShortestPathRequest()
-        req.graph_handle.MergeFrom(graph_handle)
-        req.options.MergeFrom(shortest_path_options)
-        req.origins.MergeFrom(_to_cell_selection(origin_cells))
-        req.destinations.MergeFrom(_to_cell_selection(destination_cells))
+        req = _build_h3_shortest_path_request(graph_handle, origin_cells, destination_cells,
+                                              num_destinations_to_reach=num_destinations_to_reach,
+                                              num_gap_cells_to_graph=num_gap_cells_to_graph)
         return _arrowrecordbatch_to_table(self.stub.H3ShortestPath(req))
+
+    def h3_shortest_path_routes(self, graph_handle: GraphHandle, origin_cells, destination_cells,
+                                num_destinations_to_reach: int = 3,
+                                num_gap_cells_to_graph: int = 1,
+                                ) -> "GeoDataFrame":
+        from geopandas import GeoDataFrame
+        import numpy as np
+        req = _build_h3_shortest_path_request(graph_handle, origin_cells, destination_cells,
+                                              num_destinations_to_reach=num_destinations_to_reach,
+                                              num_gap_cells_to_graph=num_gap_cells_to_graph)
+
+        geoms = []
+        h3index_origin = []
+        h3index_destination = []
+        travel_duration_secs = []
+        category_weight = []
+
+        for route in self.stub.H3ShortestPathRoutes(req):
+            h3index_origin.append(route.origin_cell)
+            h3index_destination.append(route.destination_cell)
+            travel_duration_secs.append(route.travel_duration_secs)
+            category_weight.append(route.category_weight)
+            geoms.append(shapely.wkb.loads(route.wkb))
+
+        gdf = GeoDataFrame({
+            "geometry": geoms,
+            "h3index_origin": np.asarray(h3index_origin, dtype=np.uint64),
+            "h3index_destination": np.asarray(h3index_destination, dtype=np.uint64),
+            "travel_duration_secs": np.asarray(travel_duration_secs, dtype=np.float64),
+            "category_weight": np.asarray(category_weight, dtype=np.float64),
+        }, crs=4326)
+        return gdf
 
     def differential_shortest_path(self, graph_handle: GraphHandle, disturbance_geom: BaseGeometry,
                                    radius_meters: float,
@@ -105,12 +147,12 @@ class Server:
         req.object_id = object_id
         return _arrowrecordbatch_to_table(self.stub.GetDifferentialShortestPath(req))
 
-    def get_differential_shortest_path_routes(self, object_id: str, cells: Iterable[int]):
+    def get_differential_shortest_path_routes(self, object_id: str, cells: Iterable[int]) -> "GeoDataFrame":
         """returns a `GeoDataframe` containing the linestrings of the routes originating from the given cells.
 
         requires geopandas
         """
-        import geopandas as gpd
+        from geopandas import GeoDataFrame
         import numpy as np
 
         req = route3_road_pb2.DifferentialShortestPathRoutesRequest()
@@ -137,7 +179,7 @@ class Server:
                     category_weight.append(route.category_weight)
                     geoms.append(shapely.wkb.loads(route.wkb))
 
-        gdf = gpd.GeoDataFrame({
+        gdf = GeoDataFrame({
             "geometry": geoms,
             "h3index_origin": np.asarray(h3index_origin, dtype=np.uint64),
             "h3index_destination": np.asarray(h3index_destination, dtype=np.uint64),

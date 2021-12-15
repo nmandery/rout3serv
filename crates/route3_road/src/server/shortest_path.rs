@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::ops::Add;
 use std::sync::Arc;
 
@@ -13,10 +14,15 @@ use serde::Serialize;
 use tonic::{Response, Status};
 use uom::si::time::second;
 
-use crate::server::storage::S3Storage;
-use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
-use crate::weight::Weight;
 use s3io::dataframe::{prefix_column_names, H3DataFrame};
+
+use crate::server::api::generated::RouteWkb;
+use crate::server::storage::S3Storage;
+use crate::server::util::{
+    spawn_blocking_status, stream_dataframe, stream_routewkbs, ArrowRecordBatchStream,
+    RouteWkbStream,
+};
+use crate::weight::Weight;
 
 pub struct H3ShortestPathParameters<W: Send + Sync> {
     graph: Arc<PreparedH3EdgeGraph<W>>,
@@ -68,19 +74,29 @@ where
     })
 }
 
+async fn spawn_h3_shortest_path<F, R, E>(func: F) -> std::result::Result<R, Status>
+where
+    F: FnOnce() -> std::result::Result<R, E> + Send + 'static,
+    E: Debug + Send + 'static,
+    R: Send + 'static,
+{
+    Ok(spawn_blocking_status(func).await?.map_err(|e| {
+        log::error!("calculating h3 shortest path failed: {:?}", e);
+        Status::internal("calculating h3 shortest path failed")
+    })?)
+}
+
 pub async fn h3_shortest_path<W: 'static + Send + Sync>(
     parameters: H3ShortestPathParameters<W>,
 ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status>
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {
-    let df = spawn_blocking_status(move || h3_shortest_path_internal(parameters))
-        .await?
-        .map_err(|e| {
-            log::error!("calculating h3 shortest path failed: {:?}", e);
-            Status::internal("calculating h3 shortest path failed")
-        })?;
-    stream_dataframe(uuid::Uuid::new_v4().to_string(), df).await
+    stream_dataframe(
+        uuid::Uuid::new_v4().to_string(),
+        spawn_h3_shortest_path(move || h3_shortest_path_internal(parameters)).await?,
+    )
+    .await
 }
 
 static COL_H3INDEX_DESTINATION: &str = "h3index_cell_destination";
@@ -174,4 +190,30 @@ where
     }
 
     Ok(shortest_path_df)
+}
+
+pub async fn h3_shortest_path_routes<W: 'static + Send + Sync>(
+    parameters: H3ShortestPathParameters<W>,
+) -> std::result::Result<Response<RouteWkbStream>, Status>
+where
+    W: Send + Sync + Ord + Copy + Add + Zero + Weight,
+{
+    let routes = spawn_h3_shortest_path(move || {
+        parameters.graph.shortest_path_many_to_many(
+            &parameters.origin_cells,
+            &parameters.destination_cells,
+            &parameters.options,
+        )
+    })
+    .await?
+    .drain()
+    .map(|(_k, v)| v)
+    .flatten()
+    .map(|p| RouteWkb::from_path(&p))
+    .collect::<std::result::Result<Vec<_>, _>>()
+    .map_err(|e| {
+        log::error!("building routes failed: {:?}", e);
+        Status::internal("building routes failed")
+    })?;
+    stream_routewkbs(routes).await
 }

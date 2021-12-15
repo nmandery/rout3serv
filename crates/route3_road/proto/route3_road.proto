@@ -106,7 +106,6 @@ message H3ShortestPathRequest {
   ShortestPathOptions options = 4;
 }
 
-
 /** A single Arrow RecordBatch in Arrow IPC File format */
 message ArrowRecordBatch {
   /** id of the object this batch belongs to - if there is any */
@@ -155,6 +154,7 @@ service Route3Road {
   rpc ListDatasets(Empty) returns (ListDatasetsResponse) {}
 
   rpc H3ShortestPath(H3ShortestPathRequest) returns (stream ArrowRecordBatch);
+  rpc H3ShortestPathRoutes(H3ShortestPathRequest) returns (stream RouteWKB);
 
   /** differential shortest path based on the population dataset */
   rpc DifferentialShortestPath(DifferentialShortestPathRequest)

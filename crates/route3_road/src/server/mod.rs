@@ -18,7 +18,9 @@ use crate::server::api::generated::{
     ListDatasetsResponse, ListGraphsResponse, VersionResponse,
 };
 use crate::server::storage::S3Storage;
-use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
+use crate::server::util::{
+    spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream, RouteWkbStream,
+};
 use crate::weight::RoadWeight;
 
 mod api;
@@ -96,6 +98,17 @@ impl Route3Road for ServerImpl {
         let parameters =
             shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
         shortest_path::h3_shortest_path(parameters).await
+    }
+
+    type H3ShortestPathRoutesStream = RouteWkbStream;
+
+    async fn h3_shortest_path_routes(
+        &self,
+        request: Request<H3ShortestPathRequest>,
+    ) -> std::result::Result<Response<Self::H3ShortestPathRoutesStream>, Status> {
+        let parameters =
+            shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        shortest_path::h3_shortest_path_routes(parameters).await
     }
 
     type DifferentialShortestPathStream = ArrowRecordBatchStream;
