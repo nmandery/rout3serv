@@ -8,7 +8,7 @@ use h3ron::io::{deserialize_from, serialize_into};
 use h3ron::iter::change_cell_resolution;
 use h3ron::H3Cell;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
-use polars_core::prelude::*;
+use polars_core::prelude::DataFrame;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::task::block_in_place;
@@ -65,10 +65,7 @@ where
         )
     }
 
-    pub async fn store_output<O: Serialize + StrId>(
-        &self,
-        output: &O,
-    ) -> std::result::Result<(), Status> {
+    pub async fn store_output<O: Serialize + StrId>(&self, output: &O) -> Result<(), Status> {
         let serialized = block_in_place(move || {
             let mut serialized: Vec<u8> = Default::default();
             match serialize_into(&mut serialized, output, true) {
@@ -98,7 +95,7 @@ where
     pub async fn retrieve_output<I: AsRef<str>, O: DeserializeOwned>(
         &self,
         id: I,
-    ) -> std::result::Result<O, Status> {
+    ) -> Result<O, Status> {
         let object_ref = ObjectRef::new(self.config.output.bucket.clone(), self.output_s3_key(id));
         match self.s3_client.get_object_bytes(object_ref.clone()).await {
             Ok(bytes) => {
@@ -123,7 +120,7 @@ where
         }
     }
 
-    pub async fn load_graph_cache_keys(&self) -> std::result::Result<Vec<GraphCacheKey>, Status> {
+    pub async fn load_graph_cache_keys(&self) -> Result<Vec<GraphCacheKey>, Status> {
         let gcks = self.graph_store.list().await.map_err(|e| {
             log::error!("loading graph list failed: {:?}", e);
             Status::internal("loading graph list failed")
@@ -134,7 +131,7 @@ where
     pub async fn load_graph(
         &self,
         graph_cache_key: &GraphCacheKey,
-    ) -> std::result::Result<Arc<PreparedH3EdgeGraph<W>>, Status> {
+    ) -> Result<Arc<PreparedH3EdgeGraph<W>>, Status> {
         match self.graph_store.load(graph_cache_key).await {
             Ok(graph) => Ok(graph),
             Err(FetchError::Fetch(inner)) => match inner.as_ref() {
@@ -154,7 +151,7 @@ where
     pub async fn load_graph_from_option(
         &self,
         graph_handle: &Option<GraphHandle>,
-    ) -> std::result::Result<(Arc<PreparedH3EdgeGraph<W>>, GraphCacheKey), Status> {
+    ) -> Result<(Arc<PreparedH3EdgeGraph<W>>, GraphCacheKey), Status> {
         if let Some(gh) = graph_handle {
             let gck: GraphCacheKey = gh.try_into().map_err(|e| {
                 log::warn!("invalid graph handle: {:?}", e);
@@ -166,10 +163,7 @@ where
         }
     }
 
-    pub fn get_dataset_config<B>(
-        &self,
-        dataset_name: B,
-    ) -> std::result::Result<&GenericDataset, Status>
+    pub fn get_dataset_config<B>(&self, dataset_name: B) -> Result<&GenericDataset, Status>
     where
         B: Borrow<String>,
     {
@@ -189,7 +183,7 @@ where
         dataset_config: &GenericDataset,
         cells: &[H3Cell],
         data_h3_resolution: u8,
-    ) -> std::result::Result<H3DataFrame, Status> {
+    ) -> Result<H3DataFrame, Status> {
         let mut h3dataframe = self
             .recordbatch_loader
             .load_h3_dataset_dataframe(dataset_config, cells, data_h3_resolution)
@@ -221,7 +215,7 @@ where
         &self,
         cell_selection: &CellSelection,
         h3_resolution: u8,
-    ) -> std::result::Result<(Vec<H3Cell>, Option<H3DataFrame>), Status> {
+    ) -> Result<(Vec<H3Cell>, Option<H3DataFrame>), Status> {
         // build a complete list of the requested h3cells transformed to the
         // correct resolution
         let mut cells: Vec<_> = change_cell_resolution(

@@ -10,7 +10,7 @@ use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPat
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
-use polars_core::prelude::*;
+use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use rayon::prelude::*;
 use s3io::dataframe::H3DataFrame;
 use serde::de::DeserializeOwned;
@@ -55,7 +55,7 @@ pub struct DspInput<W: Send + Sync> {
 pub async fn collect_input<W: Send + Sync>(
     mut request: DifferentialShortestPathRequest,
     storage: Arc<S3Storage<W>>,
-) -> std::result::Result<DspInput<W>, Status>
+) -> Result<DspInput<W>, Status>
 where
     W: Serialize + DeserializeOwned,
 {
@@ -130,11 +130,11 @@ where
 fn destination_cells(
     destinations: Vec<super::api::generated::Point>,
     h3_resolution: u8,
-) -> std::result::Result<Vec<H3Cell>, Status> {
+) -> Result<Vec<H3Cell>, Status> {
     let mut destination_cells = destinations
         .iter()
         .map(|pt| H3Cell::from_coordinate(&Coordinate::from((pt.x, pt.y)), h3_resolution))
-        .collect::<std::result::Result<Vec<_>, _>>()
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|e| {
             log::error!("can not convert the target_points to h3: {:?}", e);
             Status::internal("can not convert the target_points to h3")
@@ -148,7 +148,7 @@ fn disturbance_and_buffered_cells(
     h3_resolution: u8,
     disturbance_wkb_geometry: Vec<u8>,
     radius_meters: f64,
-) -> std::result::Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
+) -> Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
     let disturbance_geom = read_wkb_to_gdal(&disturbance_wkb_geometry)?;
     let disturbed_cells: H3Treemap<H3Cell> =
         gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
@@ -401,9 +401,7 @@ where
     Ok(df)
 }
 
-pub fn disturbance_statistics<W: Send + Sync>(
-    output: &DspOutput<W>,
-) -> std::result::Result<DataFrame, Status>
+pub fn disturbance_statistics<W: Send + Sync>(output: &DspOutput<W>) -> Result<DataFrame, Status>
 where
     W: Weight,
 {
@@ -416,7 +414,7 @@ where
 
 pub fn build_routes_response<W: Send + Sync>(
     diff: &ExclusionDiff<Path<W>>,
-) -> std::result::Result<DifferentialShortestPathRoutes, Status>
+) -> Result<DifferentialShortestPathRoutes, Status>
 where
     W: Weight,
 {
@@ -425,12 +423,12 @@ where
             .before_cell_exclusion
             .iter()
             .map(|path| RouteWkb::from_path(path))
-            .collect::<std::result::Result<_, _>>()?,
+            .collect::<Result<_, _>>()?,
         routes_with_disturbance: diff
             .after_cell_exclusion
             .iter()
             .map(|path| RouteWkb::from_path(path))
-            .collect::<std::result::Result<_, _>>()?,
+            .collect::<Result<_, _>>()?,
     };
     Ok(response)
 }

@@ -49,7 +49,7 @@ pub type RouteWkbStream = ReceiverStream<Result<RouteWkb, Status>>;
 pub async fn stream_dataframe(
     id: String,
     dataframe: DataFrame,
-) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
+) -> Result<Response<ArrowRecordBatchStream>, Status> {
     let df_shape = dataframe.shape();
     let recordbatches = to_streamable_recordbatches(
         dataframe.as_record_batches().map_err(|e| {
@@ -73,7 +73,7 @@ pub async fn stream_dataframe(
 async fn stream_recordbatches(
     id: String,
     mut recordbatches: Vec<RecordBatch>,
-) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
+) -> Result<Response<ArrowRecordBatchStream>, Status> {
     let (tx, rx) = mpsc::channel(5);
     tokio::spawn(async move {
         for recordbatch in recordbatches.drain(..) {
@@ -94,7 +94,7 @@ async fn stream_recordbatches(
 /// stream `RouteWKB` instances
 pub async fn stream_routewkbs(
     mut routewkbs: Vec<RouteWkb>,
-) -> std::result::Result<Response<RouteWkbStream>, Status> {
+) -> Result<Response<RouteWkbStream>, Status> {
     let (tx, rx) = mpsc::channel(5);
     tokio::spawn(async move {
         for routewkb in routewkbs.drain(..) {

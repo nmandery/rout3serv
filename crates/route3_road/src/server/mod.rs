@@ -1,7 +1,6 @@
 use std::convert::TryFrom;
 use std::sync::Arc;
 
-use eyre::Result;
 use h3ron::collections::H3CellSet;
 use h3ron::H3Cell;
 use tokio::sync::mpsc;
@@ -35,7 +34,7 @@ struct ServerImpl {
 }
 
 impl ServerImpl {
-    pub async fn create(config: ServerConfig) -> Result<Self> {
+    pub async fn create(config: ServerConfig) -> eyre::Result<Self> {
         let storage = Arc::new(S3Storage::<RoadWeight>::from_config(Arc::new(config))?);
         Ok(Self { storage })
     }
@@ -43,10 +42,7 @@ impl ServerImpl {
 
 #[tonic::async_trait]
 impl Route3Road for ServerImpl {
-    async fn version(
-        &self,
-        _request: Request<Empty>,
-    ) -> std::result::Result<Response<VersionResponse>, Status> {
+    async fn version(&self, _request: Request<Empty>) -> Result<Response<VersionResponse>, Status> {
         Ok(Response::new(VersionResponse {
             version: crate::build_info::version().to_string(),
             git_commit_sha: crate::build_info::git_comit_sha().to_string(),
@@ -94,7 +90,7 @@ impl Route3Road for ServerImpl {
     async fn h3_shortest_path(
         &self,
         request: Request<H3ShortestPathRequest>,
-    ) -> std::result::Result<Response<Self::H3ShortestPathStream>, Status> {
+    ) -> Result<Response<Self::H3ShortestPathStream>, Status> {
         let parameters =
             shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
         shortest_path::h3_shortest_path(parameters).await
@@ -105,7 +101,7 @@ impl Route3Road for ServerImpl {
     async fn h3_shortest_path_routes(
         &self,
         request: Request<H3ShortestPathRequest>,
-    ) -> std::result::Result<Response<Self::H3ShortestPathRoutesStream>, Status> {
+    ) -> Result<Response<Self::H3ShortestPathRoutesStream>, Status> {
         let parameters =
             shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
         shortest_path::h3_shortest_path_routes(parameters).await
@@ -116,7 +112,7 @@ impl Route3Road for ServerImpl {
     async fn differential_shortest_path(
         &self,
         request: Request<DifferentialShortestPathRequest>,
-    ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
+    ) -> Result<Response<ArrowRecordBatchStream>, Status> {
         let dsp_request = request.into_inner();
         let input =
             differential_shortest_path::collect_input(dsp_request, self.storage.clone()).await?;
@@ -151,7 +147,7 @@ impl Route3Road for ServerImpl {
     async fn get_differential_shortest_path(
         &self,
         request: Request<IdRef>,
-    ) -> std::result::Result<Response<ArrowRecordBatchStream>, Status> {
+    ) -> Result<Response<ArrowRecordBatchStream>, Status> {
         let inner = request.into_inner();
         let output: differential_shortest_path::DspOutput<RoadWeight> = self
             .storage
@@ -208,7 +204,7 @@ impl Route3Road for ServerImpl {
     }
 }
 
-pub fn launch_server(server_config: ServerConfig) -> Result<()> {
+pub fn launch_server(server_config: ServerConfig) -> eyre::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
@@ -216,7 +212,7 @@ pub fn launch_server(server_config: ServerConfig) -> Result<()> {
     Ok(())
 }
 
-async fn run_server(server_config: ServerConfig) -> Result<()> {
+async fn run_server(server_config: ServerConfig) -> eyre::Result<()> {
     let addr = server_config.bind_to.parse()?;
     log::info!("creating server");
     let server_impl = ServerImpl::create(server_config).await?;

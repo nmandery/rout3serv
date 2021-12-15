@@ -11,7 +11,7 @@ use h3ron::{H3Cell, ToH3Cells};
 use tonic::Status;
 
 /// read binary WKB into a gdal `Geometry`
-pub fn read_wkb_to_gdal(wkb_bytes: &[u8]) -> std::result::Result<Geometry, Status> {
+pub fn read_wkb_to_gdal(wkb_bytes: &[u8]) -> Result<Geometry, Status> {
     Geometry::from_wkb(wkb_bytes).map_err(|_e| Status::invalid_argument("Can not parse WKB"))
 }
 
@@ -20,7 +20,7 @@ pub fn gdal_geom_to_h3(
     geom: &Geometry,
     h3_resolution: u8,
     include_centroid: bool,
-) -> std::result::Result<IndexVec<H3Cell>, Status> {
+) -> Result<IndexVec<H3Cell>, Status> {
     let gt_geom: GTGeometry<f64> = geom.clone().try_into().map_err(|e| {
         log::error!("Converting GDAL geometry to geo-types failed: {:?}", e);
         Status::internal("unsupported geometry")
@@ -77,7 +77,7 @@ fn buffer_meters_internal(geom: &Geometry, meters: f64) -> eyre::Result<Geometry
 }
 
 /// convert a geotypes `Geometry` to WKB using GDAL
-pub fn to_wkb(geom: &GTGeometry<f64>) -> std::result::Result<Vec<u8>, Status> {
+pub fn to_wkb(geom: &GTGeometry<f64>) -> Result<Vec<u8>, Status> {
     let bytes = to_wkb_internal(geom).map_err(|e| {
         log::error!("can not encode geometry to wkb: {:?}", e);
         Status::internal("can not encode wkb")

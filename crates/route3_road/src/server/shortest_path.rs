@@ -8,7 +8,7 @@ use h3ron_graph::algorithm::shortest_path::{ShortestPathManyToMany, ShortestPath
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
-use polars_core::prelude::*;
+use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tonic::{Response, Status};
@@ -36,7 +36,7 @@ pub struct H3ShortestPathParameters<W: Send + Sync> {
 pub async fn create_parameters<W: Send + Sync>(
     request: super::api::generated::H3ShortestPathRequest,
     storage: Arc<S3Storage<W>>,
-) -> std::result::Result<H3ShortestPathParameters<W>, Status>
+) -> Result<H3ShortestPathParameters<W>, Status>
 where
     W: Serialize + DeserializeOwned,
 {
@@ -74,9 +74,9 @@ where
     })
 }
 
-async fn spawn_h3_shortest_path<F, R, E>(func: F) -> std::result::Result<R, Status>
+async fn spawn_h3_shortest_path<F, R, E>(func: F) -> Result<R, Status>
 where
-    F: FnOnce() -> std::result::Result<R, E> + Send + 'static,
+    F: FnOnce() -> Result<R, E> + Send + 'static,
     E: Debug + Send + 'static,
     R: Send + 'static,
 {
@@ -88,7 +88,7 @@ where
 
 pub async fn h3_shortest_path<W: 'static + Send + Sync>(
     parameters: H3ShortestPathParameters<W>,
-) -> std::result::Result<Response<ArrowRecordBatchStream>, Status>
+) -> Result<Response<ArrowRecordBatchStream>, Status>
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {
@@ -194,7 +194,7 @@ where
 
 pub async fn h3_shortest_path_routes<W: 'static + Send + Sync>(
     parameters: H3ShortestPathParameters<W>,
-) -> std::result::Result<Response<RouteWkbStream>, Status>
+) -> Result<Response<RouteWkbStream>, Status>
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {
@@ -210,7 +210,7 @@ where
     .map(|(_k, v)| v)
     .flatten()
     .map(|p| RouteWkb::from_path(&p))
-    .collect::<std::result::Result<Vec<_>, _>>()
+    .collect::<Result<Vec<_>, _>>()
     .map_err(|e| {
         log::error!("building routes failed: {:?}", e);
         Status::internal("building routes failed")

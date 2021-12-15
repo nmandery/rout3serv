@@ -59,7 +59,7 @@ impl From<GraphCacheKey> for GraphInfo {
 impl TryFrom<&GraphHandle> for GraphCacheKey {
     type Error = Report;
 
-    fn try_from(gh: &GraphHandle) -> std::result::Result<Self, Self::Error> {
+    fn try_from(gh: &GraphHandle) -> Result<Self, Self::Error> {
         if gh.name.is_empty() {
             return Err(Report::msg("empty graph name"));
         }
