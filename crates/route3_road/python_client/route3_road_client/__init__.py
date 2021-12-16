@@ -10,7 +10,7 @@ from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 
 from . import route3_road_pb2
-from .route3_road_pb2 import GraphHandle
+from .route3_road_pb2 import GraphHandle, RouteWKB, RouteH3Indexes
 from .route3_road_pb2_grpc import Route3RoadStub
 
 DEFAULT_PORT = 7088
@@ -37,7 +37,7 @@ def _to_cell_selection(arg, **kwargs) -> route3_road_pb2.CellSelection:
 def _build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, destination_cells,
                                     num_destinations_to_reach: int = 3,
                                     num_gap_cells_to_graph: int = 1,
-                                    ) -> Tuple[str, Optional[pa.Table]]:
+                                    ) -> route3_road_pb2.H3ShortestPathRequest:
     shortest_path_options = route3_road_pb2.ShortestPathOptions()
     shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
     shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
@@ -81,15 +81,38 @@ class Server:
                                               num_gap_cells_to_graph=num_gap_cells_to_graph)
         return _arrowrecordbatch_to_table(self.stub.H3ShortestPath(req))
 
-    def h3_shortest_path_routes(self, graph_handle: GraphHandle, origin_cells, destination_cells,
-                                num_destinations_to_reach: int = 3,
-                                num_gap_cells_to_graph: int = 1,
-                                ) -> "GeoDataFrame":
+    def h3_shortest_path_routes(self, *a, **kw) -> typing.Generator[RouteWKB, None, None]:
+        """generator to yield the calculated routes as RouteWKB objects
+
+        Arguments are the same as in `Server.h3_shortest_path`.
+        """
+        for route in self.stub.H3ShortestPathRoutes(_build_h3_shortest_path_request(*a, **kw)):
+            yield route
+
+    def h3_shortest_path_cells(self, *a, **kw) -> typing.Generator[RouteH3Indexes, None, None]:
+        """generator to yield the calculated routes as cells in RouteH3Indexes objects
+
+        Arguments are the same as in `Server.h3_shortest_path`.
+        """
+        for route in self.stub.H3ShortestPathCells(_build_h3_shortest_path_request(*a, **kw)):
+            yield route
+
+    def h3_shortest_path_edges(self, *a, **kw) -> typing.Generator[RouteH3Indexes, None, None]:
+        """generator to yield the calculated routes as edges in RouteH3Indexes objects
+
+        Arguments are the same as in `Server.h3_shortest_path`.
+        """
+        for route in self.stub.H3ShortestPathEdges(_build_h3_shortest_path_request(*a, **kw)):
+            yield route
+
+    def h3_shortest_path_linestrings(self, *a, **kw) -> "GeoDataFrame":
+        """returns a geodataframe of the calculates routes. Routes are returned as
+        linestring geometries.
+
+        Arguments are the same as in `Server.h3_shortest_path`.
+        """
         from geopandas import GeoDataFrame
         import numpy as np
-        req = _build_h3_shortest_path_request(graph_handle, origin_cells, destination_cells,
-                                              num_destinations_to_reach=num_destinations_to_reach,
-                                              num_gap_cells_to_graph=num_gap_cells_to_graph)
 
         geoms = []
         h3index_origin = []
@@ -97,7 +120,7 @@ class Server:
         travel_duration_secs = []
         category_weight = []
 
-        for route in self.stub.H3ShortestPathRoutes(req):
+        for route in self.h3_shortest_path_routes(*a, **kw):
             h3index_origin.append(route.origin_cell)
             h3index_destination.append(route.destination_cell)
             travel_duration_secs.append(route.travel_duration_secs)
