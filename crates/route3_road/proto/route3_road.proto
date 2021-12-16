@@ -95,6 +95,16 @@ message RouteWKB {
   bytes wkb = 5;
 }
 
+message RouteH3Indexes {
+  uint64 origin_cell = 1;
+  uint64 destination_cell = 2;
+  double travel_duration_secs = 3;
+  double category_weight = 4;
+
+  /** h3indexes ordered from origin_cell to destination_cell */
+  repeated uint64 h3indexes = 5;
+}
+
 message H3ShortestPathRequest {
 
   /** the graph to use */
@@ -153,8 +163,11 @@ service Route3Road {
   rpc ListGraphs(Empty) returns (ListGraphsResponse) {}
   rpc ListDatasets(Empty) returns (ListDatasetsResponse) {}
 
+  /* shortest path */
   rpc H3ShortestPath(H3ShortestPathRequest) returns (stream ArrowRecordBatch);
   rpc H3ShortestPathRoutes(H3ShortestPathRequest) returns (stream RouteWKB);
+  rpc H3ShortestPathCells(H3ShortestPathRequest) returns (stream RouteH3Indexes);
+  rpc H3ShortestPathEdges(H3ShortestPathRequest) returns (stream RouteH3Indexes);
 
   /** differential shortest path based on the population dataset */
   rpc DifferentialShortestPath(DifferentialShortestPathRequest)

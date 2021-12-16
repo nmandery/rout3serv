@@ -11,8 +11,10 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 
-use crate::server::api::generated::{ArrowRecordBatch, RouteWkb};
 use s3io::dataframe::{recordbatch_to_bytes, H3DataFrame};
+
+use crate::server::api::generated::ArrowRecordBatch;
+use crate::server::api::Route;
 
 /// wrapper around tokios `spawn_blocking` to directly
 /// return the `JoinHandle` as a tonic `Status`.
@@ -42,8 +44,6 @@ pub trait StrId {
 
 /// type for a stream of ArrowRecordBatches to a GRPC client
 pub type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
-
-pub type RouteWkbStream = ReceiverStream<Result<RouteWkb, Status>>;
 
 /// respond with a dataframe as a stream of `RecordBatch` instances.
 pub async fn stream_dataframe(
@@ -92,14 +92,17 @@ async fn stream_recordbatches(
 }
 
 /// stream `RouteWKB` instances
-pub async fn stream_routewkbs(
-    mut routewkbs: Vec<RouteWkb>,
-) -> Result<Response<RouteWkbStream>, Status> {
+pub async fn stream_routes<R>(
+    mut routewkbs: Vec<R>,
+) -> Result<Response<ReceiverStream<Result<R, Status>>>, Status>
+where
+    R: Route + Send + 'static,
+{
     let (tx, rx) = mpsc::channel(5);
     tokio::spawn(async move {
         for routewkb in routewkbs.drain(..) {
             if let Err(e) = tx.send(Ok(routewkb)).await {
-                log::warn!("Streaming routewkbs aborted. reason: {}", e);
+                log::warn!("Streaming routes aborted. reason: {}", e);
                 break;
             }
         }

@@ -11,16 +11,16 @@ use ordered_float::OrderedFloat;
 use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 use uom::si::time::second;
 
 use s3io::dataframe::{prefix_column_names, H3DataFrame};
 
-use crate::server::api::generated::RouteWkb;
+use crate::server::api::Route;
 use crate::server::storage::S3Storage;
 use crate::server::util::{
-    spawn_blocking_status, stream_dataframe, stream_routewkbs, ArrowRecordBatchStream,
-    RouteWkbStream,
+    spawn_blocking_status, stream_dataframe, stream_routes, ArrowRecordBatchStream,
 };
 use crate::weight::Weight;
 
@@ -192,11 +192,15 @@ where
     Ok(shortest_path_df)
 }
 
-pub async fn h3_shortest_path_routes<W: 'static + Send + Sync>(
+pub async fn h3_shortest_path_routes<W: 'static + Send + Sync, R, F, E>(
     parameters: H3ShortestPathParameters<W>,
-) -> Result<Response<RouteWkbStream>, Status>
+    transformer: F,
+) -> Result<Response<ReceiverStream<Result<R, Status>>>, Status>
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
+    R: Route + Send + 'static,
+    E: Debug,
+    F: FnMut(Path<W>) -> Result<R, E>,
 {
     let routes = spawn_h3_shortest_path(move || {
         parameters.graph.shortest_path_many_to_many(
@@ -209,11 +213,11 @@ where
     .drain()
     .map(|(_k, v)| v)
     .flatten()
-    .map(|p| RouteWkb::from_path(&p))
+    .map(transformer)
     .collect::<Result<Vec<_>, _>>()
     .map_err(|e| {
         log::error!("building routes failed: {:?}", e);
         Status::internal("building routes failed")
     })?;
-    stream_routewkbs(routes).await
+    stream_routes(routes).await
 }

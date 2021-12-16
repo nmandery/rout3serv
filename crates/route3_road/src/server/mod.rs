@@ -14,12 +14,11 @@ use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadSe
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
     DifferentialShortestPathRoutesRequest, Empty, H3ShortestPathRequest, IdRef,
-    ListDatasetsResponse, ListGraphsResponse, VersionResponse,
+    ListDatasetsResponse, ListGraphsResponse, RouteH3Indexes, RouteWkb, VersionResponse,
 };
+use crate::server::api::RouteH3IndexesKind;
 use crate::server::storage::S3Storage;
-use crate::server::util::{
-    spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream, RouteWkbStream,
-};
+use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
 use crate::weight::RoadWeight;
 
 mod api;
@@ -96,7 +95,7 @@ impl Route3Road for ServerImpl {
         shortest_path::h3_shortest_path(parameters).await
     }
 
-    type H3ShortestPathRoutesStream = RouteWkbStream;
+    type H3ShortestPathRoutesStream = ReceiverStream<Result<RouteWkb, Status>>;
 
     async fn h3_shortest_path_routes(
         &self,
@@ -104,7 +103,35 @@ impl Route3Road for ServerImpl {
     ) -> Result<Response<Self::H3ShortestPathRoutesStream>, Status> {
         let parameters =
             shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
-        shortest_path::h3_shortest_path_routes(parameters).await
+        shortest_path::h3_shortest_path_routes(parameters, |p| RouteWkb::from_path(&p)).await
+    }
+
+    type H3ShortestPathCellsStream = ReceiverStream<Result<RouteH3Indexes, Status>>;
+
+    async fn h3_shortest_path_cells(
+        &self,
+        request: Request<H3ShortestPathRequest>,
+    ) -> Result<Response<Self::H3ShortestPathCellsStream>, Status> {
+        let parameters =
+            shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        shortest_path::h3_shortest_path_routes(parameters, |p| {
+            RouteH3Indexes::from_path(&p, RouteH3IndexesKind::Cells)
+        })
+        .await
+    }
+
+    type H3ShortestPathEdgesStream = ReceiverStream<Result<RouteH3Indexes, Status>>;
+
+    async fn h3_shortest_path_edges(
+        &self,
+        request: Request<H3ShortestPathRequest>,
+    ) -> Result<Response<Self::H3ShortestPathEdgesStream>, Status> {
+        let parameters =
+            shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        shortest_path::h3_shortest_path_routes(parameters, |p| {
+            RouteH3Indexes::from_path(&p, RouteH3IndexesKind::Edges)
+        })
+        .await
     }
 
     type DifferentialShortestPathStream = ArrowRecordBatchStream;
