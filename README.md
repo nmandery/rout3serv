@@ -1,6 +1,6 @@
 # Contents
 
-see [crates](crates/README.md)
+see crates directory 
 
 # License
 
