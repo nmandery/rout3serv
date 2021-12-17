@@ -1,10 +1,10 @@
-use std::convert::Infallible;
+use axum::body;
 use std::io::Cursor;
 
-use axum::body::{Bytes, Full};
+use axum::body::{BoxBody, Full};
 use axum::http::header::CONTENT_TYPE;
-use axum::http::{Response, StatusCode};
-use axum::response::IntoResponse;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use h3ron::{FromH3Index, H3Cell};
 use polars_core::prelude::{DataFrame, Utf8Chunked};
 use polars_io::SerWriter;
@@ -60,10 +60,7 @@ impl OutDataFrame {
 }
 
 impl IntoResponse for OutDataFrame {
-    type Body = Full<Bytes>;
-    type BodyError = Infallible;
-
-    fn into_response(self) -> Response<Self::Body> {
+    fn into_response(self) -> Response {
         log::debug!(
             "responding with dataframe with shape {:?}",
             self.dataframe.shape()
@@ -73,13 +70,13 @@ impl IntoResponse for OutDataFrame {
             Err(err) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .header(axum::http::header::CONTENT_TYPE, "text/plain")
-                .body(Full::from(err.to_string()))
+                .body(body::boxed(Full::from(err.to_string())))
                 .unwrap(),
         }
     }
 }
 
-fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<Full<Bytes>>> {
+fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>> {
     let mut bytes = vec![];
     let status = if outdf.dataframe.is_empty() {
         StatusCode::NO_CONTENT
@@ -124,6 +121,6 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<Full<Byte
         .header(CONTENT_TYPE, outdf.output_format.content_type())
         .header("X-H3-Resolution", outdf.h3_resolution.to_string())
         .header("X-Shape", format!("{:?}", outdf.dataframe.shape()))
-        .body(bytes.into())
+        .body(body::boxed(Full::from(bytes)))
         .unwrap())
 }

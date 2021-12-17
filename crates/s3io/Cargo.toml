@@ -24,7 +24,7 @@ features = ["serde"]
 package = "arrow2"
 version = "0.8"
 default-features = false
-features=["io_ipc", "io_parquet", "io_ipc_compression", "io_parquet_compression"]
+features = ["io_ipc", "io_parquet", "io_ipc_compression", "io_parquet_compression"]
 
 [dependencies.serde]
 version = "1"
@@ -56,6 +56,6 @@ features = [
 ]
 
 [dependencies.backoff]
-version = "0.3"
+version = "0.4"
 features = ["tokio_1", "futures", "tokio"]
 

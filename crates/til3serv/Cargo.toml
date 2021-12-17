@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "^0.3"
+axum = "^0.4"
 clap = "^2.33"
 env_logger = "0.9"
 eyre = "0.6"
@@ -43,11 +43,11 @@ version = "0.18"
 features = ["ipc", "json", "parquet", "csv-file", "csv-core"]
 
 [dependencies.tower-http]
-version = "^0.1"
+version = "^0.2"
 features = ["compression-full", "trace"]
 
 [dependencies.s3io]
 path = "../s3io"
 
 [build-dependencies]
-vergen = { version = "5", features = ["rustc", "build"] }
+vergen = { version = "6", features = ["rustc", "build"] }
