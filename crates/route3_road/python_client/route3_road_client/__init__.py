@@ -46,6 +46,7 @@ def _to_cell_selection(arg, **kwargs) -> route3_road_pb2.CellSelection:
 def build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, destination_cells,
                                    num_destinations_to_reach: int = 3,
                                    num_gap_cells_to_graph: int = 1,
+                                   smoothen_geometries: bool = False,
                                    ) -> route3_road_pb2.H3ShortestPathRequest:
     shortest_path_options = route3_road_pb2.ShortestPathOptions()
     shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
@@ -56,6 +57,7 @@ def build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, dest
     request.options.MergeFrom(shortest_path_options)
     request.origins.MergeFrom(_to_cell_selection(origin_cells))
     request.destinations.MergeFrom(_to_cell_selection(destination_cells))
+    request.smoothen_geometries = smoothen_geometries
     return request
 
 
@@ -89,9 +91,10 @@ def build_differential_shortest_path_request(graph_handle: GraphHandle, disturba
 
 
 def build_differential_shortest_path_routes_request(object_id: str, cells: typing.Iterable[
-    int]) -> route3_road_pb2.DifferentialShortestPathRoutesRequest:
+    int], smoothen_geometries: bool = False) -> route3_road_pb2.DifferentialShortestPathRoutesRequest:
     request = route3_road_pb2.DifferentialShortestPathRoutesRequest()
     request.object_id = object_id
+    request.smoothen_geometries = smoothen_geometries
     for cell in cells:
         request.cells.append(cell)
     return request
@@ -154,13 +157,14 @@ class Server:
         req.object_id = object_id
         return _arrowrecordbatch_to_table(self.stub.GetDifferentialShortestPath(req))
 
-    def get_differential_shortest_path_routes(self, object_id: str, cells: typing.Iterable[int]) -> "GeoDataFrame":
+    def get_differential_shortest_path_routes(self, object_id: str, cells: typing.Iterable[int],
+                                              smoothen_geometries: bool = False) -> "GeoDataFrame":
         """returns a `GeoDataframe` containing the linestrings of the routes originating from the given cells.
 
         requires geopandas
         """
         response = self.stub.GetDifferentialShortestPathRoutes(
-            build_differential_shortest_path_routes_request(object_id, cells))
+            build_differential_shortest_path_routes_request(object_id, cells, smoothen_geometries=smoothen_geometries))
         return _get_differential_shortest_path_routes_gdf(response)
 
 

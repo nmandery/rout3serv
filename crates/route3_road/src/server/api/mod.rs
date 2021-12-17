@@ -1,7 +1,8 @@
 use std::convert::TryFrom;
 
 use eyre::Report;
-use geo::algorithm::simplify::Simplify;
+use geo::chaikin_smoothing::ChaikinSmoothing;
+use geo::simplify::Simplify;
 use geo_types::Geometry;
 use h3ron::{H3Cell, Index};
 use h3ron_graph::algorithm::path::Path;
@@ -29,19 +30,30 @@ fn cell_h3index(cell_result: Result<H3Cell, h3ron_graph::error::Error>) -> u64 {
     cell_result.map(|c| c.h3index()).unwrap_or(0)
 }
 
+const SIMPLIFICATION_EPSILON: f64 = 0.00001;
+
 impl RouteWkb {
-    pub fn from_path<T>(path: &Path<T>) -> Result<Self, Status>
+    pub fn from_path<T>(path: &Path<T>, smoothen: bool) -> Result<Self, Status>
     where
         T: Weight,
     {
-        let wkb_bytes = to_wkb(&Geometry::LineString(
-            path.to_linestring()
-                .map_err(|e| {
-                    log::error!("can not build linestring from path: {:?}", e);
-                    Status::internal("can not build linestring from path")
-                })?
-                .simplify(&0.00001), // remove redundant vertices,
-        ))?;
+        let mut linestring = path
+            .to_linestring()
+            .map_err(|e| {
+                log::error!("can not build linestring from path: {:?}", e);
+                Status::internal("can not build linestring from path")
+            })?
+            // remove redundant vertices
+            .simplify(&SIMPLIFICATION_EPSILON);
+
+        if smoothen {
+            // apply only one iteration to break edges
+            linestring = linestring
+                .chaikin_smoothing(1)
+                .simplify(&SIMPLIFICATION_EPSILON);
+        }
+
+        let wkb_bytes = to_wkb(&Geometry::LineString(linestring))?;
         Ok(Self {
             origin_cell: cell_h3index(path.origin_cell()),
             destination_cell: cell_h3index(path.destination_cell()),

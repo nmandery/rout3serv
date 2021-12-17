@@ -414,6 +414,7 @@ where
 
 pub fn build_routes_response<W: Send + Sync>(
     diff: &ExclusionDiff<Path<W>>,
+    smoothen_geometries: bool,
 ) -> Result<DifferentialShortestPathRoutes, Status>
 where
     W: Weight,
@@ -422,12 +423,12 @@ where
         routes_without_disturbance: diff
             .before_cell_exclusion
             .iter()
-            .map(|path| RouteWkb::from_path(path))
+            .map(|path| RouteWkb::from_path(path, smoothen_geometries))
             .collect::<Result<_, _>>()?,
         routes_with_disturbance: diff
             .after_cell_exclusion
             .iter()
-            .map(|path| RouteWkb::from_path(path))
+            .map(|path| RouteWkb::from_path(path, smoothen_geometries))
             .collect::<Result<_, _>>()?,
     };
     Ok(response)

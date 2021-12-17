@@ -84,6 +84,10 @@ message CellSelection {
 
 message DifferentialShortestPathRoutesRequest {
   string object_id = 1;
+
+  /** apply a slight smoothing to any returned geometries to break sharp edges */
+  bool smoothen_geometries = 2;
+
   repeated uint64 cells = 3;
 }
 
@@ -114,6 +118,9 @@ message H3ShortestPathRequest {
   CellSelection destinations = 3;
 
   ShortestPathOptions options = 4;
+
+  /** apply a slight smoothing to any returned geometries to break sharp edges */
+  bool smoothen_geometries = 5;
 }
 
 /** A single Arrow RecordBatch in Arrow IPC File format */

@@ -10,7 +10,6 @@ async-trait = "0.1"
 clap = "^2.33"
 env_logger = "0.9"
 eyre = "0.6"
-geo = "0.18"
 lazy_static = "1.4"
 log = "0.4"
 prost = "0.9"
@@ -23,6 +22,11 @@ serde_yaml = "0.8"
 num-traits = "0.2"
 approx = "0.5"
 ordered-float = "2.8.0"
+
+[dependencies.geo]
+# version = "0.18"
+git = "https://github.com/georust/geo.git"
+rev = "75b17e5a74ce279eb06c715d7d9e03b53b68364c" # for chaikin smoothing
 
 [dependencies.s3io]
 path = "../s3io"

@@ -101,9 +101,13 @@ impl Route3Road for ServerImpl {
         &self,
         request: Request<H3ShortestPathRequest>,
     ) -> Result<Response<Self::H3ShortestPathRoutesStream>, Status> {
-        let parameters =
-            shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
-        shortest_path::h3_shortest_path_routes(parameters, |p| RouteWkb::from_path(&p)).await
+        let req = request.into_inner();
+        let smoothen_geometries = req.smoothen_geometries;
+        let parameters = shortest_path::create_parameters(req, self.storage.clone()).await?;
+        shortest_path::h3_shortest_path_routes(parameters, |p| {
+            RouteWkb::from_path(&p, smoothen_geometries)
+        })
+        .await
     }
 
     type H3ShortestPathCellsStream = ReceiverStream<Result<RouteH3Indexes, Status>>;
@@ -218,7 +222,10 @@ impl Route3Road for ServerImpl {
             for (origin_cell, diff) in output.differential_shortest_paths.iter() {
                 if cell_lookup.contains(origin_cell) {
                     if let Err(e) = tx
-                        .send(differential_shortest_path::build_routes_response(diff))
+                        .send(differential_shortest_path::build_routes_response(
+                            diff,
+                            inner.smoothen_geometries,
+                        ))
                         .await
                     {
                         log::warn!("streaming of routes aborted. reason: {}", e);
