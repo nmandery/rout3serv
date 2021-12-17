@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 
 use eyre::Report;
+use geo::algorithm::simplify::Simplify;
 use geo_types::Geometry;
 use h3ron::{H3Cell, Index};
 use h3ron_graph::algorithm::path::Path;
@@ -33,12 +34,14 @@ impl RouteWkb {
     where
         T: Weight,
     {
-        let wkb_bytes = to_wkb(&Geometry::LineString(path.to_linestring().map_err(
-            |e| {
-                log::error!("can not build linestring from path: {:?}", e);
-                Status::internal("can not build linestring from path")
-            },
-        )?))?;
+        let wkb_bytes = to_wkb(&Geometry::LineString(
+            path.to_linestring()
+                .map_err(|e| {
+                    log::error!("can not build linestring from path: {:?}", e);
+                    Status::internal("can not build linestring from path")
+                })?
+                .simplify(&0.00001), // remove redundant vertices,
+        ))?;
         Ok(Self {
             origin_cell: cell_h3index(path.origin_cell()),
             destination_cell: cell_h3index(path.destination_cell()),
