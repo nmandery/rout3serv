@@ -37,21 +37,19 @@ impl RouteWkb {
     where
         T: Weight,
     {
-        let mut linestring = path
-            .to_linestring()
-            .map_err(|e| {
-                log::error!("can not build linestring from path: {:?}", e);
-                Status::internal("can not build linestring from path")
-            })?
-            // remove redundant vertices
-            .simplify(&SIMPLIFICATION_EPSILON);
+        let mut linestring = path.to_linestring().map_err(|e| {
+            log::error!("can not build linestring from path: {:?}", e);
+            Status::internal("can not build linestring from path")
+        })?;
 
         if smoothen {
             // apply only one iteration to break edges
-            linestring = linestring
-                .chaikin_smoothing(1)
-                .simplify(&SIMPLIFICATION_EPSILON);
+            linestring = linestring.chaikin_smoothing(1);
         }
+
+        // remove redundant vertices. This reduces the amount of data to transfer
+        // without losing any significant information
+        linestring = linestring.simplify(&SIMPLIFICATION_EPSILON);
 
         let wkb_bytes = to_wkb(&Geometry::LineString(linestring))?;
         Ok(Self {
