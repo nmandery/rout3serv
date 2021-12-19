@@ -104,7 +104,7 @@ impl Route3Road for ServerImpl {
         let req = request.into_inner();
         let smoothen_geometries = req.smoothen_geometries;
         let parameters = shortest_path::create_parameters(req, self.storage.clone()).await?;
-        shortest_path::h3_shortest_path_routes(parameters, |p| {
+        shortest_path::h3_shortest_path_routes(parameters, move |p| {
             RouteWkb::from_path(&p, smoothen_geometries)
         })
         .await
@@ -118,7 +118,7 @@ impl Route3Road for ServerImpl {
     ) -> Result<Response<Self::H3ShortestPathCellsStream>, Status> {
         let parameters =
             shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
-        shortest_path::h3_shortest_path_routes(parameters, |p| {
+        shortest_path::h3_shortest_path_routes(parameters, move |p| {
             RouteH3Indexes::from_path(&p, RouteH3IndexesKind::Cells)
         })
         .await
@@ -132,7 +132,7 @@ impl Route3Road for ServerImpl {
     ) -> Result<Response<Self::H3ShortestPathEdgesStream>, Status> {
         let parameters =
             shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
-        shortest_path::h3_shortest_path_routes(parameters, |p| {
+        shortest_path::h3_shortest_path_routes(parameters, move |p| {
             RouteH3Indexes::from_path(&p, RouteH3IndexesKind::Edges)
         })
         .await

@@ -199,25 +199,31 @@ pub async fn h3_shortest_path_routes<W: 'static + Send + Sync, R, F, E>(
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
     R: Route + Send + 'static,
-    E: Debug,
-    F: FnMut(Path<W>) -> Result<R, E>,
+    E: Debug + Send + 'static,
+    F: FnMut(Path<W>) -> Result<R, E> + Send + 'static,
 {
-    let routes = spawn_h3_shortest_path(move || {
-        parameters.graph.shortest_path_many_to_many(
+    let routes = spawn_blocking_status(move || {
+        match parameters.graph.shortest_path_many_to_many(
             &parameters.origin_cells,
             &parameters.destination_cells,
             &parameters.options,
-        )
+        ) {
+            Ok(mut pathmap) => pathmap
+                .drain()
+                .map(|(_k, v)| v)
+                .flatten()
+                .map(transformer)
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| {
+                    log::error!("transforming routes failed: {:?}", e);
+                    Status::internal("transforming routes failed")
+                }),
+            Err(e) => {
+                log::error!("calculating h3 shortest path failed: {:?}", e);
+                Err(Status::internal("calculating h3 shortest path failed"))
+            }
+        }
     })
-    .await?
-    .drain()
-    .map(|(_k, v)| v)
-    .flatten()
-    .map(transformer)
-    .collect::<Result<Vec<_>, _>>()
-    .map_err(|e| {
-        log::error!("building routes failed: {:?}", e);
-        Status::internal("building routes failed")
-    })?;
+    .await??;
     stream_routes(routes).await
 }
