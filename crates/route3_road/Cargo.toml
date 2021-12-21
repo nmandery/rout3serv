@@ -50,15 +50,15 @@ version = "0.1"
 default_features = false
 
 [dependencies.h3ron]
-version = "0.13"
-#git = "https://github.com/nmandery/h3ron.git"
-#rev = "05acba1f88865301feecd19383643705fc755db8"
+#version = "0.13"
+git = "https://github.com/nmandery/h3ron.git"
+rev = "7abae910657f47efd43859c03febdf2e0a5c41d7"
 features = ["io", "use-rayon", "use-roaring", "use-serde"]
 
 [dependencies.h3ron-graph]
-version = "0.2"
-#git = "https://github.com/nmandery/h3ron.git"
-#rev = "05acba1f88865301feecd19383643705fc755db8"
+#version = "0.2"
+git = "https://github.com/nmandery/h3ron.git"
+rev = "7abae910657f47efd43859c03febdf2e0a5c41d7"
 features = ["use-gdal", "osm"]
 
 [dependencies.uuid]
@@ -86,7 +86,7 @@ version = "0.22"
 features = ["geo-types"]
 
 [dependencies.gdal]
-version = "0.10.0"
+version = "0.11.0"
 features = ["bindgen"]
 
 [dependencies.tower-http]

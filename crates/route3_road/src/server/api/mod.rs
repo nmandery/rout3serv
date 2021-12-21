@@ -74,20 +74,15 @@ impl RouteH3Indexes {
         T: Weight,
     {
         let h3indexes = match kind {
-            RouteH3IndexesKind::Cells => {
-                let mut edges_h3indexes = Vec::with_capacity(path.len() * 2);
-                for edge in path.edges() {
-                    edges_h3indexes.push(edge.origin_index_unchecked().h3index() as u64);
-                    edges_h3indexes.push(edge.destination_index_unchecked().h3index() as u64);
-                }
-                edges_h3indexes.dedup();
-                edges_h3indexes.shrink_to_fit();
-                edges_h3indexes
-            }
+            RouteH3IndexesKind::Cells => path
+                .cells()
+                .iter()
+                .map(|cell| cell.h3index() as u64)
+                .collect(),
             RouteH3IndexesKind::Edges => path
                 .edges()
                 .iter()
-                .map(|cell| cell.h3index() as u64)
+                .map(|edge| edge.h3index() as u64)
                 .collect(),
         };
         Ok(Self {

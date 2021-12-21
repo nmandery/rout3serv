@@ -28,7 +28,9 @@ features = [
 ]
 
 [dependencies.h3ron]
-version = "0.13"
+#version = "0.13"
+git = "https://github.com/nmandery/h3ron.git"
+rev = "7abae910657f47efd43859c03febdf2e0a5c41d7"
 
 [dependencies.serde]
 version = "1"
