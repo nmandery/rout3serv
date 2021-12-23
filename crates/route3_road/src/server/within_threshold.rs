@@ -13,7 +13,7 @@ use tonic::{Response, Status};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
-use s3io::dataframe::{prefix_column_names, H3DataFrame};
+use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::storage::S3Storage;
 use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
@@ -132,15 +132,8 @@ where
     ])?;
 
     // join origin dataframe if there is any
-    if let Some(mut origin_h3df) = parameters.origin_dataframe {
-        // add prefix for origin columns
-        prefix_column_names(&mut origin_h3df.dataframe, "origin_")?;
-
-        df = df.inner_join(
-            &origin_h3df.dataframe,
-            names::COL_H3INDEX_ORIGIN,
-            format!("origin_{}", origin_h3df.h3index_column_name).as_str(),
-        )?;
+    if let Some(origin_h3df) = parameters.origin_dataframe {
+        inner_join_h3dataframe(&mut df, names::COL_H3INDEX_ORIGIN, origin_h3df, "origin_")?
     }
     Ok(df)
 }

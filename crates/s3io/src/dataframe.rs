@@ -180,6 +180,24 @@ pub fn prefix_column_names(dataframe: &mut DataFrame, prefix: &str) -> Result<()
     Ok(())
 }
 
+/// inner-join a [`H3DataFrame`] to the given `dataframe` using the specified `prefix`
+pub fn inner_join_h3dataframe(
+    dataframe: &mut DataFrame,
+    dataframe_h3index_column: &str,
+    mut h3dataframe: H3DataFrame,
+    prefix: &str,
+) -> Result<(), Error> {
+    // add prefix for origin columns
+    prefix_column_names(&mut h3dataframe.dataframe, prefix)?;
+
+    *dataframe = dataframe.inner_join(
+        &h3dataframe.dataframe,
+        dataframe_h3index_column,
+        format!("{}{}", prefix, h3dataframe.h3index_column_name).as_str(),
+    )?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use h3ron::{H3Cell, Index};

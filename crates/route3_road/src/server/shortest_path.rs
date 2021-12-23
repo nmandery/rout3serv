@@ -15,7 +15,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 use uom::si::time::second;
 
-use s3io::dataframe::{prefix_column_names, H3DataFrame};
+use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::api::Route;
 use crate::server::names;
@@ -165,25 +165,21 @@ where
         ])?
     };
 
-    if let Some(mut origin_h3df) = parameters.origin_dataframe {
-        // add prefix for origin columns
-        prefix_column_names(&mut origin_h3df.dataframe, "origin_")?;
-
-        shortest_path_df = shortest_path_df.inner_join(
-            &origin_h3df.dataframe,
+    if let Some(origin_h3df) = parameters.origin_dataframe {
+        inner_join_h3dataframe(
+            &mut shortest_path_df,
             names::COL_H3INDEX_ORIGIN,
-            format!("origin_{}", origin_h3df.h3index_column_name).as_str(),
+            origin_h3df,
+            "origin_",
         )?;
     }
 
-    if let Some(mut destination_h3df) = parameters.destination_dataframe {
-        // add prefix for destination columns
-        prefix_column_names(&mut destination_h3df.dataframe, "dest_")?;
-
-        shortest_path_df = shortest_path_df.left_join(
-            &destination_h3df.dataframe,
+    if let Some(destination_h3df) = parameters.destination_dataframe {
+        inner_join_h3dataframe(
+            &mut shortest_path_df,
             names::COL_H3INDEX_DESTINATION,
-            format!("dest_{}", destination_h3df.h3index_column_name).as_str(),
+            destination_h3df,
+            "dest_",
         )?;
     }
 
