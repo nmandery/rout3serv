@@ -212,9 +212,10 @@ impl Route3Road for ServerImpl {
             let cell_lookup: H3CellSet = inner
                 .cells
                 .iter()
-                .filter_map(|h3index| match H3Cell::try_from(*h3index) {
-                    Ok(cell) => Some(cell),
-                    Err(_) => {
+                .filter_map(|h3index| {
+                    if let Ok(cell) = H3Cell::try_from(*h3index) {
+                        Some(cell)
+                    } else {
                         log::warn!("received invalid h3index: {}", h3index);
                         None
                     }

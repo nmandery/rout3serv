@@ -129,8 +129,10 @@ fn main() -> Result<()> {
                 ),
         );
 
-    let matches = app.get_matches();
+    dispatch_command(app.get_matches())
+}
 
+fn dispatch_command(matches: ArgMatches) -> Result<()> {
     match matches.subcommand() {
         ("graph", Some(graph_sc_matches)) => match graph_sc_matches.subcommand() {
             ("stats", Some(sc_matches)) => {

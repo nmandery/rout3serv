@@ -224,10 +224,9 @@ impl S3Client {
             request_payer: None,
         };
         match self.s3.list_objects(list_req).await {
-            Ok(lo_output) => Ok(lo_output
-                .contents
-                .map(|mut objects| objects.drain(..).filter_map(|object| object.key).collect())
-                .unwrap_or_else(Vec::new)),
+            Ok(lo_output) => Ok(lo_output.contents.map_or_else(Vec::new, |mut objects| {
+                objects.drain(..).filter_map(|object| object.key).collect()
+            })),
             Err(e) => {
                 log::error!(
                     "list_object_keys: bucket={}, key={} -> {}",

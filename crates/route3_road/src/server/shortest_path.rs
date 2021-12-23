@@ -204,8 +204,7 @@ where
         ) {
             Ok(mut pathmap) => pathmap
                 .drain()
-                .map(|(_k, v)| v)
-                .flatten()
+                .flat_map(|(_k, v)| v)
                 .map(transformer)
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| {

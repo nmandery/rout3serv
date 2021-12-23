@@ -100,7 +100,7 @@ where
     // use the minimum weight encountered
     let agg_fn = |existing: &mut W, new: W| {
         if new < *existing {
-            *existing = new
+            *existing = new;
         }
     };
 
@@ -133,7 +133,7 @@ where
 
     // join origin dataframe if there is any
     if let Some(origin_h3df) = parameters.origin_dataframe {
-        inner_join_h3dataframe(&mut df, names::COL_H3INDEX_ORIGIN, origin_h3df, "origin_")?
+        inner_join_h3dataframe(&mut df, names::COL_H3INDEX_ORIGIN, origin_h3df, "origin_")?;
     }
     Ok(df)
 }

@@ -98,7 +98,7 @@ where
         tokio::task::block_in_place(|| {
             disturbance_and_buffered_cells(
                 graph.h3_resolution(),
-                disturbance_wkb_geometry,
+                &disturbance_wkb_geometry,
                 radius_meters,
             )
         })?
@@ -146,10 +146,10 @@ fn destination_cells(
 
 fn disturbance_and_buffered_cells(
     h3_resolution: u8,
-    disturbance_wkb_geometry: Vec<u8>,
+    disturbance_wkb_geometry: &[u8],
     radius_meters: f64,
 ) -> Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
-    let disturbance_geom = read_wkb_to_gdal(&disturbance_wkb_geometry)?;
+    let disturbance_geom = read_wkb_to_gdal(disturbance_wkb_geometry)?;
     let disturbed_cells: H3Treemap<H3Cell> =
         gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
             .drain()
@@ -190,7 +190,7 @@ where
     let origin_cells: Vec<H3Cell> = {
         let origin_cells: Vec<H3Cell> = {
             let mut origin_cells = Vec::with_capacity(input.within_buffer.len());
-            for cell in input.within_buffer.iter() {
+            for cell in &input.within_buffer {
                 // exclude the cells of the disturbance itself as well as all origin cells without
                 // any population from routing
                 if input.ref_dataframe_cells.contains(cell) && !input.disturbance.contains(cell) {
@@ -316,8 +316,7 @@ where
     let preferred_destination = |paths: &[Path<W>]| -> Option<u64> {
         paths
             .first()
-            .map(|p| p.destination_cell().ok())
-            .flatten()
+            .and_then(|p| p.destination_cell().ok())
             .map(|cell| cell.h3index() as u64)
     };
 
@@ -338,7 +337,7 @@ where
         Vec::with_capacity(output.differential_shortest_paths.len());
     let mut preferred_destination_with_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
-    for (origin_cell, diff) in output.differential_shortest_paths.iter() {
+    for (origin_cell, diff) in &output.differential_shortest_paths {
         cell_h3indexes.push(origin_cell.h3index() as u64);
         //population_at_origin.push(output.population_at_origins.get(origin_cell).cloned());
 

@@ -16,7 +16,7 @@ impl FileFormat {
     pub fn from_filename(filename: &str) -> Result<Self, Error> {
         let normalized_filename = filename.trim().to_lowercase();
         let path = Path::new(normalized_filename.as_str());
-        match path.extension().map(|os| os.to_str()).flatten() {
+        match path.extension().and_then(|os| os.to_str()) {
             Some("arrow") => Ok(Self::ArrowIPC),
             Some("parquet") | Some("pq") => Ok(Self::Parquet),
             _ => Err(Error::UnidentifiedFileFormat(filename.to_string())),

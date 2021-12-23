@@ -56,12 +56,10 @@ where
     fn output_s3_key<I: AsRef<str>>(&self, id: I) -> String {
         format!(
             "{}.bincode.lz",
-            self.config
-                .output
-                .key_prefix
-                .as_ref()
-                .map(|prefix| format!("{}{}", prefix, id.as_ref()))
-                .unwrap_or_else(|| id.as_ref().to_string())
+            self.config.output.key_prefix.as_ref().map_or_else(
+                || id.as_ref().to_string(),
+                |prefix| format!("{}{}", prefix, id.as_ref())
+            )
         )
     }
 
@@ -134,13 +132,14 @@ where
     ) -> Result<Arc<PreparedH3EdgeGraph<W>>, Status> {
         match self.graph_store.load(graph_cache_key).await {
             Ok(graph) => Ok(graph),
-            Err(FetchError::Fetch(inner)) => match inner.as_ref() {
-                s3io::Error::NotFound => Err(Status::not_found("graph not found")),
-                _ => {
+            Err(FetchError::Fetch(inner)) => {
+                if let s3io::Error::NotFound = inner.as_ref() {
+                    Err(Status::not_found("graph not found"))
+                } else {
                     log::error!("could not load graph: {:?}", inner);
                     Err(Status::internal("could not load graph"))
                 }
-            },
+            }
             Err(e) => {
                 log::error!("could not load graph: {:?}", e);
                 Err(Status::internal("could not load graph"))
@@ -219,16 +218,14 @@ where
         // build a complete list of the requested h3cells transformed to the
         // correct resolution
         let mut cells: Vec<_> = change_cell_resolution(
-            cell_selection
-                .cells
-                .iter()
-                .filter_map(|v| match H3Cell::try_from(*v) {
-                    Ok(cell) => Some(cell),
-                    Err(_) => {
-                        log::warn!("invalid h3 index {} ignored", v);
-                        None
-                    }
-                }),
+            cell_selection.cells.iter().filter_map(|v| {
+                if let Ok(cell) = H3Cell::try_from(*v) {
+                    Some(cell)
+                } else {
+                    log::warn!("invalid h3 index {} ignored", v);
+                    None
+                }
+            }),
             h3_resolution,
         )
         .collect();
@@ -270,7 +267,7 @@ fn filter_cells_by_dataframe_contents(
         .column(h3index_column_name)?
         .u64()?
         .into_iter()
-        .filter_map(|v| v.map(|i| H3Cell::try_from(i).ok()).flatten())
+        .filter_map(|v| v.and_then(|i| H3Cell::try_from(i).ok()))
         .collect();
 
     Ok(input_cells
