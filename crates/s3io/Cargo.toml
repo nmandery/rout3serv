@@ -33,7 +33,7 @@ features = ["derive"]
 [dependencies.h3ron]
 #version = "0.13"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "7abae910657f47efd43859c03febdf2e0a5c41d7"
+rev = "04687ea6c93ebb3bff49b4d398a80c3901180674"
 features = ["io", "use-rayon", "use-roaring", "use-serde"]
 
 [dependencies.hyper-tls]
