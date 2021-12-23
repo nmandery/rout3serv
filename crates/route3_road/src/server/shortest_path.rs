@@ -18,6 +18,7 @@ use uom::si::time::second;
 use s3io::dataframe::{prefix_column_names, H3DataFrame};
 
 use crate::server::api::Route;
+use crate::server::names;
 use crate::server::storage::S3Storage;
 use crate::server::util::{
     spawn_blocking_status, stream_dataframe, stream_routes, ArrowRecordBatchStream,
@@ -99,9 +100,6 @@ where
     .await
 }
 
-static COL_H3INDEX_DESTINATION: &str = "h3index_cell_destination";
-static COL_H3INDEX_ORIGIN: &str = "h3index_cell_origin";
-
 fn h3_shortest_path_internal<W: Send + Sync>(
     parameters: H3ShortestPathParameters<W>,
 ) -> eyre::Result<DataFrame>
@@ -159,11 +157,11 @@ where
             }
         }
         DataFrame::new(vec![
-            Series::new(COL_H3INDEX_ORIGIN, origin_cell_vec),
-            Series::new(COL_H3INDEX_DESTINATION, destination_cell_vec),
-            Series::new("path_length_meters", path_cell_length_m_vec),
-            Series::new("travel_duration_secs", travel_duration_secs_vec),
-            Series::new("road_category_weight", road_category_weight_vec),
+            Series::new(names::COL_H3INDEX_ORIGIN, origin_cell_vec),
+            Series::new(names::COL_H3INDEX_DESTINATION, destination_cell_vec),
+            Series::new(names::COL_PATH_LENGTH_METERS, path_cell_length_m_vec),
+            Series::new(names::COL_TRAVEL_DURATION_SECS, travel_duration_secs_vec),
+            Series::new(names::COL_ROAD_CATEGORY_WEIGHT, road_category_weight_vec),
         ])?
     };
 
@@ -173,7 +171,7 @@ where
 
         shortest_path_df = shortest_path_df.inner_join(
             &origin_h3df.dataframe,
-            COL_H3INDEX_ORIGIN,
+            names::COL_H3INDEX_ORIGIN,
             format!("origin_{}", origin_h3df.h3index_column_name).as_str(),
         )?;
     }
@@ -184,7 +182,7 @@ where
 
         shortest_path_df = shortest_path_df.left_join(
             &destination_h3df.dataframe,
-            COL_H3INDEX_DESTINATION,
+            names::COL_H3INDEX_DESTINATION,
             format!("dest_{}", destination_h3df.h3index_column_name).as_str(),
         )?;
     }

@@ -17,6 +17,8 @@ pub trait Weight {
     fn category_weight(&self) -> f32 {
         0.0
     }
+
+    fn from_travel_duration(travel_duration: Time) -> Self;
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
@@ -48,6 +50,13 @@ impl Weight for RoadWeight {
 
     fn category_weight(&self) -> f32 {
         self.road_category_weight
+    }
+
+    fn from_travel_duration(travel_duration: Time) -> Self {
+        Self {
+            road_category_weight: 0.0,
+            travel_duration,
+        }
     }
 }
 

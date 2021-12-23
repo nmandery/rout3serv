@@ -13,8 +13,8 @@ use crate::config::ServerConfig;
 use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
-    DifferentialShortestPathRoutesRequest, Empty, H3ShortestPathRequest, IdRef,
-    ListDatasetsResponse, ListGraphsResponse, RouteH3Indexes, RouteWkb, VersionResponse,
+    DifferentialShortestPathRoutesRequest, Empty, H3ShortestPathRequest, H3WithinThresholdRequest,
+    IdRef, ListDatasetsResponse, ListGraphsResponse, RouteH3Indexes, RouteWkb, VersionResponse,
 };
 use crate::server::api::RouteH3IndexesKind;
 use crate::server::storage::S3Storage;
@@ -23,10 +23,12 @@ use crate::weight::RoadWeight;
 
 mod api;
 mod differential_shortest_path;
+mod names;
 mod shortest_path;
 mod storage;
 mod util;
 mod vector;
+mod within_threshold;
 
 struct ServerImpl {
     storage: Arc<S3Storage<RoadWeight>>,
@@ -235,6 +237,17 @@ impl Route3Road for ServerImpl {
             }
         });
         Ok(Response::new(ReceiverStream::new(rx)))
+    }
+
+    type H3CellsWithinThresholdStream = ArrowRecordBatchStream;
+
+    async fn h3_cells_within_threshold(
+        &self,
+        request: Request<H3WithinThresholdRequest>,
+    ) -> Result<Response<Self::H3CellsWithinThresholdStream>, Status> {
+        let parameters =
+            within_threshold::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        within_threshold::within_threshold(parameters).await
     }
 }
 

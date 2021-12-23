@@ -61,6 +61,16 @@ def build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, dest
     return request
 
 
+def build_h3_within_threshold_request(graph_handle: GraphHandle, origin_cells,
+                                      travel_duration_secs_threshold: float = 0.0
+                                      ) -> route3_road_pb2.H3WithinThresholdRequest:
+    request = route3_road_pb2.H3WithinThresholdRequest()
+    request.graph_handle.MergeFrom(graph_handle)
+    request.origins.MergeFrom(_to_cell_selection(origin_cells))
+    request.travel_duration_secs_threshold = travel_duration_secs_threshold
+    return request
+
+
 def build_differential_shortest_path_request(graph_handle: GraphHandle, disturbance_geom: BaseGeometry,
                                              radius_meters: float,
                                              destination_points: typing.Iterable[Point],
@@ -148,6 +158,10 @@ class Server:
         """returns a geodataframe of the calculates routes. Routes are returned as
         linestring geometries."""
         return _h3_shortest_path_linestrings_gdf(self.h3_shortest_path_routes(request))
+
+    def h3_cells_within_threshold(self, request: route3_road_pb2.H3WithinThresholdRequest) -> TableWithId:
+        """graph cells with in a certain threshold of origin cells"""
+        return _arrowrecordbatch_to_table(self.stub.H3CellsWithinThreshold(request))
 
     def differential_shortest_path(self, request: route3_road_pb2.DifferentialShortestPathRequest) -> TableWithId:
         return _arrowrecordbatch_to_table(self.stub.DifferentialShortestPath(request))

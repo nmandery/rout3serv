@@ -64,6 +64,11 @@ class Route3RoadStub(object):
                 request_serializer=route3__road__pb2.DifferentialShortestPathRoutesRequest.SerializeToString,
                 response_deserializer=route3__road__pb2.DifferentialShortestPathRoutes.FromString,
                 )
+        self.H3CellsWithinThreshold = channel.unary_stream(
+                '/route3.road.Route3Road/H3CellsWithinThreshold',
+                request_serializer=route3__road__pb2.H3WithinThresholdRequest.SerializeToString,
+                response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
+                )
 
 
 class Route3RoadServicer(object):
@@ -132,6 +137,13 @@ class Route3RoadServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def H3CellsWithinThreshold(self, request, context):
+        """* graph cells with in a certain threshold of origin cells 
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_Route3RoadServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -184,6 +196,11 @@ def add_Route3RoadServicer_to_server(servicer, server):
                     servicer.GetDifferentialShortestPathRoutes,
                     request_deserializer=route3__road__pb2.DifferentialShortestPathRoutesRequest.FromString,
                     response_serializer=route3__road__pb2.DifferentialShortestPathRoutes.SerializeToString,
+            ),
+            'H3CellsWithinThreshold': grpc.unary_stream_rpc_method_handler(
+                    servicer.H3CellsWithinThreshold,
+                    request_deserializer=route3__road__pb2.H3WithinThresholdRequest.FromString,
+                    response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -362,5 +379,22 @@ class Route3Road(object):
         return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/GetDifferentialShortestPathRoutes',
             route3__road__pb2.DifferentialShortestPathRoutesRequest.SerializeToString,
             route3__road__pb2.DifferentialShortestPathRoutes.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def H3CellsWithinThreshold(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/H3CellsWithinThreshold',
+            route3__road__pb2.H3WithinThresholdRequest.SerializeToString,
+            route3__road__pb2.ArrowRecordBatch.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

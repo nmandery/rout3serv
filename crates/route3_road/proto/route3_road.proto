@@ -164,6 +164,17 @@ message ListDatasetsResponse {
   repeated string dataset_name = 1;
 }
 
+message H3WithinThresholdRequest {
+
+  /** the graph to use */
+  GraphHandle graph_handle = 1;
+
+  CellSelection origins = 2;
+
+  /** travel_duration threshold in seconds */
+  float travel_duration_secs_threshold = 3;
+}
+
 service Route3Road {
   // general methods -------------------------------------
   rpc Version(Empty) returns (VersionResponse) {}
@@ -183,4 +194,7 @@ service Route3Road {
       returns (stream ArrowRecordBatch) {}
   rpc GetDifferentialShortestPathRoutes(DifferentialShortestPathRoutesRequest)
       returns (stream DifferentialShortestPathRoutes) {}
+
+  /** graph cells with in a certain threshold of origin cells */
+  rpc H3CellsWithinThreshold(H3WithinThresholdRequest) returns (stream ArrowRecordBatch);
 }
