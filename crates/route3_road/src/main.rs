@@ -13,7 +13,7 @@ extern crate lazy_static;
 
 use std::convert::{TryFrom, TryInto};
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
 use crate::config::ServerConfig;
@@ -132,13 +132,16 @@ fn main() -> Result<()> {
     dispatch_command(app.get_matches())
 }
 
+fn read_graph_from_filename(filename: &str) -> Result<PreparedH3EdgeGraph<RoadWeight>> {
+    Ok(deserialize_from(BufReader::new(File::open(filename)?))?)
+}
+
 fn dispatch_command(matches: ArgMatches) -> Result<()> {
     match matches.subcommand() {
         ("graph", Some(graph_sc_matches)) => match graph_sc_matches.subcommand() {
             ("stats", Some(sc_matches)) => {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-                let prepared_graph: PreparedH3EdgeGraph<RoadWeight> =
-                    deserialize_from(File::open(graph_filename)?)?;
+                let prepared_graph = read_graph_from_filename(&graph_filename)?;
                 println!("{}", serde_yaml::to_string(&prepared_graph.get_stats())?);
             }
             ("to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
@@ -158,9 +161,7 @@ fn dispatch_command(matches: ArgMatches) -> Result<()> {
 
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let prepared_graph: PreparedH3EdgeGraph<RoadWeight> =
-        deserialize_from(File::open(graph_filename)?)?;
-    let graph: H3EdgeGraph<RoadWeight> = prepared_graph.into();
+    let graph: H3EdgeGraph<RoadWeight> = read_graph_from_filename(&graph_filename)?.into();
     graph.ogr_write(
         sc_matches.value_of("driver").unwrap(),
         sc_matches.value_of("OUTPUT").unwrap(),
@@ -171,15 +172,14 @@ fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let prepared_graph: PreparedH3EdgeGraph<RoadWeight> =
-        deserialize_from(File::open(graph_filename)?)?;
+    let prepared_graph = read_graph_from_filename(&graph_filename)?;
 
-    let mut outfile = File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?;
+    let mut writer = BufWriter::new(File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?);
     let multi_poly = prepared_graph.covered_area(2)?;
     let gj_geom = geojson::Geometry::try_from(&multi_poly)?;
-    outfile.write_all(gj_geom.to_string().as_ref())?;
+    writer.write_all(gj_geom.to_string().as_ref())?;
 
-    outfile.flush()?;
+    writer.flush()?;
     Ok(())
 }
 
@@ -217,7 +217,7 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
         stats.num_nodes,
         stats.num_edges
     );
-    let mut out_file = File::create(graph_output)?;
-    serialize_into(&mut out_file, &prepared_graph, true)?;
+    let mut writer = BufWriter::new(File::create(graph_output)?);
+    serialize_into(&mut writer, &prepared_graph, true)?;
     Ok(())
 }
