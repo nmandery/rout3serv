@@ -1,5 +1,7 @@
 # route3_road
 
+![](doc/within-threshold.gif)
+
 Routing server with GRPC-API and dataframe integration.
 
 Features:
