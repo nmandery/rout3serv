@@ -1,6 +1,10 @@
+![](crates/route3_road/doc/within-threshold.gif)
+
 # Contents
 
-see crates directory 
+* [Routing server](crates/route3_road/README.md) with GRPC-API and dataframe integration.
+* [Tileserver](crates/til3serv/README.md) to be used with Web maps in Web-Mercator projection.
+* For all libraries see crates directory 
 
 # License
 
