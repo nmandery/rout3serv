@@ -23,32 +23,34 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
         // TODO: make use of `access` tag: https://wiki.openstreetmap.org/wiki/Key:access
         if let Some(highway_value) = tags.get("highway") {
             let highway_class = highway_value.to_lowercase();
-            match highway_class.as_str() {
+            let (category_weight, estimated_speed_reduction_percent) = match highway_class.as_str()
+            {
                 "motorway" | "motorway_link" | "trunk" | "trunk_link" | "primary"
-                | "primary_link" => Some(3.0),
-                "secondary" | "secondary_link" => Some(4.0),
-                "tertiary" | "tertiary_link" => Some(5.0),
-                "unclassified" | "residential" | "living_street" | "service" | "rural" => Some(8.0),
-                "road" => Some(9.0),
-                // "track" => Some(200.0), // mostly non-public agriculture/forestry roads
-                "pedestrian" | "footway" => Some(50.0), // fussgängerzone
-                _ => None,
-            }
-            .map(|category_weight| {
-                // oneway streets (https://wiki.openstreetmap.org/wiki/Key:oneway)
-                // NOTE: reversed direction "oneway=-1" is not supported
-                let is_bidirectional = tags
-                    .get("oneway")
-                    .map(|v| v.to_lowercase() != "yes")
-                    .unwrap_or(true);
-
-                let max_speed = infer_max_speed(tags, &highway_class);
-
-                CarWayProperties {
-                    max_speed,
-                    category_weight,
-                    is_bidirectional,
+                | "primary_link" => (3.0, 1.0),
+                "secondary" | "secondary_link" => (4.0, 0.9),
+                "tertiary" | "tertiary_link" => (5.0, 0.8),
+                "unclassified" | "residential" | "living_street" | "service" | "rural" => {
+                    (8.0, 0.95)
                 }
+                "road" => (9.0, 0.9),
+                // "track" => Some(200.0), // mostly non-public agriculture/forestry roads
+                "pedestrian" | "footway" => (50.0, 1.0), // fussgängerzone
+                _ => return None,
+            };
+            // oneway streets (https://wiki.openstreetmap.org/wiki/Key:oneway)
+            // NOTE: reversed direction "oneway=-1" is not supported
+            let is_bidirectional = tags
+                .get("oneway")
+                .map(|v| v.to_lowercase() != "yes")
+                .unwrap_or(true);
+
+            let max_speed =
+                infer_max_speed(tags, &highway_class) * estimated_speed_reduction_percent;
+
+            Some(CarWayProperties {
+                max_speed,
+                category_weight,
+                is_bidirectional,
             })
         } else {
             None
@@ -62,9 +64,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
     ) -> EdgeProperties<RoadWeight> {
         let weight = RoadWeight::new(
             way_properties.category_weight,
-            Length::new::<meter>(edge.cell_centroid_distance_m() as f32)
-                / way_properties.max_speed
-                / 0.9, /* you never reach max_speed on average roads*/
+            Length::new::<meter>(edge.cell_centroid_distance_m() as f32) / way_properties.max_speed,
         );
         EdgeProperties {
             is_bidirectional: way_properties.is_bidirectional,
