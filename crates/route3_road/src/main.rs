@@ -16,9 +16,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
-use crate::config::ServerConfig;
-use crate::osm::car::CarAnalyzer;
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, ArgMatches};
 use eyre::Result;
 use h3ron::io::{deserialize_from, serialize_into};
 use h3ron::H3Edge;
@@ -30,6 +28,8 @@ use mimalloc::MiMalloc;
 use uom::si::f32::Length;
 use uom::si::length::meter;
 
+use crate::config::ServerConfig;
+use crate::osm::car::CarAnalyzer;
 use crate::weight::RoadWeight;
 
 #[global_allocator]
@@ -58,61 +58,61 @@ fn main() -> Result<()> {
         .long_version(long_version.as_str())
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
-            SubCommand::with_name("graph")
+            App::new("graph")
                 .about("Commands related to graph creation and export")
                 .subcommand(
-                    SubCommand::with_name("stats")
+                    App::new("stats")
                         .about("Load a graph and print some basic stats")
-                        .arg(Arg::with_name("GRAPH").help("graph").required(true)),
+                        .arg(Arg::new("GRAPH").help("graph").required(true)),
                 )
                 .subcommand(
-                    SubCommand::with_name("covered-area")
+                    App::new("covered-area")
                         .about("Extract the area covered by the graph as geojson")
-                        .arg(Arg::with_name("GRAPH").help("graph").required(true))
+                        .arg(Arg::new("GRAPH").help("graph").required(true))
                         .arg(
-                            Arg::with_name("OUT-GEOJSON")
+                            Arg::new("OUT-GEOJSON")
                                 .help("output file to write the geojson geometry to")
                                 .required(true),
                         ),
                 )
                 .subcommand(
-                    SubCommand::with_name("to-ogr")
+                    App::new("to-ogr")
                         .about("Export the input graph to an OGR vector dataset")
-                        .arg(Arg::with_name("GRAPH").help("graph").required(true))
+                        .arg(Arg::new("GRAPH").help("graph").required(true))
                         .arg(
-                            Arg::with_name("OUTPUT")
+                            Arg::new("OUTPUT")
                                 .help("output file to write the vector data to")
                                 .required(true),
                         )
                         .arg(
-                            Arg::with_name("driver")
+                            Arg::new("driver")
                                 .help("OGR driver to use")
-                                .short("d")
+                                .short('d')
                                 .default_value("FlatGeobuf"),
                         )
                         .arg(
-                            Arg::with_name("layer_name")
+                            Arg::new("layer_name")
                                 .help("layer name")
-                                .short("l")
+                                .short('l')
                                 .default_value("graph"),
                         ),
                 )
                 .subcommand(
-                    SubCommand::with_name("from-osm-pbf")
+                    App::new("from-osm-pbf")
                         .about("Build a routing graph from an OSM PBF file")
                         .arg(
-                            Arg::with_name("h3_resolution")
-                                .short("r")
+                            Arg::new("h3_resolution")
+                                .short('r')
                                 .takes_value(true)
                                 .default_value("10"),
                         )
                         .arg(
-                            Arg::with_name("OUTPUT-GRAPH")
+                            Arg::new("OUTPUT-GRAPH")
                                 .help("output file to write the graph to")
                                 .required(true),
                         )
                         .arg(
-                            Arg::with_name("OSM-PBF")
+                            Arg::new("OSM-PBF")
                                 .help("input OSM .pbf file")
                                 .required(true)
                                 .min_values(1),
@@ -120,13 +120,11 @@ fn main() -> Result<()> {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("server")
-                .about("Start the GRPC server")
-                .arg(
-                    Arg::with_name("CONFIG-FILE")
-                        .help("server configuration file")
-                        .required(true),
-                ),
+            App::new("server").about("Start the GRPC server").arg(
+                Arg::new("CONFIG-FILE")
+                    .help("server configuration file")
+                    .required(true),
+            ),
         );
 
     dispatch_command(app.get_matches())
@@ -138,20 +136,20 @@ fn read_graph_from_filename(filename: &str) -> Result<PreparedH3EdgeGraph<RoadWe
 
 fn dispatch_command(matches: ArgMatches) -> Result<()> {
     match matches.subcommand() {
-        ("graph", Some(graph_sc_matches)) => match graph_sc_matches.subcommand() {
-            ("stats", Some(sc_matches)) => {
+        Some(("graph", graph_sc_matches)) => match graph_sc_matches.subcommand() {
+            Some(("stats", sc_matches)) => {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
                 let prepared_graph = read_graph_from_filename(&graph_filename)?;
                 println!("{}", serde_yaml::to_string(&prepared_graph.get_stats())?);
             }
-            ("to-ogr", Some(sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
-            ("covered-area", Some(sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
-            ("from-osm-pbf", Some(sc_matches)) => subcommand_from_osm_pbf(sc_matches)?,
+            Some(("to-ogr", sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
+            Some(("covered-area", sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
+            Some(("from-osm-pbf", sc_matches)) => subcommand_from_osm_pbf(sc_matches)?,
             _ => {
                 println!("unknown subcommand");
             }
         },
-        ("server", Some(sc_matches)) => subcommand_server(sc_matches)?,
+        Some(("server", sc_matches)) => subcommand_server(sc_matches)?,
         _ => {
             println!("unknown subcommand");
         }

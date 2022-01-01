@@ -8,7 +8,7 @@
     nonstandard_style
 )]
 
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, ArgMatches};
 use eyre::Result;
 
 use crate::config::ServerConfig;
@@ -41,19 +41,17 @@ fn main() -> Result<()> {
         .long_version(long_version.as_str())
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
-            SubCommand::with_name("server")
-                .about("Start the HTTP server")
-                .arg(
-                    Arg::with_name("CONFIG-FILE")
-                        .help("server configuration file")
-                        .required(true),
-                ),
+            App::new("server").about("Start the HTTP server").arg(
+                Arg::new("CONFIG-FILE")
+                    .help("server configuration file")
+                    .required(true),
+            ),
         );
 
     let matches = app.get_matches();
 
     match matches.subcommand() {
-        ("server", Some(sc_matches)) => subcommand_server(sc_matches)?,
+        Some(("server", sc_matches)) => subcommand_server(sc_matches)?,
         _ => {
             println!("unknown subcommand");
         }

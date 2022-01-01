@@ -7,7 +7,7 @@ license = "MIT"
 
 [dependencies]
 async-trait = "0.1"
-clap = "^2.33"
+clap = "^3"
 env_logger = "0.9"
 eyre = "0.6"
 lazy_static = "1.4"
