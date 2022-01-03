@@ -1,47 +1,80 @@
+use std::convert::Infallible;
+use std::str::FromStr;
+
 use h3ron_graph::formats::osm::osmpbfreader::Tags;
 use regex::{Captures, Regex};
 use uom::si::f32::Velocity;
 use uom::si::velocity::{kilometer_per_hour, knot, meter_per_second, mile_per_hour};
 
-macro_rules! kmh {
-    ($val:expr) => {
-        Velocity::new::<kilometer_per_hour>($val as f32)
-    };
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum MaxSpeed {
+    Limited(Velocity),
+    Unlimited,
+    Unknown,
 }
 
-macro_rules! some_kmh {
-    ($val:expr) => {
-        Some(kmh!($val))
-    };
-}
-
-pub fn infer_maxspeed(tags: &Tags, highway_class: &str) -> Velocity {
-    let max_kmh = tags
-        .get("maxspeed") // most specific limit first
-        .map(|value| parse_maxspeed(value.trim().to_lowercase().as_str()))
-        .flatten()
-        .or_else(|| {
-            tags.get("zone:maxspeed") // general limit for the zone
-                .map(|value| parse_zone_maxspeed(value.trim().to_lowercase().as_str()))
-                .flatten()
-        });
-
-    match highway_class {
-        // TODO: use this to derive the category
-        "motorway" | "motorway_link" | "primary" | "primary_link" => {
-            max_kmh.unwrap_or_else(|| kmh!(120))
-        }
-        "rural" | "tertiary" | "tertiary_link" => max_kmh.unwrap_or_else(|| kmh!(80)),
-        "trunk" | "trunk_link" | "secondary" | "secondary_link" => {
-            max_kmh.unwrap_or_else(|| kmh!(100))
-        }
-        "urban" | "road" | "unclassified" => max_kmh.unwrap_or_else(|| kmh!(50)),
-        "pedestrian" | "footway" | "path" => max_kmh.unwrap_or_else(|| kmh!(5)),
-        "living_street" => max_kmh.unwrap_or_else(|| kmh!(7)),
-        "bicycle_road" | "service" | "residential" | "track" => max_kmh.unwrap_or_else(|| kmh!(30)),
-        //"track" => max_kmh.unwrap_or(kmh!(20.0)), // mostly non-public agriculture/forestry roads
-        _ => kmh!(30), // well, better than 0
+impl MaxSpeed {
+    pub fn new_limited_kmh(value: f32) -> Self {
+        MaxSpeed::Limited(Velocity::new::<kilometer_per_hour>(value))
     }
+
+    pub fn known_or_else<F: FnOnce() -> Self>(self, f: F) -> Self {
+        match self {
+            Self::Unknown => f(),
+            Self::Limited(_) | Self::Unlimited => self,
+        }
+    }
+
+    pub fn velocity(&self) -> Option<Velocity> {
+        match self {
+            Self::Limited(v) => Some(*v),
+            _ => None,
+        }
+    }
+}
+
+impl Default for MaxSpeed {
+    fn default() -> Self {
+        Self::Unknown
+    }
+}
+
+impl From<Velocity> for MaxSpeed {
+    fn from(value: Velocity) -> Self {
+        MaxSpeed::Limited(value)
+    }
+}
+
+pub fn infer_maxspeed(tags: &Tags, highway_class: &str) -> MaxSpeed {
+    tags.get("maxspeed") // most specific limit first
+        .map(|value| MaxSpeed::from_str(value.as_str()).unwrap())
+        .unwrap_or_default()
+        .known_or_else(|| {
+            tags.get("zone:maxspeed") // general limit for the zone
+                .map(|value| MaxSpeed::from_str(value.as_str()).unwrap())
+                .unwrap_or_default()
+        })
+        .known_or_else(|| {
+            match highway_class {
+                // TODO: use this to derive the category
+                // TODO: most of these values are germany specific
+                "motorway" | "motorway_link" | "primary" | "primary_link" => {
+                    MaxSpeed::new_limited_kmh(120.0)
+                }
+                "rural" | "tertiary" | "tertiary_link" => MaxSpeed::new_limited_kmh(80.0),
+                "trunk" | "trunk_link" | "secondary" | "secondary_link" => {
+                    MaxSpeed::new_limited_kmh(100.0)
+                }
+                "urban" | "road" | "unclassified" => MaxSpeed::new_limited_kmh(50.0),
+                "pedestrian" | "footway" | "path" => MaxSpeed::new_limited_kmh(5.0),
+                "living_street" => MaxSpeed::new_limited_kmh(7.0),
+                "bicycle_road" | "service" | "residential" | "track" => {
+                    MaxSpeed::new_limited_kmh(30.0)
+                }
+                //"track" => 20.0.into(), // mostly non-public agriculture/forestry roads
+                _ => MaxSpeed::Unknown,
+            }
+        })
 }
 
 lazy_static! {
@@ -50,75 +83,75 @@ lazy_static! {
             .unwrap();
 }
 
-/// parse the OSM "maxspeed" tag contents
-fn parse_maxspeed(maxspeed_str: &str) -> Option<Velocity> {
-    match maxspeed_str {
-        "walk" => some_kmh!(5),
-        "none" => some_kmh!(130), // germany-specific
-        "" => None,
-        _ => RE_MAXSPEED
-            .captures(maxspeed_str)
-            .as_ref()
-            .map(capture_to_velocity)
-            .flatten(),
-    }
-}
+impl FromStr for MaxSpeed {
+    type Err = Infallible;
 
-/// based on parts of the "Implicit max speed values", used to
-/// parse the contents of the "zone:maxspeed" tag.
-/// from <https://wiki.openstreetmap.org/wiki/Key:maxspeed>
-fn parse_zone_maxspeed(zone_name: &str) -> Option<Velocity> {
-    match zone_name {
-        "AT:bicycle_road" => some_kmh!(30),
-        "AT:motorway" => some_kmh!(130),
-        "AT:rural" => some_kmh!(100),
-        "AT:trunk" => some_kmh!(100),
-        "AT:urban" => some_kmh!(50),
-        "BE-BRU:rural" => some_kmh!(70),
-        "BE-BRU:urban" => some_kmh!(30),
-        "BE:cyclestreet" => some_kmh!(30),
-        "BE:living_street" => some_kmh!(20),
-        "BE:motorway" => some_kmh!(120),
-        "BE:trunk" => some_kmh!(120),
-        "BE-VLG:rural" => some_kmh!(70),
-        "BE-VLG:urban" => some_kmh!(50),
-        "BE-WAL:rural" => some_kmh!(90),
-        "BE-WAL:urban" => some_kmh!(50),
-        "BE:zone30" => some_kmh!(30),
-        "CH:motorway" => some_kmh!(120),
-        "CH:rural" => some_kmh!(80),
-        "CH:trunk" => some_kmh!(100),
-        "CH:urban" => some_kmh!(50),
-        "CZ:living_street" => some_kmh!(20),
-        "CZ:motorway" => some_kmh!(130),
-        "CZ:pedestrian_zone" => some_kmh!(20),
-        "CZ:rural" => some_kmh!(90),
-        "CZ:trunk" => some_kmh!(110),
-        "CZ:urban_motorway" => some_kmh!(80),
-        "CZ:urban" => some_kmh!(50),
-        "CZ:urban_trunk" => some_kmh!(80),
-        "DE:bicycle_road" => some_kmh!(30),
-        "DE:living_street" => some_kmh!(7),
-        "DE:motorway" => some_kmh!(130),
-        "DE:rural" => some_kmh!(100),
-        "DE:urban" => some_kmh!(50),
-        "DK:motorway" => some_kmh!(130),
-        "DK:rural" => some_kmh!(80),
-        "DK:urban" => some_kmh!(50),
-        "FR:motorway" => some_kmh!(130), // 130 / 110 (raining)
-        "FR:rural" => some_kmh!(80),
-        "FR:urban" => some_kmh!(50),
-        "FR:zone30" => some_kmh!(30),
-        "IT:motorway" => some_kmh!(130),
-        "IT:rural" => some_kmh!(90),
-        "IT:trunk" => some_kmh!(110),
-        "IT:urban" => some_kmh!(50),
-        _ => parse_maxspeed(zone_name),
+    /// parse the OSM "maxspeed" tag contents
+    ///
+    /// based on parts of the "Implicit max speed values", used to
+    /// parse the contents of the "zone:maxspeed" tag.
+    /// from <https://wiki.openstreetmap.org/wiki/Key:maxspeed>
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let ms = match s.to_lowercase().trim() {
+            "walk" => MaxSpeed::new_limited_kmh(5.0),
+            "none" => MaxSpeed::Unlimited,
+            "" => MaxSpeed::Unknown,
+            "at:bicycle_road" => MaxSpeed::new_limited_kmh(30.0),
+            "at:motorway" => MaxSpeed::new_limited_kmh(130.0),
+            "at:rural" => MaxSpeed::new_limited_kmh(100.0),
+            "at:trunk" => MaxSpeed::new_limited_kmh(100.0),
+            "at:urban" => MaxSpeed::new_limited_kmh(50.0),
+            "be-bru:rural" => MaxSpeed::new_limited_kmh(70.0),
+            "be-bru:urban" => MaxSpeed::new_limited_kmh(30.0),
+            "be:cyclestreet" => MaxSpeed::new_limited_kmh(30.0),
+            "be:living_street" => MaxSpeed::new_limited_kmh(20.0),
+            "be:motorway" => MaxSpeed::new_limited_kmh(120.0),
+            "be:trunk" => MaxSpeed::new_limited_kmh(120.0),
+            "be-vlg:rural" => MaxSpeed::new_limited_kmh(70.0),
+            "be-vlg:urban" => MaxSpeed::new_limited_kmh(50.0),
+            "be-wal:rural" => MaxSpeed::new_limited_kmh(90.0),
+            "be-wal:urban" => MaxSpeed::new_limited_kmh(50.0),
+            "be:zone30" => MaxSpeed::new_limited_kmh(30.0),
+            "ch:motorway" => MaxSpeed::new_limited_kmh(120.0),
+            "ch:rural" => MaxSpeed::new_limited_kmh(80.0),
+            "ch:trunk" => MaxSpeed::new_limited_kmh(100.0),
+            "ch:urban" => MaxSpeed::new_limited_kmh(50.0),
+            "cz:living_street" => MaxSpeed::new_limited_kmh(20.0),
+            "cz:motorway" => MaxSpeed::new_limited_kmh(130.0),
+            "cz:pedestrian_zone" => MaxSpeed::new_limited_kmh(20.0),
+            "cz:rural" => MaxSpeed::new_limited_kmh(90.0),
+            "cz:trunk" => MaxSpeed::new_limited_kmh(110.0),
+            "cz:urban_motorway" => MaxSpeed::new_limited_kmh(80.0),
+            "cz:urban" => MaxSpeed::new_limited_kmh(50.0),
+            "cz:urban_trunk" => MaxSpeed::new_limited_kmh(80.0),
+            "de:bicycle_road" => MaxSpeed::new_limited_kmh(30.0),
+            "de:living_street" => MaxSpeed::new_limited_kmh(7.0),
+            "de:motorway" => MaxSpeed::new_limited_kmh(130.0),
+            "de:rural" => MaxSpeed::new_limited_kmh(100.0),
+            "de:urban" => MaxSpeed::new_limited_kmh(50.0),
+            "dk:motorway" => MaxSpeed::new_limited_kmh(130.0),
+            "dk:rural" => MaxSpeed::new_limited_kmh(80.0),
+            "dk:urban" => MaxSpeed::new_limited_kmh(50.0),
+            "fr:motorway" => MaxSpeed::new_limited_kmh(130.0), // 130 / 110 (raining)
+            "fr:rural" => MaxSpeed::new_limited_kmh(80.0),
+            "fr:urban" => MaxSpeed::new_limited_kmh(50.0),
+            "fr:zone30" => MaxSpeed::new_limited_kmh(30.0),
+            "it:motorway" => MaxSpeed::new_limited_kmh(130.0),
+            "it:rural" => MaxSpeed::new_limited_kmh(90.0),
+            "it:trunk" => MaxSpeed::new_limited_kmh(110.0),
+            "it:urban" => MaxSpeed::new_limited_kmh(50.0),
+            _ => RE_MAXSPEED
+                .captures(s)
+                .as_ref()
+                .map(capture_to_maxspeed)
+                .unwrap_or_default(),
+        };
+        Ok(ms)
     }
 }
 
 #[inline]
-fn capture_to_velocity(cap: &Captures) -> Option<Velocity> {
+fn capture_to_maxspeed(cap: &Captures) -> MaxSpeed {
     cap.name("value")
         .unwrap()
         .as_str()
@@ -126,46 +159,79 @@ fn capture_to_velocity(cap: &Captures) -> Option<Velocity> {
         .ok()
         .map(|value| {
             if let Some(units) = cap.name("units") {
-                match units.as_str().to_lowercase().as_str() {
-                    "kmh" | "kph" | "km/h" | "kmph" => kmh!(value),
-                    "mph" | "m/h" => Velocity::new::<mile_per_hour>(value),
-                    "knots" | "knot" => Velocity::new::<knot>(value),
-                    "ms" | "m/s" => Velocity::new::<meter_per_second>(value),
-                    _ => kmh!(value),
+                match units.as_str() {
+                    "kmh" | "kph" | "km/h" | "kmph" => MaxSpeed::new_limited_kmh(value),
+                    "mph" | "m/h" => Velocity::new::<mile_per_hour>(value).into(),
+                    "knots" | "knot" | "kn" => Velocity::new::<knot>(value).into(),
+                    "ms" | "m/s" => Velocity::new::<meter_per_second>(value).into(),
+                    _ => MaxSpeed::new_limited_kmh(value),
                 }
             } else {
-                kmh!(value)
+                MaxSpeed::new_limited_kmh(value)
             }
         })
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use uom::si::f32::Velocity;
     use uom::si::velocity::{kilometer_per_hour, knot};
 
-    use super::{parse_maxspeed, parse_zone_maxspeed};
-
-    #[test]
-    fn test_parse_zone_maxspeed() {
-        assert_eq!(parse_zone_maxspeed("DE:urban"), some_kmh!(50));
-        assert_eq!(parse_zone_maxspeed("DE:33"), some_kmh!(33));
-        assert_eq!(parse_zone_maxspeed("DE:zone:31"), some_kmh!(31));
-        assert_eq!(parse_zone_maxspeed("DE:zone31"), some_kmh!(31));
-    }
+    use crate::osm::maxspeed::MaxSpeed;
 
     #[test]
     fn test_parse_maxspeed() {
-        assert_eq!(parse_maxspeed("50"), some_kmh!(50));
-        assert_eq!(parse_maxspeed("DE:zone:51"), some_kmh!(51));
-        assert_eq!(parse_maxspeed("50 kmh"), some_kmh!(50));
-        assert_eq!(parse_maxspeed("3kmh"), some_kmh!(3));
-        assert_eq!(parse_maxspeed("none"), some_kmh!(130));
-        assert_eq!(parse_maxspeed("5 knots"), Some(Velocity::new::<knot>(5.0)));
         assert_eq!(
-            parse_maxspeed("20 mph").map(|x| x.floor::<kilometer_per_hour>()),
-            some_kmh!(32)
+            MaxSpeed::from_str("50").unwrap(),
+            MaxSpeed::new_limited_kmh(50.0)
         );
-        assert_eq!(parse_maxspeed("walk"), some_kmh!(5));
+        assert_eq!(
+            MaxSpeed::from_str("DE:zone:51").unwrap(),
+            MaxSpeed::new_limited_kmh(51.0)
+        );
+        assert_eq!(
+            MaxSpeed::from_str("50 kmh").unwrap(),
+            MaxSpeed::new_limited_kmh(50.0)
+        );
+        assert_eq!(
+            MaxSpeed::from_str("3kmh").unwrap(),
+            MaxSpeed::new_limited_kmh(3.0)
+        );
+        assert_eq!(MaxSpeed::from_str("none").unwrap(), MaxSpeed::Unlimited);
+        assert_eq!(
+            MaxSpeed::from_str("DE:urban").unwrap(),
+            MaxSpeed::new_limited_kmh(50.0)
+        );
+        assert_eq!(
+            MaxSpeed::from_str("DE:33").unwrap(),
+            MaxSpeed::new_limited_kmh(33.0)
+        );
+        assert_eq!(
+            MaxSpeed::from_str("DE:zone:31").unwrap(),
+            MaxSpeed::new_limited_kmh(31.0)
+        );
+        assert_eq!(
+            MaxSpeed::from_str("DE:zone31").unwrap(),
+            MaxSpeed::new_limited_kmh(31.0)
+        );
+        assert_eq!(
+            MaxSpeed::from_str("5 knots").unwrap(),
+            Velocity::new::<knot>(5.0).into()
+        );
+        assert_eq!(
+            MaxSpeed::from_str("20 mph")
+                .unwrap()
+                .velocity()
+                .unwrap()
+                .floor::<kilometer_per_hour>(),
+            Velocity::new::<kilometer_per_hour>(32.0)
+        );
+        assert_eq!(
+            MaxSpeed::from_str("walk").unwrap(),
+            MaxSpeed::new_limited_kmh(5.0)
+        );
     }
 }

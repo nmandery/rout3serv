@@ -3,8 +3,9 @@ use h3ron_graph::formats::osm::osmpbfreader::Tags;
 use h3ron_graph::formats::osm::{EdgeProperties, WayAnalyzer};
 use uom::si::f32::{Length, Velocity};
 use uom::si::length::meter;
+use uom::si::velocity::kilometer_per_hour;
 
-use crate::osm::maxspeed::infer_maxspeed;
+use crate::osm::maxspeed::{infer_maxspeed, MaxSpeed};
 use crate::weight::RoadWeight;
 
 pub struct CarWayProperties {
@@ -44,8 +45,11 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
                 .map(|v| v.to_lowercase() != "yes")
                 .unwrap_or(true);
 
-            let max_speed =
-                infer_maxspeed(tags, &highway_class) * estimated_speed_reduction_percent;
+            let max_speed = match infer_maxspeed(tags, &highway_class) {
+                MaxSpeed::Limited(v) => v,
+                MaxSpeed::Unlimited => Velocity::new::<kilometer_per_hour>(130.0),
+                MaxSpeed::Unknown => Velocity::new::<kilometer_per_hour>(40.0),
+            } * estimated_speed_reduction_percent;
 
             Some(CarWayProperties {
                 max_speed,
