@@ -150,10 +150,9 @@ fn disturbance_and_buffered_cells(
     radius_meters: f64,
 ) -> Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
     let disturbance_geom = read_wkb_to_gdal(disturbance_wkb_geometry)?;
-    let disturbed_cells: H3Treemap<H3Cell> =
-        gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?
-            .drain()
-            .collect();
+    let disturbed_cells: H3Treemap<H3Cell> = H3Treemap::from_iter_with_sort(
+        gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?.drain(),
+    );
 
     let buffered_cells: Vec<_> = gdal_geom_to_h3(
         &buffer_meters(&disturbance_geom, radius_meters)?,
@@ -209,9 +208,9 @@ where
                 downsampled_graph.h3_resolution(),
             );
 
-            let disturbance_ds: H3Treemap<_> =
-                change_cell_resolution(input.disturbance.iter(), downsampled_graph.h3_resolution())
-                    .collect();
+            let disturbance_ds: H3Treemap<_> = H3Treemap::from_iter_with_sort(
+                change_cell_resolution(input.disturbance.iter(), downsampled_graph.h3_resolution()),
+            );
 
             let diff_ds = downsampled_graph.differential_shortest_path_map(
                 &origin_cells_ds,
