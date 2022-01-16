@@ -214,12 +214,14 @@ def _h3_shortest_path_linestrings_gdf(gen: typing.Generator[RouteWKB, None, None
     h3index_destination = []
     travel_duration_secs = []
     category_weight = []
+    path_length_m = []
 
     for route in gen:
         h3index_origin.append(route.origin_cell)
         h3index_destination.append(route.destination_cell)
         travel_duration_secs.append(route.travel_duration_secs)
         category_weight.append(route.category_weight)
+        path_length_m.append(route.path_length_m)
         geoms.append(shapely.wkb.loads(route.wkb))
 
     gdf = GeoDataFrame({
@@ -228,6 +230,7 @@ def _h3_shortest_path_linestrings_gdf(gen: typing.Generator[RouteWKB, None, None
         "h3index_destination": np.asarray(h3index_destination, dtype=np.uint64),
         "travel_duration_secs": np.asarray(travel_duration_secs, dtype=np.float64),
         "category_weight": np.asarray(category_weight, dtype=np.float64),
+        "path_length_m": np.asarray(path_length_m, dtype=np.float64),
     }, crs=4326)
     return gdf
 

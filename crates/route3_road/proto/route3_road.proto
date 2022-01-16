@@ -97,6 +97,7 @@ message RouteWKB {
   double travel_duration_secs = 3;
   double category_weight = 4;
   bytes wkb = 5;
+  double path_length_m = 6;
 }
 
 message RouteH3Indexes {
@@ -107,6 +108,8 @@ message RouteH3Indexes {
 
   /** h3indexes ordered from origin_cell to destination_cell */
   repeated uint64 h3indexes = 5;
+
+  double path_length_m = 6;
 }
 
 message H3ShortestPathRequest {

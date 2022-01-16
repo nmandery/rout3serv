@@ -52,13 +52,13 @@ default_features = false
 [dependencies.h3ron]
 #version = "0.13"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "d3ff5c460697bfa2d5232619348c392ede59e9f5"
+rev = "f76ef68bf58749c3a73f3c5bd8b8d33c3ddc23a8"
 features = ["io", "rayon", "roaring", "use-serde", "compression"]
 
 [dependencies.h3ron-graph]
 #version = "0.2"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "d3ff5c460697bfa2d5232619348c392ede59e9f5"
+rev = "f76ef68bf58749c3a73f3c5bd8b8d33c3ddc23a8"
 features = ["use-gdal", "osm"]
 
 [dependencies.uuid]

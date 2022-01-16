@@ -58,6 +58,7 @@ impl RouteWkb {
             travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
             category_weight: path.cost().category_weight() as f64,
             wkb: wkb_bytes,
+            path_length_m: path.length_m(),
         })
     }
 }
@@ -91,6 +92,7 @@ impl RouteH3Indexes {
             travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
             category_weight: path.cost().category_weight() as f64,
             h3indexes,
+            path_length_m: path.length_m(),
         })
     }
 }
