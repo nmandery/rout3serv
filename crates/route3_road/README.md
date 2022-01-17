@@ -4,6 +4,10 @@
 
 Routing server with GRPC-API and dataframe integration.
 
+![](doc/paths-between-cells.png)
+
+![](doc/paths-between-cells-linestring.png)
+
 Features:
 
 - GRPC API including streamed Arrow IPC recordbatches for tabular data.
