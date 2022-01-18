@@ -32,7 +32,7 @@ rev = "75b17e5a74ce279eb06c715d7d9e03b53b68364c" # for chaikin smoothing
 path = "../s3io"
 
 [dependencies.uom]
-version = "0.31"
+version = "0.32"
 features = ["use_serde"]
 
 [dependencies.polars-core]
