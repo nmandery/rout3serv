@@ -5,7 +5,7 @@ use uom::si::f32::{Length, Velocity};
 use uom::si::length::meter;
 use uom::si::velocity::kilometer_per_hour;
 
-use crate::osm::maxspeed::{infer_maxspeed, MaxSpeed};
+use crate::osm::tags::maxspeed::{infer_maxspeed, MaxSpeed};
 use crate::weight::RoadWeight;
 
 pub struct CarWayProperties {

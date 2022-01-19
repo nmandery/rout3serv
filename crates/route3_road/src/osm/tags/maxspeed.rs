@@ -1,6 +1,7 @@
 use std::convert::Infallible;
 use std::str::FromStr;
 
+use crate::osm::WALKING_SPEED;
 use h3ron_graph::formats::osm::osmpbfreader::Tags;
 use regex::{Captures, Regex};
 use uom::si::f32::Velocity;
@@ -16,6 +17,10 @@ pub enum MaxSpeed {
 impl MaxSpeed {
     pub fn new_limited_kmh(value: f32) -> Self {
         MaxSpeed::Limited(Velocity::new::<kilometer_per_hour>(value))
+    }
+
+    pub fn new_limited(value: Velocity) -> Self {
+        MaxSpeed::Limited(value)
     }
 
     pub fn known_or_else<F: FnOnce() -> Self>(self, f: F) -> Self {
@@ -66,7 +71,7 @@ pub fn infer_maxspeed(tags: &Tags, highway_class: &str) -> MaxSpeed {
                     MaxSpeed::new_limited_kmh(100.0)
                 }
                 "urban" | "road" | "unclassified" => MaxSpeed::new_limited_kmh(50.0),
-                "pedestrian" | "footway" | "path" => MaxSpeed::new_limited_kmh(5.0),
+                "pedestrian" | "footway" | "path" => MaxSpeed::new_limited(*WALKING_SPEED),
                 "living_street" => MaxSpeed::new_limited_kmh(7.0),
                 "bicycle_road" | "service" | "residential" | "track" => {
                     MaxSpeed::new_limited_kmh(30.0)
@@ -180,7 +185,7 @@ mod tests {
     use uom::si::f32::Velocity;
     use uom::si::velocity::{kilometer_per_hour, knot};
 
-    use crate::osm::maxspeed::MaxSpeed;
+    use crate::osm::tags::maxspeed::MaxSpeed;
 
     #[test]
     fn test_parse_maxspeed() {
