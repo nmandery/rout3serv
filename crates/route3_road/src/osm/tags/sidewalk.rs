@@ -11,6 +11,7 @@ pub struct SideWalk {
     pub on_right_bicycles_allowed: bool,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for SideWalk {
     fn default() -> Self {
         Self {

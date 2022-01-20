@@ -2,6 +2,7 @@ use uom::si::f32::Velocity;
 use uom::si::velocity::kilometer_per_hour;
 
 pub mod car;
+pub mod pedestrian;
 pub mod tags;
 
 lazy_static! {
