@@ -36,14 +36,8 @@ version = "0.32"
 features = ["use_serde"]
 
 [dependencies.polars-core]
-version = "0.18"
+version = "0.19"
 features = ["serde"]
-
-[dependencies.arrow] # matches dependency of polars-core
-package = "arrow2"
-version = "0.8"
-default-features = false
-features = []
 
 [dependencies.mimalloc]
 version = "0.1"

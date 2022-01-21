@@ -8,9 +8,6 @@ pub enum Error {
     #[error("polars error: {0}")]
     Polars(#[from] polars_core::error::PolarsError),
 
-    #[error("arrow error: {0}")]
-    Arrow(#[from] arrow::error::ArrowError),
-
     #[error("unidentified file format: {0}")]
     UnidentifiedFileFormat(String),
 

@@ -4,7 +4,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use arrow::record_batch::RecordBatch;
 use bytes::Bytes;
 use bytesize::ByteSize;
 use futures::TryStreamExt;
@@ -13,6 +12,8 @@ use h3ron::H3Cell;
 use hyper::client::HttpConnector;
 use hyper_tls::HttpsConnector;
 use native_tls::TlsConnector;
+use polars_core::prelude::DataFrame;
+use polars_core::utils::concat_df;
 use regex::Regex;
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::{ByteStream, HttpClient, Region, RusotoError};
@@ -311,46 +312,46 @@ where
         .to_string())
 }
 
-struct RecordBatchFetcher {
+struct DataFrameFetcher {
     s3_client: Arc<S3Client>,
 }
 
 #[async_trait::async_trait]
-impl AsyncFetcher for RecordBatchFetcher {
+impl AsyncFetcher for DataFrameFetcher {
     type Key = ObjectRef;
-    type Value = Vec<RecordBatch>;
+    type Value = Option<DataFrame>;
     type Error = Error;
 
     async fn fetch(&self, object_ref: Self::Key) -> Result<Self::Value, Self::Error> {
         let format = FileFormat::from_filename(&object_ref.key)?;
         match self.s3_client.get_object_bytes(object_ref).await {
-            Ok(bytes) => Ok(format.recordbatches_from_slice(&bytes)?),
-            Err(Error::NotFound) => Ok(vec![]),
+            Ok(bytes) => Ok(Some(format.dataframe_from_slice(&bytes)?)),
+            Err(Error::NotFound) => Ok(None),
             Err(e) => Err(e),
         }
     }
 }
 
-pub struct S3RecordBatchLoader {
-    fetch_cache: Arc<FetchCache<RecordBatchFetcher>>,
+pub struct S3ArrowLoader {
+    fetch_cache: Arc<FetchCache<DataFrameFetcher>>,
 }
 
-impl S3RecordBatchLoader {
+impl S3ArrowLoader {
     pub fn new(s3_client: Arc<S3Client>, cache_capacity: usize) -> Self {
         Self {
             fetch_cache: Arc::new(FetchCache::new(
                 cache_capacity,
-                RecordBatchFetcher { s3_client },
+                DataFrameFetcher { s3_client },
             )),
         }
     }
 
-    async fn load_h3_dataset_recordbatches<D: S3H3Dataset>(
+    pub async fn load_h3_dataset_dataframe<D: S3H3Dataset>(
         &self,
         dataset: &D,
         cells: &[H3Cell],
         data_h3_resolution: u8,
-    ) -> Result<Vec<RecordBatch>, Error> {
+    ) -> Result<H3DataFrame, Error> {
         if cells.is_empty() {
             return Ok(Default::default());
         }
@@ -374,26 +375,18 @@ impl S3RecordBatchLoader {
         }))
         .await?;
 
-        let mut record_batches = Vec::with_capacity(file_cells.len());
+        let mut dataframes = Vec::with_capacity(file_cells.len());
         for task_result in task_results.drain(..) {
             match task_result {
-                Ok(rbs) => record_batches.extend(rbs.iter().cloned()),
-                Err(e) => return Err(Error::Generic(format!("recordbatch fetch failed: {:?}", e))),
+                Ok(dfs) => dataframes.extend(dfs.iter().cloned()),
+                Err(e) => return Err(Error::Generic(format!("dataframe fetch failed: {:?}", e))),
             }
         }
-        Ok(record_batches)
-    }
-
-    pub async fn load_h3_dataset_dataframe<D: S3H3Dataset>(
-        &self,
-        dataset: &D,
-        cells: &[H3Cell],
-        data_h3_resolution: u8,
-    ) -> Result<H3DataFrame, Error> {
-        H3DataFrame::from_recordbatches(
-            self.load_h3_dataset_recordbatches(dataset, cells, data_h3_resolution)
-                .await?,
-            dataset.h3index_column(),
-        )
+        let df = match dataframes.len() {
+            0 => DataFrame::default(),
+            1 => dataframes.pop().unwrap(),
+            _ => concat_df(dataframes.iter())?,
+        };
+        H3DataFrame::from_dataframe(df, dataset.h3index_column())
     }
 }

@@ -10,7 +10,7 @@ Routing server with GRPC-API and dataframe integration.
 
 Features:
 
-- GRPC API including streamed Arrow IPC recordbatches for tabular data.
+- GRPC API including streaming of tabular data in Arrow IPC file format.
 - S3 storage backend.
 - Builtin extractor to create graphs from OSM-PBF files.
 - Python client library.

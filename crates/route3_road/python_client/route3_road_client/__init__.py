@@ -134,7 +134,7 @@ class Server:
         return self.stub.ListDatasets(route3_road_pb2.Empty()).dataset_name
 
     def h3_shortest_path(self, request: route3_road_pb2.H3ShortestPathRequest) -> TableWithId:
-        return _arrowrecordbatch_to_table(self.stub.H3ShortestPath(request))
+        return _arrowipcchunks_to_table(self.stub.H3ShortestPath(request))
 
     def h3_shortest_path_routes(self, request: route3_road_pb2.H3ShortestPathRequest) -> typing.Generator[
         RouteWKB, None, None]:
@@ -161,15 +161,15 @@ class Server:
 
     def h3_cells_within_threshold(self, request: route3_road_pb2.H3WithinThresholdRequest) -> TableWithId:
         """graph cells with in a certain threshold of origin cells"""
-        return _arrowrecordbatch_to_table(self.stub.H3CellsWithinThreshold(request))
+        return _arrowipcchunks_to_table(self.stub.H3CellsWithinThreshold(request))
 
     def differential_shortest_path(self, request: route3_road_pb2.DifferentialShortestPathRequest) -> TableWithId:
-        return _arrowrecordbatch_to_table(self.stub.DifferentialShortestPath(request))
+        return _arrowipcchunks_to_table(self.stub.DifferentialShortestPath(request))
 
     def get_differential_shortest_path(self, object_id: str) -> TableWithId:
         req = route3_road_pb2.IdRef()
         req.object_id = object_id
-        return _arrowrecordbatch_to_table(self.stub.GetDifferentialShortestPath(req))
+        return _arrowipcchunks_to_table(self.stub.GetDifferentialShortestPath(req))
 
     def get_differential_shortest_path_routes(self, object_id: str, cells: typing.Iterable[int],
                                               smoothen_geometries: bool = False) -> "GeoDataFrame":
@@ -182,8 +182,8 @@ class Server:
         return _get_differential_shortest_path_routes_gdf(response)
 
 
-def _arrowrecordbatch_to_table(response: route3_road_pb2.ArrowRecordBatch) -> TableWithId:
-    """convert a streamed ArrowRecordBatch response to a pyarrow.Table"""
+def _arrowipcchunks_to_table(response: route3_road_pb2.ArrowIPCChunk) -> TableWithId:
+    """convert a streamed ArrowIPCChunk response to a pyarrow.Table"""
     object_id = None
     table = None
     batches = []

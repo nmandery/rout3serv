@@ -3,7 +3,6 @@
 
 use std::iter::FromIterator;
 
-use arrow::record_batch::RecordBatch;
 use h3ron::iter::change_cell_resolution;
 use h3ron::{H3Cell, Index};
 use polars_core::frame::DataFrame;
@@ -11,9 +10,9 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 
-use s3io::dataframe::{recordbatch_to_bytes, H3DataFrame};
+use s3io::dataframe::{dataframe_to_bytes, H3DataFrame};
 
-use crate::server::api::generated::ArrowRecordBatch;
+use crate::server::api::generated::ArrowIpcChunk;
 use crate::server::api::Route;
 
 /// wrapper around tokios `spawn_blocking` to directly
@@ -30,12 +29,12 @@ where
 }
 
 #[inline]
-fn recordbatch_to_bytes_status(recordbatch: &RecordBatch) -> Result<Vec<u8>, Status> {
-    let recordbatch_bytes = recordbatch_to_bytes(recordbatch).map_err(|e| {
-        log::error!("serializing recordbatch failed: {:?}", e);
-        Status::internal("serializing recordbatch failed")
+fn dataframe_to_bytes_status(dataframe: &DataFrame) -> Result<Vec<u8>, Status> {
+    let dataframe_bytes = dataframe_to_bytes(dataframe).map_err(|e| {
+        log::error!("serializing dataframe failed: {:?}", e);
+        Status::internal("serializing dataframe failed")
     })?;
-    Ok(recordbatch_bytes)
+    Ok(dataframe_bytes)
 }
 
 pub trait StrId {
@@ -43,53 +42,7 @@ pub trait StrId {
 }
 
 /// type for a stream of ArrowRecordBatches to a GRPC client
-pub type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
-
-/// respond with a dataframe as a stream of `RecordBatch` instances.
-pub async fn stream_dataframe(
-    id: String,
-    dataframe: DataFrame,
-) -> Result<Response<ArrowRecordBatchStream>, Status> {
-    let df_shape = dataframe.shape();
-    let recordbatches = to_streamable_recordbatches(
-        dataframe.as_record_batches().map_err(|e| {
-            log::error!("could not convert dataframe to recordbatches: {:?}", e);
-            Status::internal("could not convert dataframe to recordbatches")
-        })?,
-        3000,
-    )?;
-    log::debug!(
-        "responding with a dataframe {:?} as a stream of {} recordbatches",
-        df_shape,
-        recordbatches.len()
-    );
-    stream_recordbatches(id, recordbatches).await
-}
-
-/// stream [`ArrowRecordBatch`] instances to a client.
-///
-/// Depending on the size of the batches, passing them through `to_streamable_recordbatches`
-/// may be recommended.
-async fn stream_recordbatches(
-    id: String,
-    mut recordbatches: Vec<RecordBatch>,
-) -> Result<Response<ArrowRecordBatchStream>, Status> {
-    let (tx, rx) = mpsc::channel(5);
-    tokio::spawn(async move {
-        for recordbatch in recordbatches.drain(..) {
-            let serialization_result =
-                recordbatch_to_bytes_status(&recordbatch).map(|rb_bytes| ArrowRecordBatch {
-                    object_id: id.clone(),
-                    data: rb_bytes,
-                });
-            if let Err(e) = tx.send(serialization_result).await {
-                log::warn!("Streaming recordbatches aborted. reason: {}", e);
-                break;
-            }
-        }
-    });
-    Ok(Response::new(ReceiverStream::new(rx)))
-}
+pub type ArrowIpcChunkStream = ReceiverStream<Result<ArrowIpcChunk, Status>>;
 
 /// stream `RouteWKB` instances
 pub async fn stream_routes<R>(
@@ -136,36 +89,55 @@ pub fn change_cell_resolution_dedup(cells: &[H3Cell], h3_resolution: u8) -> Vec<
     out_cells
 }
 
-/// slice recordbatches into a fixed size of max `max_rows` rows
+#[inline]
+pub async fn stream_dataframe(
+    id: String,
+    dataframe: DataFrame,
+) -> Result<Response<ArrowIpcChunkStream>, Status> {
+    stream_dataframe_with_max_rows(id, dataframe, 3000).await
+}
+
+/// respond with a dataframe as a stream of size limited Arrow IPC chunks.
+///
+/// slices dataframe into a fixed size of max `max_rows` rows
 /// to stay within GRPCs message size limits.
-fn to_streamable_recordbatches(
-    recordbatches: Vec<RecordBatch>,
+pub async fn stream_dataframe_with_max_rows(
+    id: String,
+    dataframe: DataFrame,
     max_rows: usize,
-) -> Result<Vec<RecordBatch>, Status> {
-    let mut new_recordbatches = Vec::new();
-    for rb in recordbatches {
-        if rb.num_rows() <= max_rows {
-            new_recordbatches.push(rb);
-        } else {
-            let mut i = 0_usize;
-            while i * max_rows < rb.num_rows() {
-                let offset = i * max_rows;
-                let length = (rb.num_rows() - offset).min(max_rows);
+) -> Result<Response<ArrowIpcChunkStream>, Status> {
+    let df_shape = dataframe.shape();
+    log::debug!(
+        "responding with a dataframe {:?} as a stream of chunks (max rows = {})",
+        df_shape,
+        max_rows
+    );
 
-                let columns = rb
-                    .columns()
-                    .iter()
-                    .map(|column| column.slice(offset, length).into())
-                    .collect();
+    let num_rows = df_shape.0;
+    let mut dataframe_parts = Vec::with_capacity(num_rows / max_rows);
+    let mut i: usize = 0;
+    loop {
+        let offset = i * max_rows;
+        if offset >= num_rows {
+            break;
+        }
+        dataframe_parts.push(dataframe.slice(offset as i64, max_rows));
+        i += 1;
+    }
 
-                let new_rb = RecordBatch::try_new(rb.schema().clone(), columns).map_err(|e| {
-                    log::error!("slicing up recordbatches failed: {:?}", e);
-                    Status::internal("slicing recordbatches failed")
-                })?;
-                new_recordbatches.push(new_rb);
-                i += 1;
+    let (tx, rx) = mpsc::channel(5);
+    tokio::spawn(async move {
+        for df_part in dataframe_parts.drain(..) {
+            let serialization_result =
+                dataframe_to_bytes_status(&df_part).map(|ipc_bytes| ArrowIpcChunk {
+                    object_id: id.clone(),
+                    data: ipc_bytes,
+                });
+            if let Err(e) = tx.send(serialization_result).await {
+                log::warn!("Streaming dataframe parts aborted. reason: {}", e);
+                break;
             }
         }
-    }
-    Ok(new_recordbatches)
+    });
+    Ok(Response::new(ReceiverStream::new(rx)))
 }

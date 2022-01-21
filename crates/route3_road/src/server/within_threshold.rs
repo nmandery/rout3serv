@@ -5,8 +5,7 @@ use h3ron::{H3Cell, HasH3Resolution, Index};
 use h3ron_graph::algorithm::WithinWeightThresholdMany;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
-use polars_core::frame::DataFrame;
-use polars_core::series::{NamedFrom, Series};
+use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tonic::{Response, Status};
@@ -16,7 +15,7 @@ use uom::si::time::second;
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::storage::S3Storage;
-use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
+use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream};
 use crate::weight::Weight;
 
 use super::names;
@@ -71,7 +70,7 @@ where
 
 pub async fn within_threshold<W: 'static + Send + Sync>(
     parameters: H3WithinThresholdParameters<W>,
-) -> Result<Response<ArrowRecordBatchStream>, Status>
+) -> Result<Response<ArrowIpcChunkStream>, Status>
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {

@@ -21,7 +21,7 @@ use crate::server::api::Route;
 use crate::server::names;
 use crate::server::storage::S3Storage;
 use crate::server::util::{
-    spawn_blocking_status, stream_dataframe, stream_routes, ArrowRecordBatchStream,
+    spawn_blocking_status, stream_dataframe, stream_routes, ArrowIpcChunkStream,
 };
 use crate::weight::Weight;
 
@@ -89,7 +89,7 @@ where
 
 pub async fn h3_shortest_path<W: 'static + Send + Sync>(
     parameters: H3ShortestPathParameters<W>,
-) -> Result<Response<ArrowRecordBatchStream>, Status>
+) -> Result<Response<ArrowIpcChunkStream>, Status>
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {
