@@ -375,17 +375,17 @@ impl S3ArrowLoader {
         }))
         .await?;
 
-        let mut chunks = Vec::with_capacity(file_cells.len());
+        let mut dataframes = Vec::with_capacity(file_cells.len());
         for task_result in task_results.drain(..) {
             match task_result {
-                Ok(rbs) => chunks.extend(rbs.iter().cloned()),
-                Err(e) => return Err(Error::Generic(format!("recordbatch fetch failed: {:?}", e))),
+                Ok(dfs) => dataframes.extend(dfs.iter().cloned()),
+                Err(e) => return Err(Error::Generic(format!("dataframe fetch failed: {:?}", e))),
             }
         }
-        let df = match chunks.len() {
+        let df = match dataframes.len() {
             0 => DataFrame::default(),
-            1 => chunks.pop().unwrap(),
-            _ => concat_df(chunks.iter())?,
+            1 => dataframes.pop().unwrap(),
+            _ => concat_df(dataframes.iter())?,
         };
         H3DataFrame::from_dataframe(df, dataset.h3index_column())
     }

@@ -34,7 +34,7 @@ where
     s3_client: Arc<S3Client>,
     pub graph_store: GraphStore<W>,
     config: Arc<ServerConfig>,
-    recordbatch_loader: S3ArrowLoader,
+    arrow_loader: S3ArrowLoader,
 }
 
 impl<W: Send + Sync> S3Storage<W>
@@ -44,12 +44,12 @@ where
     pub fn from_config(config: Arc<ServerConfig>) -> eyre::Result<Self> {
         let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
         let graph_store = GraphStore::new(s3_client.clone(), config.graph_store.clone());
-        let recordbatch_loader = S3ArrowLoader::new(s3_client.clone(), 10);
+        let arrow_loader = S3ArrowLoader::new(s3_client.clone(), 10);
         Ok(Self {
             s3_client,
             graph_store,
             config,
-            recordbatch_loader,
+            arrow_loader,
         })
     }
 
@@ -184,7 +184,7 @@ where
         data_h3_resolution: u8,
     ) -> Result<H3DataFrame, Status> {
         let mut h3dataframe = self
-            .recordbatch_loader
+            .arrow_loader
             .load_h3_dataset_dataframe(dataset_config, cells, data_h3_resolution)
             .await
             .map_err(|e| {
