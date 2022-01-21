@@ -6,7 +6,7 @@ use axum::routing::get;
 use axum::{AddExtensionLayer, Json, Router};
 use eyre::Result;
 use h3ron::{H3Cell, Index};
-use polars_core::prelude::{DataFrame, NamedFrom, Series};
+use polars_core::prelude::{DataFrame, JoinType, NamedFrom, Series};
 use tokio::task::spawn_blocking;
 use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
@@ -126,10 +126,12 @@ fn condense_response_dataframe(
             .collect::<Vec<_>>()
             .as_slice(),
     )])?;
-    Ok(selection_df.inner_join(
+    Ok(selection_df.join(
         &loaded_dataframe.dataframe,
-        OutDataFrame::h3index_column_name(),
-        loaded_dataframe.h3index_column_name.as_str(),
+        [OutDataFrame::h3index_column_name()],
+        [loaded_dataframe.h3index_column_name.as_str()],
+        JoinType::Inner,
+        None,
     )?)
 }
 

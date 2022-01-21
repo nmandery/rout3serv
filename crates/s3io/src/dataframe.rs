@@ -2,30 +2,19 @@ use std::borrow::Borrow;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 
-use arrow::io::ipc::write::{FileWriter, WriteOptions};
-use arrow::record_batch::RecordBatch;
 use h3ron::Index;
 use itertools::Itertools;
-use polars_core::chunked_array::iterator::PolarsIterator;
-use polars_core::datatypes::DataType;
-use polars_core::frame::DataFrame;
-use polars_core::series::{NamedFrom, Series};
+use polars_core::prelude::{DataFrame, DataType, JoinType, NamedFrom, PolarsIterator, Series};
+use polars_io::ipc::IpcWriter;
+use polars_io::SerWriter;
 use serde::{Deserialize, Serialize};
 
 use crate::Error;
 
-/// serialize a [`RecordBatch`] into arrow IPC format
-pub fn recordbatch_to_bytes(recordbatch: &RecordBatch) -> Result<Vec<u8>, Error> {
+/// serialize a [`DataFrame`] into arrow IPC format
+pub fn dataframe_to_bytes(dataframe: &DataFrame) -> Result<Vec<u8>, Error> {
     let mut buf: Vec<u8> = vec![];
-    {
-        let mut filewriter = FileWriter::try_new(
-            &mut buf,
-            &*recordbatch.schema(),
-            WriteOptions { compression: None },
-        )?;
-        filewriter.write(recordbatch)?;
-        filewriter.finish()?;
-    }
+    IpcWriter::new(&mut buf).finish(dataframe)?;
     Ok(buf)
 }
 
@@ -39,36 +28,37 @@ pub struct H3DataFrame {
     pub h3index_column_name: String,
 }
 
+impl Default for H3DataFrame {
+    fn default() -> Self {
+        Self {
+            dataframe: Default::default(),
+            h3index_column_name: "h3index".to_string(),
+        }
+    }
+}
+
 impl H3DataFrame {
-    pub fn from_recordbatches(
-        recordbatches: Vec<RecordBatch>,
+    pub fn from_dataframe(
+        dataframe: DataFrame,
         h3index_column_name: String,
     ) -> Result<Self, Error> {
-        let dataframe = if recordbatches.is_empty() {
-            DataFrame::default()
-        } else {
-            let dataframe = DataFrame::try_from(recordbatches)?;
-
-            log::info!(
-                "loaded dataframe with {:?} shape, columns: {}",
-                dataframe.shape(),
-                dataframe.get_column_names().join(", ")
-            );
-            match dataframe.column(&h3index_column_name) {
-                Ok(column) => {
-                    if column.dtype() != &DataType::UInt64 {
-                        return Err(Error::DataframeInvalidH3IndexType(
-                            h3index_column_name,
-                            column.dtype().to_string(),
-                        ));
-                    }
+        log::info!(
+            "loaded dataframe with {:?} shape, columns: {}",
+            dataframe.shape(),
+            dataframe.get_column_names().join(", ")
+        );
+        match dataframe.column(&h3index_column_name) {
+            Ok(column) => {
+                if column.dtype() != &DataType::UInt64 {
+                    return Err(Error::DataframeInvalidH3IndexType(
+                        h3index_column_name,
+                        column.dtype().to_string(),
+                    ));
                 }
-                Err(_) => {
-                    return Err(Error::DataframeMissingColumn(h3index_column_name));
-                }
-            };
-
-            dataframe
+            }
+            Err(_) => {
+                return Err(Error::DataframeMissingColumn(h3index_column_name));
+            }
         };
 
         Ok(H3DataFrame {
@@ -190,10 +180,12 @@ pub fn inner_join_h3dataframe(
     // add prefix for origin columns
     prefix_column_names(&mut h3dataframe.dataframe, prefix)?;
 
-    *dataframe = dataframe.inner_join(
+    *dataframe = dataframe.join(
         &h3dataframe.dataframe,
-        dataframe_h3index_column,
-        format!("{}{}", prefix, h3dataframe.h3index_column_name).as_str(),
+        [dataframe_h3index_column],
+        [format!("{}{}", prefix, h3dataframe.h3index_column_name).as_str()],
+        JoinType::Inner,
+        None,
     )?;
     Ok(())
 }

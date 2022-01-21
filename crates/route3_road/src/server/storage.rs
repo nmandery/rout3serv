@@ -16,7 +16,7 @@ use tonic::Status;
 
 use s3io::dataframe::H3DataFrame;
 use s3io::fetch::FetchError;
-use s3io::s3::{ObjectRef, S3Client, S3RecordBatchLoader};
+use s3io::s3::{ObjectRef, S3ArrowLoader, S3Client};
 
 use crate::config::{GenericDataset, ServerConfig};
 use crate::io::graph_store::{GraphCacheKey, GraphStore};
@@ -34,7 +34,7 @@ where
     s3_client: Arc<S3Client>,
     pub graph_store: GraphStore<W>,
     config: Arc<ServerConfig>,
-    recordbatch_loader: S3RecordBatchLoader,
+    recordbatch_loader: S3ArrowLoader,
 }
 
 impl<W: Send + Sync> S3Storage<W>
@@ -44,7 +44,7 @@ where
     pub fn from_config(config: Arc<ServerConfig>) -> eyre::Result<Self> {
         let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
         let graph_store = GraphStore::new(s3_client.clone(), config.graph_store.clone());
-        let recordbatch_loader = S3RecordBatchLoader::new(s3_client.clone(), 10);
+        let recordbatch_loader = S3ArrowLoader::new(s3_client.clone(), 10);
         Ok(Self {
             s3_client,
             graph_store,

@@ -1,8 +1,10 @@
 use std::io::Cursor;
 use std::path::Path;
 
-use arrow::io::{ipc, parquet};
-use arrow::record_batch::RecordBatch;
+use polars_core::frame::DataFrame;
+use polars_io::ipc::IpcReader;
+use polars_io::parquet::ParquetReader;
+use polars_io::SerReader;
 
 use crate::Error;
 
@@ -23,25 +25,12 @@ impl FileFormat {
         }
     }
 
-    pub fn recordbatches_from_slice(&self, bytes: &[u8]) -> Result<Vec<RecordBatch>, Error> {
-        let mut recordbatches = vec![];
-        let mut cursor = Cursor::new(bytes);
+    pub fn dataframe_from_slice(&self, bytes: &[u8]) -> Result<DataFrame, Error> {
+        let cursor = Cursor::new(bytes);
         match self {
-            FileFormat::ArrowIPC => {
-                let metadata = ipc::read::read_file_metadata(&mut cursor)?;
-                for recordbatch in ipc::read::FileReader::new(&mut cursor, metadata, None) {
-                    recordbatches.push(recordbatch?);
-                }
-            }
-            FileFormat::Parquet => {
-                for recordbatch in
-                    parquet::read::RecordReader::try_new(&mut cursor, None, None, None, None)?
-                {
-                    recordbatches.push(recordbatch?);
-                }
-            }
-        };
-        Ok(recordbatches)
+            FileFormat::ArrowIPC => Ok(IpcReader::new(cursor).finish()?),
+            FileFormat::Parquet => Ok(ParquetReader::new(cursor).finish()?),
+        }
     }
 }
 

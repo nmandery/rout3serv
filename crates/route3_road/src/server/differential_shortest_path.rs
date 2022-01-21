@@ -10,7 +10,7 @@ use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPat
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
-use polars_core::prelude::{DataFrame, NamedFrom, Series};
+use polars_core::prelude::{DataFrame, JoinType, NamedFrom, Series};
 use rayon::prelude::*;
 use s3io::dataframe::H3DataFrame;
 use serde::de::DeserializeOwned;
@@ -391,10 +391,12 @@ where
             &avg_category_weight_with_disturbance,
         ),
     ])?;
-    let df = df.inner_join(
+    let df = df.join(
         &output.ref_dataframe.dataframe,
-        "h3index_origin",
-        output.ref_dataframe.h3index_column_name.as_str(),
+        ["h3index_origin"],
+        [output.ref_dataframe.h3index_column_name.as_str()],
+        JoinType::Inner,
+        None,
     )?;
     Ok(df)
 }

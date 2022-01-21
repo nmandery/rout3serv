@@ -1,6 +1,6 @@
 use crate::config::{ServerConfig, TileDataset};
 use crate::tile::CellBuilder;
-use s3io::s3::{S3Client, S3RecordBatchLoader};
+use s3io::s3::{S3ArrowLoader, S3Client};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -21,7 +21,7 @@ impl From<TileDataset> for WrappedTileDataset {
 
 pub struct Registry {
     pub datasets: HashMap<String, WrappedTileDataset>,
-    pub loader: S3RecordBatchLoader,
+    pub loader: S3ArrowLoader,
 }
 
 impl TryFrom<ServerConfig> for Registry {
@@ -35,10 +35,7 @@ impl TryFrom<ServerConfig> for Registry {
                 .drain()
                 .map(|(name, tds)| (name, tds.into()))
                 .collect(),
-            loader: S3RecordBatchLoader::new(
-                s3_client,
-                server_config.cache_capacity.unwrap_or(120),
-            ),
+            loader: S3ArrowLoader::new(s3_client, server_config.cache_capacity.unwrap_or(120)),
         };
         Ok(reg)
     }
