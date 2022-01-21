@@ -32,7 +32,7 @@ class Route3RoadStub(object):
         self.H3ShortestPath = channel.unary_stream(
                 '/route3.road.Route3Road/H3ShortestPath',
                 request_serializer=route3__road__pb2.H3ShortestPathRequest.SerializeToString,
-                response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
+                response_deserializer=route3__road__pb2.ArrowIPCChunk.FromString,
                 )
         self.H3ShortestPathRoutes = channel.unary_stream(
                 '/route3.road.Route3Road/H3ShortestPathRoutes',
@@ -52,12 +52,12 @@ class Route3RoadStub(object):
         self.DifferentialShortestPath = channel.unary_stream(
                 '/route3.road.Route3Road/DifferentialShortestPath',
                 request_serializer=route3__road__pb2.DifferentialShortestPathRequest.SerializeToString,
-                response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
+                response_deserializer=route3__road__pb2.ArrowIPCChunk.FromString,
                 )
         self.GetDifferentialShortestPath = channel.unary_stream(
                 '/route3.road.Route3Road/GetDifferentialShortestPath',
                 request_serializer=route3__road__pb2.IdRef.SerializeToString,
-                response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
+                response_deserializer=route3__road__pb2.ArrowIPCChunk.FromString,
                 )
         self.GetDifferentialShortestPathRoutes = channel.unary_stream(
                 '/route3.road.Route3Road/GetDifferentialShortestPathRoutes',
@@ -67,7 +67,7 @@ class Route3RoadStub(object):
         self.H3CellsWithinThreshold = channel.unary_stream(
                 '/route3.road.Route3Road/H3CellsWithinThreshold',
                 request_serializer=route3__road__pb2.H3WithinThresholdRequest.SerializeToString,
-                response_deserializer=route3__road__pb2.ArrowRecordBatch.FromString,
+                response_deserializer=route3__road__pb2.ArrowIPCChunk.FromString,
                 )
 
 
@@ -165,7 +165,7 @@ def add_Route3RoadServicer_to_server(servicer, server):
             'H3ShortestPath': grpc.unary_stream_rpc_method_handler(
                     servicer.H3ShortestPath,
                     request_deserializer=route3__road__pb2.H3ShortestPathRequest.FromString,
-                    response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
+                    response_serializer=route3__road__pb2.ArrowIPCChunk.SerializeToString,
             ),
             'H3ShortestPathRoutes': grpc.unary_stream_rpc_method_handler(
                     servicer.H3ShortestPathRoutes,
@@ -185,12 +185,12 @@ def add_Route3RoadServicer_to_server(servicer, server):
             'DifferentialShortestPath': grpc.unary_stream_rpc_method_handler(
                     servicer.DifferentialShortestPath,
                     request_deserializer=route3__road__pb2.DifferentialShortestPathRequest.FromString,
-                    response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
+                    response_serializer=route3__road__pb2.ArrowIPCChunk.SerializeToString,
             ),
             'GetDifferentialShortestPath': grpc.unary_stream_rpc_method_handler(
                     servicer.GetDifferentialShortestPath,
                     request_deserializer=route3__road__pb2.IdRef.FromString,
-                    response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
+                    response_serializer=route3__road__pb2.ArrowIPCChunk.SerializeToString,
             ),
             'GetDifferentialShortestPathRoutes': grpc.unary_stream_rpc_method_handler(
                     servicer.GetDifferentialShortestPathRoutes,
@@ -200,7 +200,7 @@ def add_Route3RoadServicer_to_server(servicer, server):
             'H3CellsWithinThreshold': grpc.unary_stream_rpc_method_handler(
                     servicer.H3CellsWithinThreshold,
                     request_deserializer=route3__road__pb2.H3WithinThresholdRequest.FromString,
-                    response_serializer=route3__road__pb2.ArrowRecordBatch.SerializeToString,
+                    response_serializer=route3__road__pb2.ArrowIPCChunk.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -276,7 +276,7 @@ class Route3Road(object):
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/H3ShortestPath',
             route3__road__pb2.H3ShortestPathRequest.SerializeToString,
-            route3__road__pb2.ArrowRecordBatch.FromString,
+            route3__road__pb2.ArrowIPCChunk.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -344,7 +344,7 @@ class Route3Road(object):
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/DifferentialShortestPath',
             route3__road__pb2.DifferentialShortestPathRequest.SerializeToString,
-            route3__road__pb2.ArrowRecordBatch.FromString,
+            route3__road__pb2.ArrowIPCChunk.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -361,7 +361,7 @@ class Route3Road(object):
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/GetDifferentialShortestPath',
             route3__road__pb2.IdRef.SerializeToString,
-            route3__road__pb2.ArrowRecordBatch.FromString,
+            route3__road__pb2.ArrowIPCChunk.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -395,6 +395,6 @@ class Route3Road(object):
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/route3.road.Route3Road/H3CellsWithinThreshold',
             route3__road__pb2.H3WithinThresholdRequest.SerializeToString,
-            route3__road__pb2.ArrowRecordBatch.FromString,
+            route3__road__pb2.ArrowIPCChunk.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -18,7 +18,7 @@ use crate::server::api::generated::{
 };
 use crate::server::api::RouteH3IndexesKind;
 use crate::server::storage::S3Storage;
-use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowRecordBatchStream};
+use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream};
 use crate::weight::RoadWeight;
 
 mod api;
@@ -86,7 +86,7 @@ impl Route3Road for ServerImpl {
         Ok(Response::new(response))
     }
 
-    type H3ShortestPathStream = ArrowRecordBatchStream;
+    type H3ShortestPathStream = ArrowIpcChunkStream;
 
     async fn h3_shortest_path(
         &self,
@@ -140,12 +140,12 @@ impl Route3Road for ServerImpl {
         .await
     }
 
-    type DifferentialShortestPathStream = ArrowRecordBatchStream;
+    type DifferentialShortestPathStream = ArrowIpcChunkStream;
 
     async fn differential_shortest_path(
         &self,
         request: Request<DifferentialShortestPathRequest>,
-    ) -> Result<Response<ArrowRecordBatchStream>, Status> {
+    ) -> Result<Response<ArrowIpcChunkStream>, Status> {
         let dsp_request = request.into_inner();
         let input =
             differential_shortest_path::collect_input(dsp_request, self.storage.clone()).await?;
@@ -175,12 +175,12 @@ impl Route3Road for ServerImpl {
         Ok(response)
     }
 
-    type GetDifferentialShortestPathStream = ArrowRecordBatchStream;
+    type GetDifferentialShortestPathStream = ArrowIpcChunkStream;
 
     async fn get_differential_shortest_path(
         &self,
         request: Request<IdRef>,
-    ) -> Result<Response<ArrowRecordBatchStream>, Status> {
+    ) -> Result<Response<ArrowIpcChunkStream>, Status> {
         let inner = request.into_inner();
         let output: differential_shortest_path::DspOutput<RoadWeight> = self
             .storage
@@ -240,7 +240,7 @@ impl Route3Road for ServerImpl {
         Ok(Response::new(ReceiverStream::new(rx)))
     }
 
-    type H3CellsWithinThresholdStream = ArrowRecordBatchStream;
+    type H3CellsWithinThresholdStream = ArrowIpcChunkStream;
 
     async fn h3_cells_within_threshold(
         &self,

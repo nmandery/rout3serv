@@ -12,7 +12,7 @@ use tonic::{Response, Status};
 
 use s3io::dataframe::{dataframe_to_bytes, H3DataFrame};
 
-use crate::server::api::generated::ArrowRecordBatch;
+use crate::server::api::generated::ArrowIpcChunk;
 use crate::server::api::Route;
 
 /// wrapper around tokios `spawn_blocking` to directly
@@ -42,7 +42,7 @@ pub trait StrId {
 }
 
 /// type for a stream of ArrowRecordBatches to a GRPC client
-pub type ArrowRecordBatchStream = ReceiverStream<Result<ArrowRecordBatch, Status>>;
+pub type ArrowIpcChunkStream = ReceiverStream<Result<ArrowIpcChunk, Status>>;
 
 /// stream `RouteWKB` instances
 pub async fn stream_routes<R>(
@@ -93,7 +93,7 @@ pub fn change_cell_resolution_dedup(cells: &[H3Cell], h3_resolution: u8) -> Vec<
 pub async fn stream_dataframe(
     id: String,
     dataframe: DataFrame,
-) -> Result<Response<ArrowRecordBatchStream>, Status> {
+) -> Result<Response<ArrowIpcChunkStream>, Status> {
     stream_dataframe_with_max_rows(id, dataframe, 3000).await
 }
 
@@ -105,7 +105,7 @@ pub async fn stream_dataframe_with_max_rows(
     id: String,
     dataframe: DataFrame,
     max_rows: usize,
-) -> Result<Response<ArrowRecordBatchStream>, Status> {
+) -> Result<Response<ArrowIpcChunkStream>, Status> {
     let df_shape = dataframe.shape();
     log::debug!(
         "responding with a dataframe {:?} as a stream of chunks (max rows = {})",
@@ -129,9 +129,9 @@ pub async fn stream_dataframe_with_max_rows(
     tokio::spawn(async move {
         for df_part in dataframe_parts.drain(..) {
             let serialization_result =
-                dataframe_to_bytes_status(&df_part).map(|df_bytes| ArrowRecordBatch {
+                dataframe_to_bytes_status(&df_part).map(|ipc_bytes| ArrowIpcChunk {
                     object_id: id.clone(),
-                    data: df_bytes,
+                    data: ipc_bytes,
                 });
             if let Err(e) = tx.send(serialization_result).await {
                 log::warn!("Streaming dataframe parts aborted. reason: {}", e);

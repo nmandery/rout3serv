@@ -126,8 +126,8 @@ message H3ShortestPathRequest {
   bool smoothen_geometries = 5;
 }
 
-/** A single Arrow RecordBatch in Arrow IPC File format */
-message ArrowRecordBatch {
+/** A single Arrow chunk in Arrow IPC File format */
+message ArrowIPCChunk {
   /** id of the object this batch belongs to - if there is any */
   string object_id = 1;
 
@@ -185,19 +185,19 @@ service Route3Road {
   rpc ListDatasets(Empty) returns (ListDatasetsResponse) {}
 
   /* shortest path */
-  rpc H3ShortestPath(H3ShortestPathRequest) returns (stream ArrowRecordBatch);
+  rpc H3ShortestPath(H3ShortestPathRequest) returns (stream ArrowIPCChunk);
   rpc H3ShortestPathRoutes(H3ShortestPathRequest) returns (stream RouteWKB);
   rpc H3ShortestPathCells(H3ShortestPathRequest) returns (stream RouteH3Indexes);
   rpc H3ShortestPathEdges(H3ShortestPathRequest) returns (stream RouteH3Indexes);
 
   /** differential shortest path based on the population dataset */
   rpc DifferentialShortestPath(DifferentialShortestPathRequest)
-      returns (stream ArrowRecordBatch) {}
+      returns (stream ArrowIPCChunk) {}
   rpc GetDifferentialShortestPath(IdRef)
-      returns (stream ArrowRecordBatch) {}
+      returns (stream ArrowIPCChunk) {}
   rpc GetDifferentialShortestPathRoutes(DifferentialShortestPathRoutesRequest)
       returns (stream DifferentialShortestPathRoutes) {}
 
   /** graph cells with in a certain threshold of origin cells */
-  rpc H3CellsWithinThreshold(H3WithinThresholdRequest) returns (stream ArrowRecordBatch);
+  rpc H3CellsWithinThreshold(H3WithinThresholdRequest) returns (stream ArrowIPCChunk);
 }
