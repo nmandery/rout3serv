@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use h3ron::collections::H3CellSet;
 use h3ron::io::{deserialize_from, serialize_into};
-use h3ron::iter::change_cell_resolution;
+use h3ron::iter::change_resolution;
 use h3ron::H3Cell;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use polars_core::prelude::DataFrame;
@@ -217,7 +217,7 @@ where
     ) -> Result<(Vec<H3Cell>, Option<H3DataFrame>), Status> {
         // build a complete list of the requested h3cells transformed to the
         // correct resolution
-        let mut cells: Vec<_> = change_cell_resolution(
+        let mut cells: Vec<_> = change_resolution(
             cell_selection.cells.iter().filter_map(|v| {
                 if let Ok(cell) = H3Cell::try_from(*v) {
                     Some(cell)

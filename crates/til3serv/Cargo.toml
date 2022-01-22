@@ -30,7 +30,7 @@ features = [
 [dependencies.h3ron]
 #version = "0.13"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "f7fb58464a1c5149e52ce126a1692dfd6ab224c5"
+rev = "062122a08c9063e681610a093fcaa12da6a3c99a"
 
 [dependencies.serde]
 version = "1"

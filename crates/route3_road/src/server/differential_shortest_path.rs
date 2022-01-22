@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use geo_types::Coordinate;
 use h3ron::collections::{H3CellSet, H3Treemap};
-use h3ron::iter::change_cell_resolution;
+use h3ron::iter::change_resolution;
 use h3ron::{H3Cell, H3Edge, HasH3Resolution, Index};
 use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPath, ExclusionDiff};
 use h3ron_graph::algorithm::path::Path;
@@ -208,9 +208,10 @@ where
                 downsampled_graph.h3_resolution(),
             );
 
-            let disturbance_ds: H3Treemap<_> = H3Treemap::from_iter_with_sort(
-                change_cell_resolution(input.disturbance.iter(), downsampled_graph.h3_resolution()),
-            );
+            let disturbance_ds: H3Treemap<_> = H3Treemap::from_iter_with_sort(change_resolution(
+                input.disturbance.iter(),
+                downsampled_graph.h3_resolution(),
+            ));
 
             let diff_ds = downsampled_graph.differential_shortest_path_map(
                 &origin_cells_ds,

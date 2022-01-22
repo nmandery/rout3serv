@@ -7,7 +7,7 @@ use std::time::Duration;
 use bytes::Bytes;
 use bytesize::ByteSize;
 use futures::TryStreamExt;
-use h3ron::iter::change_cell_resolution;
+use h3ron::iter::change_resolution;
 use h3ron::H3Cell;
 use hyper::client::HttpConnector;
 use hyper_tls::HttpsConnector;
@@ -355,7 +355,7 @@ impl S3ArrowLoader {
         if cells.is_empty() {
             return Ok(Default::default());
         }
-        let file_cells = change_cell_resolution(
+        let file_cells = change_resolution(
             cells.iter(),
             dataset.file_h3_resolution_checked(data_h3_resolution)?,
         )

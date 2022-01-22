@@ -3,7 +3,7 @@
 
 use std::iter::FromIterator;
 
-use h3ron::iter::change_cell_resolution;
+use h3ron::iter::change_resolution;
 use h3ron::{H3Cell, Index};
 use polars_core::frame::DataFrame;
 use tokio::sync::mpsc;
@@ -83,7 +83,7 @@ where
 }
 
 pub fn change_cell_resolution_dedup(cells: &[H3Cell], h3_resolution: u8) -> Vec<H3Cell> {
-    let mut out_cells: Vec<_> = change_cell_resolution(cells, h3_resolution).collect();
+    let mut out_cells: Vec<_> = change_resolution(cells, h3_resolution).collect();
     out_cells.sort_unstable();
     out_cells.dedup();
     out_cells
