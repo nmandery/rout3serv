@@ -25,7 +25,6 @@ version = "0.19"
 features = [
     "ipc",
     "parquet",
-    "csv-file"  # until https://github.com/pola-rs/polars/pull/2434 is released
 ]
 
 [dependencies.serde]
@@ -33,9 +32,7 @@ version = "1"
 features = ["derive"]
 
 [dependencies.h3ron]
-#version = "0.13"
-git = "https://github.com/nmandery/h3ron.git"
-rev = "062122a08c9063e681610a093fcaa12da6a3c99a"
+version = "0.14"
 features = ["io", "rayon", "roaring", "compression", "use-serde"]
 
 [dependencies.hyper-tls]

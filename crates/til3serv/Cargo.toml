@@ -16,7 +16,7 @@ regex = "1.5"
 serde_yaml = "^0.8"
 
 [dependencies.minijinja]
-version = "^0.12"
+version = "^0.13"
 features = ["builtins", "json"]
 
 [dependencies.tokio]
@@ -28,9 +28,7 @@ features = [
 ]
 
 [dependencies.h3ron]
-#version = "0.13"
-git = "https://github.com/nmandery/h3ron.git"
-rev = "062122a08c9063e681610a093fcaa12da6a3c99a"
+version = "0.14"
 
 [dependencies.serde]
 version = "1"
