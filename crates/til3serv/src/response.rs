@@ -7,11 +7,13 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use h3ron::{FromH3Index, H3Cell};
 use polars_core::prelude::{DataFrame, Utf8Chunked};
+use polars_io::json::JsonFormat;
 use polars_io::SerWriter;
 
 #[derive(Copy, Clone)]
 pub enum OutputFormat {
     JsonLines,
+    Json,
     ArrowIPC,
     Parquet,
     Csv,
@@ -21,6 +23,7 @@ impl OutputFormat {
     pub fn from_name(name: &str) -> Result<Self, StatusCode> {
         match name.to_lowercase().as_str() {
             "jl" | "jsonl" | "jsonlines" => Ok(Self::JsonLines),
+            "j" | "json" => Ok(Self::Json),
             "arrow" | "ipc" => Ok(Self::ArrowIPC),
             "parquet" | "pq" => Ok(Self::Parquet),
             "csv" => Ok(Self::Csv),
@@ -34,6 +37,7 @@ impl OutputFormat {
     pub const fn content_type(&self) -> &'static str {
         match self {
             OutputFormat::JsonLines => "application/jsonlines+json",
+            OutputFormat::Json => "application/json",
             OutputFormat::ArrowIPC => "application/vnd.apache.arrow.file",
             OutputFormat::Parquet => "application/parquet",
             OutputFormat::Csv => "text/csv",
@@ -95,7 +99,17 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>>
 
         match &outdf.output_format {
             OutputFormat::JsonLines => {
-                let writer = polars_io::json::JsonWriter::new(&mut bytes);
+                let writer = polars_io::json::JsonWriter::with_json_format(
+                    polars_io::json::JsonWriter::new(&mut bytes),
+                    JsonFormat::JsonLines,
+                );
+                writer.finish(&outdf.dataframe)?;
+            }
+            OutputFormat::Json => {
+                let writer = polars_io::json::JsonWriter::with_json_format(
+                    polars_io::json::JsonWriter::new(&mut bytes),
+                    JsonFormat::Json,
+                );
                 writer.finish(&outdf.dataframe)?;
             }
             OutputFormat::ArrowIPC => {
