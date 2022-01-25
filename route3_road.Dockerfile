@@ -20,7 +20,7 @@ ENV RAYON_NUM_THREADS="0"
 ENV RUST_BACKTRACE=1
 ENV RUST_LOG="route3_road=info,s3io=info,tower_http::trace=debug"
 COPY --from=builder /usr/local/bin/route3_road /usr/bin/
-COPY ./crates/route3_road/server-config.example.yaml /server-config.yaml
+COPY ./crates/route3_road/config.example.yaml /config.yaml
 COPY ./crates/route3_road/proto /
 EXPOSE 7088
 ENTRYPOINT ["/usr/bin/route3_road"]

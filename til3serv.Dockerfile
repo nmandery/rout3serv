@@ -21,6 +21,6 @@ FROM debian:bullseye-slim
 ENV RUST_BACKTRACE=1
 ENV RUST_LOG="til3serv=info,s3io=info,tower_http::trace=debug"
 COPY --from=builder /usr/local/bin/til3serv /usr/bin/
-COPY ./crates/til3serv/config.yaml /config.yaml
+COPY ./crates/til3serv/config.example.yaml /config.yaml
 EXPOSE 9001
 ENTRYPOINT ["/usr/bin/til3serv"]
