@@ -25,6 +25,7 @@ version = "0.19"
 features = [
     "ipc",
     "parquet",
+    "csv-file",
 ]
 
 [dependencies.serde]

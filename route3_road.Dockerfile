@@ -11,7 +11,8 @@ COPY . /build
 RUN cd /build && \
     python3 docker-cargo-profile.py && \
     cd /build/crates/route3_road && \
-    PATH=$PATH:$HOME/.cargo/bin cargo install --path . --root /usr/local
+    PATH=$PATH:$HOME/.cargo/bin cargo install --path . --root /usr/local && \
+    strip /usr/local/bin/route3_road
 
 FROM basesystem
 # "0" -> let rayon determinate how many threads to use. Defaults to one per CPU core

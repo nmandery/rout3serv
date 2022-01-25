@@ -1,6 +1,4 @@
 use axum::body;
-use std::io::Cursor;
-
 use axum::body::{BoxBody, Full};
 use axum::http::header::CONTENT_TYPE;
 use axum::http::StatusCode;
@@ -117,8 +115,7 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>>
                 writer.finish(&outdf.dataframe)?;
             }
             OutputFormat::Parquet => {
-                let cursor = Cursor::new(&mut bytes);
-                let writer = polars_io::parquet::ParquetWriter::new(cursor);
+                let writer = polars_io::parquet::ParquetWriter::new(&mut bytes);
                 writer.finish(&outdf.dataframe)?;
             }
             OutputFormat::Csv => {
