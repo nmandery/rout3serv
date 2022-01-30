@@ -20,7 +20,6 @@ itertools = "0.10"
 geo-types = "0.7"
 serde_yaml = "0.8"
 num-traits = "0.2"
-approx = "0.5"
 ordered-float = "2.8.0"
 
 [dependencies.geo]
