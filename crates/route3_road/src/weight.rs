@@ -110,17 +110,27 @@ impl Zero for RoadWeight {
     }
 }
 
+fn fuzzy_abs_cmp(mut this_value: f32, mut other_value: f32, fuzzy_percentage: f32) -> Ordering {
+    assert!(fuzzy_percentage >= 1.0);
+    this_value = this_value.abs();
+    other_value = other_value.abs();
+
+    if this_value < other_value {
+        if (other_value / this_value) > fuzzy_percentage {
+            Ordering::Less
+        } else {
+            Ordering::Equal
+        }
+    } else if (this_value / other_value) > fuzzy_percentage {
+        Ordering::Greater
+    } else {
+        Ordering::Equal
+    }
+}
+
 impl PartialEq for RoadWeight {
     fn eq(&self, other: &Self) -> bool {
-        approx::abs_diff_eq!(
-            self.travel_duration.value,
-            other.travel_duration.value,
-            epsilon = f32::EPSILON
-        ) && approx::abs_diff_eq!(
-            self.road_category_weight,
-            other.road_category_weight,
-            epsilon = f32::EPSILON
-        )
+        self.partial_cmp(other).unwrap_or(Ordering::Equal) == Ordering::Equal
     }
 }
 
@@ -128,15 +138,15 @@ impl Eq for RoadWeight {}
 
 impl PartialOrd for RoadWeight {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // TODO: decide for the better road_category when the difference in travel_duration is
-        //       less than N seconds?
-        match self.travel_duration.partial_cmp(&other.travel_duration) {
-            Some(Ordering::Equal) => self
-                .road_category_weight
-                .partial_cmp(&other.road_category_weight),
-            Some(v) => Some(v),
-            None => None,
-        }
+        Some(
+            match fuzzy_abs_cmp(self.travel_duration.value, other.travel_duration.value, 1.1) {
+                Ordering::Less => Ordering::Less,
+                Ordering::Equal => {
+                    fuzzy_abs_cmp(self.road_category_weight, other.road_category_weight, 1.05)
+                }
+                Ordering::Greater => Ordering::Greater,
+            },
+        )
     }
 }
 
@@ -148,10 +158,11 @@ impl Ord for RoadWeight {
 
 #[cfg(test)]
 mod tests {
+    use std::cmp::Ordering;
     use uom::si::f32::Time;
     use uom::si::time::second;
 
-    use crate::weight::RoadWeight;
+    use crate::weight::{fuzzy_abs_cmp, RoadWeight};
 
     macro_rules! secs {
         ($s:expr) => {
@@ -170,5 +181,13 @@ mod tests {
         let rw1 = RoadWeight::new(4.0, secs!(10));
         let rw2 = RoadWeight::new(6.0, secs!(15));
         assert_eq!(rw1 + rw2, RoadWeight::new(5.2, secs!(25)));
+    }
+
+    #[test]
+    fn test_fuzzy_cmp() {
+        assert_eq!(fuzzy_abs_cmp(10.0, 10.0, 1.0), Ordering::Equal);
+        assert_eq!(fuzzy_abs_cmp(10.0, 11.0, 1.2), Ordering::Equal);
+        assert_eq!(fuzzy_abs_cmp(10.0, 14.0, 1.2), Ordering::Less);
+        assert_eq!(fuzzy_abs_cmp(10.0, 7.0, 1.2), Ordering::Greater);
     }
 }
