@@ -37,6 +37,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 mod build_info;
 mod config;
+mod customization;
 mod io;
 mod osm;
 mod server;

@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use h3ron::{H3Cell, HasH3Resolution, Index};
 use h3ron_graph::algorithm::path::Path;
-use h3ron_graph::algorithm::shortest_path::{ShortestPathManyToMany, ShortestPathOptions};
-use h3ron_graph::graph::PreparedH3EdgeGraph;
+use h3ron_graph::algorithm::shortest_path::ShortestPathOptions;
+use h3ron_graph::algorithm::ShortestPathManyToMany;
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
 use polars_core::prelude::{DataFrame, NamedFrom, Series};
@@ -15,6 +15,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 use uom::si::time::second;
 
+use crate::customization::{CustomizedGraph, CustomizedWeight};
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::api::Route;
@@ -26,7 +27,7 @@ use crate::server::util::{
 use crate::weight::Weight;
 
 pub struct H3ShortestPathParameters<W: Send + Sync> {
-    graph: Arc<PreparedH3EdgeGraph<W>>,
+    graph: CustomizedGraph<W>,
     options: super::api::generated::ShortestPathOptions,
     origin_cells: Vec<H3Cell>,
     origin_dataframe: Option<H3DataFrame>,
@@ -41,9 +42,10 @@ pub async fn create_parameters<W: Send + Sync>(
 where
     W: Serialize + DeserializeOwned,
 {
-    let (graph, _) = storage
+    let graph = storage
         .load_graph_from_option(&request.graph_handle)
-        .await?;
+        .await
+        .map(|(graph, _)| CustomizedGraph::from(graph))?;
 
     let (origin_cells, origin_dataframe) = storage
         .load_cell_selection(
@@ -110,7 +112,7 @@ where
         &parameters.origin_cells,
         &parameters.destination_cells,
         &parameters.options,
-        |p: Path<W>| {
+        |p: Path<CustomizedWeight<W>>| {
             (
                 *p.cost(),
                 p.edges()
@@ -194,7 +196,7 @@ where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
     R: Route + Send + 'static,
     E: Debug + Send + 'static,
-    F: FnMut(Path<W>) -> Result<R, E> + Send + 'static,
+    F: FnMut(Path<CustomizedWeight<W>>) -> Result<R, E> + Send + 'static,
 {
     let routes = spawn_blocking_status(move || {
         match parameters.graph.shortest_path_many_to_many(

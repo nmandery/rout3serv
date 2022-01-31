@@ -12,6 +12,7 @@ use tonic::{Response, Status};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
+use crate::customization::{CustomizedGraph, CustomizedWeight};
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::storage::S3Storage;
@@ -25,7 +26,7 @@ enum Threshold {
 }
 
 pub struct H3WithinThresholdParameters<W: Send + Sync> {
-    graph: Arc<PreparedH3EdgeGraph<W>>,
+    graph: CustomizedGraph<W>,
     origin_cells: Vec<H3Cell>,
     origin_dataframe: Option<H3DataFrame>,
     threshold: Threshold,
@@ -46,9 +47,10 @@ where
         return Err(Status::invalid_argument("invalid or no threshold given"));
     };
 
-    let (graph, _) = storage
+    let graph = storage
         .load_graph_from_option(&request.graph_handle)
-        .await?;
+        .await
+        .map(|(graph, _)| CustomizedGraph::from(graph))?;
 
     let (origin_cells, origin_dataframe) = storage
         .load_cell_selection(
@@ -93,11 +95,13 @@ where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {
     let threshold_weight = match parameters.threshold {
-        Threshold::TravelDuration(travel_duration) => W::from_travel_duration(travel_duration),
+        Threshold::TravelDuration(travel_duration) => {
+            CustomizedWeight::<W>::from_travel_duration(travel_duration)
+        }
     };
 
     // use the minimum weight encountered
-    let agg_fn = |existing: &mut W, new: W| {
+    let agg_fn = |existing: &mut CustomizedWeight<W>, new: CustomizedWeight<W>| {
         if new < *existing {
             *existing = new;
         }
