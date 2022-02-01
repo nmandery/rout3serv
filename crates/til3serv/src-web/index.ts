@@ -7,7 +7,7 @@ import View from 'ol/View';
 import {Fill, Stroke, Style, Text} from "ol/style";
 import VectorTileLayer from "ol/layer/VectorTile";
 import VectorTileSource from 'ol/source/VectorTile'
-import JsonLH3 from "./format/jsonlh3";
+import JsonH3 from "./format/jsonh3";
 import {Feature} from "ol";
 import {Geometry} from "ol/geom";
 import {scaleLinear} from 'd3-scale'
@@ -104,8 +104,8 @@ const map = new Map({
         new VectorTileLayer({
                 declutter: true,
                 source: new VectorTileSource({
-                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/jl',
-                        format: new JsonLH3(getViewerConfig().h3indexPropertyName),
+                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/json',
+                        format: new JsonH3(getViewerConfig().h3indexPropertyName),
                     }
                 ),
                 style: cellStyleFn(),
