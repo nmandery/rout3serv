@@ -54,7 +54,8 @@ version = "1"
 features = [
     "rt",
     "macros",
-    "sync"
+    "sync",
+    "parking_lot"
 ]
 
 [dependencies.backoff]

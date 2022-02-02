@@ -385,7 +385,10 @@ impl S3ArrowLoader {
         let df = match dataframes.len() {
             0 => DataFrame::default(),
             1 => dataframes.pop().unwrap(),
-            _ => concat_df(dataframes.iter())?,
+            _ => {
+                log::debug!("concatenating dataframe from {} parts", dataframes.len());
+                concat_df(dataframes.iter())?
+            }
         };
         H3DataFrame::from_dataframe(df, dataset.h3index_column())
     }
