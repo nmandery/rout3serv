@@ -24,6 +24,7 @@
     "d3-scale": "^4.0.2",
     "h3-js": "^3.7.2",
     "jsonl-parse-stringify": "^1.0.1",
-    "ol": "^6.9.0"
+    "ol": "^6.9.0",
+    "@apache-arrow/es5-cjs": "^7.0.0"
   }
 }

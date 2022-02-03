@@ -8,7 +8,7 @@ use polars_core::prelude::{DataFrame, Utf8Chunked};
 use polars_io::json::JsonFormat;
 use polars_io::SerWriter;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum OutputFormat {
     JsonLines,
     Json,
@@ -22,7 +22,7 @@ impl OutputFormat {
         match name.to_lowercase().as_str() {
             "jl" | "jsonl" | "jsonlines" => Ok(Self::JsonLines),
             "j" | "json" => Ok(Self::Json),
-            "arrow" | "ipc" => Ok(Self::ArrowIPC),
+            "arrow" | "ipc" | "arrowipc" => Ok(Self::ArrowIPC),
             "parquet" | "pq" => Ok(Self::Parquet),
             "csv" => Ok(Self::Csv),
             _ => {
@@ -84,16 +84,19 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>>
         StatusCode::NO_CONTENT
     } else {
         // convert h3indexes to hex-strings as UInt64-support in browsers is still somewhat recent
-        outdf.dataframe.replace_or_add(
-            OutDataFrame::h3index_column_name(),
-            outdf
-                .dataframe
-                .column(OutDataFrame::h3index_column_name())?
-                .u64()?
-                .into_iter()
-                .map(|o| o.map(|h3index| H3Cell::from_h3index(h3index).to_string()))
-                .collect::<Utf8Chunked>(),
-        )?;
+        if outdf.output_format != OutputFormat::ArrowIPC {
+            // TODO: needed?
+            outdf.dataframe.replace_or_add(
+                OutDataFrame::h3index_column_name(),
+                outdf
+                    .dataframe
+                    .column(OutDataFrame::h3index_column_name())?
+                    .u64()?
+                    .into_iter()
+                    .map(|o| o.map(|h3index| H3Cell::from_h3index(h3index).to_string()))
+                    .collect::<Utf8Chunked>(),
+            )?;
+        }
 
         match &outdf.output_format {
             OutputFormat::JsonLines => {

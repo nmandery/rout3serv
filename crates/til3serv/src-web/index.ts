@@ -7,11 +7,11 @@ import View from 'ol/View';
 import {Fill, Stroke, Style, Text} from "ol/style";
 import VectorTileLayer from "ol/layer/VectorTile";
 import VectorTileSource from 'ol/source/VectorTile'
-import JsonH3 from "./format/jsonh3";
 import {Feature} from "ol";
 import {Geometry} from "ol/geom";
 import {scaleLinear} from 'd3-scale'
 import {getViewerConfig} from "./config";
+import ArrowH3 from "./format/arrowh3";
 
 const countryStyle = new Style({
     fill: new Fill({
@@ -104,8 +104,8 @@ const map = new Map({
         new VectorTileLayer({
                 declutter: true,
                 source: new VectorTileSource({
-                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/json',
-                        format: new JsonH3(getViewerConfig().h3indexPropertyName),
+                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/arrowipc',
+                        format: new ArrowH3(getViewerConfig().h3indexPropertyName),
                     }
                 ),
                 style: cellStyleFn(),
