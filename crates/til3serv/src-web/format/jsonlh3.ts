@@ -1,35 +1,22 @@
-import FeatureFormat, {ReadOptions, transformGeometryWithOptions} from "ol/format/Feature";
-import {get as getProjection, Projection} from "ol/proj";
+import {ReadOptions} from "ol/format/Feature";
 import {Feature} from "ol";
-import {Geometry, Polygon} from "ol/geom";
+import {Geometry} from "ol/geom";
 import _default from "ol/format/FormatType";
-import TEXT = _default.TEXT;
 import JSONL from "jsonl-parse-stringify";
-import {H3Index, h3ToGeoBoundary} from 'h3-js';
+import {H3Index} from 'h3-js';
+import H3FeatureFormat from "./base";
+import TEXT = _default.TEXT;
 
-export default class JsonLH3 extends FeatureFormat {
-    private readonly h3indexPropertyName: string;
+export default class JsonLH3 extends H3FeatureFormat {
 
     constructor(h3indexPropertyName: string | undefined) {
-        super();
-        this.dataProjection = getProjection('EPSG:4326')
-        this.h3indexPropertyName = h3indexPropertyName || "h3index";
+        super(h3indexPropertyName);
         this.supportedMediaTypes = [
             "application/jsonlines+json",
         ]
     }
     getType(): any {
         return TEXT;
-    }
-
-    readProjection(source: any): Projection {
-        return getProjection('EPSG:4326')
-    }
-
-    readGeometry(h3index: H3Index, opt_options?: ReadOptions | undefined): Geometry {
-        let extRing = h3ToGeoBoundary(h3index, true)
-        let geom = new Polygon([extRing], )
-        return transformGeometryWithOptions(geom, false, opt_options)
     }
 
     readFeatures(source: string, opt_options?: ReadOptions | undefined): Feature<Geometry>[] {

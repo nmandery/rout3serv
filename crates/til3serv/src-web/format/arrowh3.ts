@@ -3,13 +3,12 @@ initial draft. blocked by uint64 support.
 requires "@apache-arrow/es5-cjs": "^6.0.0",
 */
 
-import FeatureFormat, {ReadOptions, transformGeometryWithOptions} from "ol/format/Feature";
-import {get as getProjection, Projection} from "ol/proj";
+import {ReadOptions} from "ol/format/Feature";
 import {Feature} from "ol";
-import {Geometry, Polygon} from "ol/geom";
+import {Geometry} from "ol/geom";
 import {Table, tableFromIPC} from "@apache-arrow/es5-cjs";
 import _default from "ol/format/FormatType";
-import {H3Index, h3ToGeoBoundary} from "h3-js";
+import H3FeatureFormat from "./base";
 import ARRAY_BUFFER = _default.ARRAY_BUFFER;
 
 function h3indexToString(h3index: number) : string {
@@ -20,14 +19,10 @@ function h3indexToString(h3index: number) : string {
  * Notes:
  * * js arrow 7 does not yet support LargeUTF8 (used by polars for strings
  */
-export default class ArrowH3 extends FeatureFormat {
-
-    private readonly h3indexPropertyName: string;
+export default class ArrowH3 extends H3FeatureFormat {
 
     constructor(h3indexPropertyName: string | undefined) {
-        super();
-        this.dataProjection = getProjection('EPSG:4326')
-        this.h3indexPropertyName = h3indexPropertyName || "h3index";
+        super(h3indexPropertyName);
         this.supportedMediaTypes = [
             "application/vnd.apache.arrow.file",
         ]
@@ -35,16 +30,6 @@ export default class ArrowH3 extends FeatureFormat {
 
     getType(): any {
         return ARRAY_BUFFER;
-    }
-
-    readProjection(source: any): Projection {
-        return getProjection('EPSG:4326');
-    }
-
-    readGeometry(h3index: H3Index, opt_options?: ReadOptions | undefined): Geometry {
-        let extRing = h3ToGeoBoundary(h3index, true)
-        let geom = new Polygon([extRing],)
-        return transformGeometryWithOptions(geom, false, opt_options)
     }
 
     readFeatures(source: ArrayBuffer, opt_options?: ReadOptions | undefined): Feature<Geometry>[] {
@@ -89,8 +74,5 @@ export default class ArrowH3 extends FeatureFormat {
             }
         }
         return features;
-    }
-
-    setLayers(layers: any) {
     }
 }
