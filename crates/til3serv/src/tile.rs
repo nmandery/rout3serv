@@ -5,7 +5,7 @@ use std::fmt;
 use geo::algorithm::bounding_rect::BoundingRect;
 use geo::algorithm::dimensions::HasDimensions;
 use geo_types::{Coordinate, Rect};
-use h3ron::collections::indexvec::IndexVec;
+use h3ron::iter::change_resolution;
 use h3ron::{Error, H3Cell, H3Edge, ToH3Cells, H3_MAX_RESOLUTION};
 
 /// parts of this file have been ported from
@@ -44,6 +44,55 @@ impl Tile {
             Coordinate::from((left + tile_size, top - tile_size)),
         )
     }
+
+    fn to_h3_cells(&self, h3_resolution: u8) -> Result<Vec<H3Cell>, Error> {
+        // operating on a lower resolution reduces the number of point-in-polygon
+        // operations to perform during polyfill. As a drawback this over-fetches and
+        // and delivers more cells than required to the browser.
+        let h3_resolution_offset = 1;
+
+        // buffer the box using the cells size to ensure cells with just their
+        // centroid outside of the box, but parts of the outline intersecting
+        // are also included.
+        // web-mercator uses meters as units.
+        let buffered_bbox = {
+            let buffer_meters =
+                H3Edge::edge_length_m(h3_resolution.saturating_sub(h3_resolution_offset)) * 1.8;
+            let wm_bbox = self.webmercator_bounding_rect();
+
+            Rect::new(
+                webmercator_to_lnglat(&truncate_to(
+                    &Coordinate::from((
+                        wm_bbox.min().x - buffer_meters,
+                        wm_bbox.min().y - buffer_meters,
+                    )),
+                    &EXTEND_EPSG_3857,
+                )),
+                webmercator_to_lnglat(&truncate_to(
+                    &Coordinate::from((
+                        wm_bbox.max().x + buffer_meters,
+                        wm_bbox.max().y + buffer_meters,
+                    )),
+                    &EXTEND_EPSG_3857,
+                )),
+            )
+        };
+        if buffered_bbox.is_empty() {
+            Ok(Default::default())
+        } else {
+            //let latlon_rect = self.bounding_rect();
+            let cells = change_resolution(
+                buffered_bbox
+                    .to_h3_cells(h3_resolution.saturating_sub(h3_resolution_offset))?
+                    .iter(),
+                h3_resolution,
+            )
+            // remove cells from outside the box bounding_rect, but this brings in additional cpu usage.
+            //.filter(|cell| latlon_rect.contains(&cell.to_coordinate()))
+            .collect();
+            Ok(cells)
+        }
+    }
 }
 
 #[inline(always)]
@@ -67,41 +116,6 @@ impl BoundingRect<f64> for Tile {
             tile_coord_to_latlng(self.x, self.y, z2),
             tile_coord_to_latlng(self.x + 1, self.y + 1, z2),
         )
-    }
-}
-
-impl ToH3Cells for Tile {
-    fn to_h3_cells(&self, h3_resolution: u8) -> Result<IndexVec<H3Cell>, Error> {
-        // buffer the box using the cells size to ensure cells with just their
-        // centroid outside of the box, but parts of the outline intersecting
-        // are also included.
-        // web-mercator uses meters as units.
-        let buffered_bbox = {
-            let buffer_meters = H3Edge::edge_length_m(h3_resolution) * 1.8;
-            let wm_bbox = self.webmercator_bounding_rect();
-
-            Rect::new(
-                webmercator_to_lnglat(&truncate_to(
-                    &Coordinate::from((
-                        wm_bbox.min().x - buffer_meters,
-                        wm_bbox.min().y - buffer_meters,
-                    )),
-                    &EXTEND_EPSG_3857,
-                )),
-                webmercator_to_lnglat(&truncate_to(
-                    &Coordinate::from((
-                        wm_bbox.max().x + buffer_meters,
-                        wm_bbox.max().y + buffer_meters,
-                    )),
-                    &EXTEND_EPSG_3857,
-                )),
-            )
-        };
-        if buffered_bbox.is_empty() {
-            Ok(Default::default())
-        } else {
-            buffered_bbox.to_h3_cells(h3_resolution)
-        }
     }
 }
 
@@ -187,7 +201,7 @@ impl CellBuilder {
         &self,
         tile: &Tile,
         max_num_cells: usize,
-    ) -> Result<Option<(u8, IndexVec<H3Cell>)>, Error> {
+    ) -> Result<Option<(u8, Vec<H3Cell>)>, Error> {
         let area_tile_m2 = tile.area_m2();
         let mut select_h3_resolution = None;
         for h3_resolution in self.h3_resolutions.iter() {

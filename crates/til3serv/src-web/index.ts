@@ -57,7 +57,7 @@ const getView = () => {
 
 const cellStyleFn = () => {
     const stroke = new Stroke({
-        color: '#333',
+        color: '#777',
         width: 0.5,
     });
     const styleConfig = getViewerConfig().styleConfig;

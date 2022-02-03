@@ -55,20 +55,19 @@ async fn build_tile(
         None => return Err(StatusCode::NOT_FOUND),
     };
 
-    if let Some((h3_resolution, cells)) = wrapped_tds
+    if let Some((h3_resolution, cell_vec)) = wrapped_tds
         .cell_builder
         .cells_bounded(&tile, 120000)
         .map_err(|e| {
-            log::error!(
-                "no suitable cells for {} of {} : {:?}",
-                tile,
-                dataset_name,
-                e
-            );
-            StatusCode::NO_CONTENT
-        })?
-    {
-        let cell_vec: Vec<_> = cells.iter().collect();
+        log::error!(
+            "no suitable cells for {} of {} : {:?}",
+            tile,
+            dataset_name,
+            e
+        );
+        StatusCode::NO_CONTENT
+    })? {
+        //let cell_vec: Vec<_> = cells.iter().collect();
         log::debug!(
             "using h3_resolution {} for {} of {} (len: {})",
             h3_resolution,

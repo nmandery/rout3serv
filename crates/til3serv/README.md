@@ -12,3 +12,11 @@ Features:
   - includes simple styling based on a property, value range and color range.
 
 Configuration: [config.example.yaml](config.example.yaml)
+
+## Design considerations
+
+### Load reduction through optimized storage
+
+Currently, the data is stored in the backend grouped by h3 cell. For serving rectangular tiles the required cells have to
+be filtered out from this, as this depends on running `polyfill` it is a somewhat expensive operation (up to 70ms/tile). Having
+the backend store in pre-filtered tiles would reduce load. The tileserver would then only apply attribute filters.
