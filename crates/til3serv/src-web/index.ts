@@ -104,7 +104,7 @@ const map = new Map({
         new VectorTileLayer({
                 declutter: true,
                 source: new VectorTileSource({
-                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/arrowipc',
+                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/ipc',
                         format: new ArrowH3(getViewerConfig().h3indexPropertyName),
                     }
                 ),

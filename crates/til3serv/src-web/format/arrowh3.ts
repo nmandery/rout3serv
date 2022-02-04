@@ -1,6 +1,5 @@
 /*
-initial draft. blocked by uint64 support.
-requires "@apache-arrow/es5-cjs": "^6.0.0",
+requires "@apache-arrow/es5-cjs": "^7.0.0"
 */
 
 import {ReadOptions} from "ol/format/Feature";
@@ -60,9 +59,7 @@ export default class ArrowH3 extends H3FeatureFormat {
             for (let columnI = 0; columnI < table.schema.names.length; columnI++) {
                 const columnName = table.schema.names[columnI];
                 const column = table.getChild(columnName);
-                if (columnName == this.h3indexPropertyName) {
-                    continue
-                } else {
+                if (columnName != this.h3indexPropertyName) {
                     for (let i = -1, n = column.length; ++i < n;) {
                         // @ts-ignore
                         properties[i][columnName] = column.get(i);
