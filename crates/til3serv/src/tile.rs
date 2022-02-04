@@ -252,12 +252,12 @@ mod tests {
     use super::{CellBuilder, Tile};
 
     #[test]
-    fn it_works() {
+    fn cell_builder_cells_bounded() {
         let tile = Tile { x: 10, y: 10, z: 5 };
         let cell_builder = CellBuilder::new(&[1, 2, 3, 4, 5, 6, 7]);
         let (h3_res, cells) = cell_builder.cells_bounded(&tile, 2000).unwrap().unwrap();
         assert!(h3_res <= 7);
-        assert!(cells.count() < 2000);
-        assert!(cells.count() > 200);
+        assert!(cells.iter().count() < 2000);
+        assert!(cells.iter().count() > 200);
     }
 }
