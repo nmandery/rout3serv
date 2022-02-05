@@ -27,7 +27,7 @@ async fn serve_tile(
     build_tile(
         tile,
         dataset_name,
-        OutputFormat::JsonLines,
+        OutputFormat::default(),
         registry_state.0,
     )
     .await
@@ -101,6 +101,7 @@ async fn build_tile(
             output_format,
             h3_resolution,
             dataframe: response_dataframe,
+            cache_control: registry.cache_control.clone(),
         };
 
         Ok(outdf)

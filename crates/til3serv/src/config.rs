@@ -28,6 +28,10 @@ pub struct ServerConfig {
     pub enable_ui: Option<bool>,
     pub s3: S3Config,
     pub datasets: HashMap<String, TileDataset>,
+
+    /// value for the cache-control header
+    /// Defaults to `no-cache` when not set.
+    pub cache_control: Option<String>,
 }
 
 impl Validate for ServerConfig {

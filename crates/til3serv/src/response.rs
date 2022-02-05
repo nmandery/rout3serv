@@ -1,7 +1,7 @@
 use axum::body;
 use axum::body::{BoxBody, Full};
-use axum::http::header::CONTENT_TYPE;
 use axum::http::StatusCode;
+use axum::http::{header, HeaderValue};
 use axum::response::{IntoResponse, Response};
 use h3ron::{FromH3Index, H3Cell};
 use polars_core::prelude::{DataFrame, Utf8Chunked};
@@ -53,6 +53,7 @@ pub struct OutDataFrame {
     pub output_format: OutputFormat,
     pub h3_resolution: u8,
     pub dataframe: DataFrame,
+    pub cache_control: HeaderValue,
 }
 
 impl OutDataFrame {
@@ -71,7 +72,7 @@ impl IntoResponse for OutDataFrame {
             Ok(response) => response,
             Err(err) => Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header(axum::http::header::CONTENT_TYPE, "text/plain")
+                .header(header::CONTENT_TYPE, "text/plain")
                 .body(body::boxed(Full::from(err.to_string())))
                 .unwrap(),
         }
@@ -132,7 +133,8 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>>
 
     Ok(Response::builder()
         .status(status)
-        .header(CONTENT_TYPE, outdf.output_format.content_type())
+        .header(header::CONTENT_TYPE, outdf.output_format.content_type())
+        .header(header::CACHE_CONTROL, outdf.cache_control)
         .header("X-H3-Resolution", outdf.h3_resolution.to_string())
         .header("X-Shape", format!("{:?}", outdf.dataframe.shape()))
         .body(body::boxed(Full::from(bytes)))

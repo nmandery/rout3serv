@@ -1,5 +1,6 @@
 use crate::config::{ServerConfig, TileDataset};
 use crate::tile::CellBuilder;
+use axum::http::HeaderValue;
 use s3io::s3::{S3ArrowLoader, S3Client};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -22,6 +23,9 @@ impl From<TileDataset> for WrappedTileDataset {
 pub struct Registry {
     pub datasets: HashMap<String, WrappedTileDataset>,
     pub loader: S3ArrowLoader,
+
+    /// value for the cache-control header
+    pub cache_control: HeaderValue,
 }
 
 impl TryFrom<ServerConfig> for Registry {
@@ -29,13 +33,22 @@ impl TryFrom<ServerConfig> for Registry {
 
     fn try_from(mut server_config: ServerConfig) -> Result<Self, Self::Error> {
         let s3_client: Arc<S3Client> = Arc::new(S3Client::from_config(&server_config.s3)?);
+
+        let datasets = server_config
+            .datasets
+            .drain()
+            .map(|(name, tds)| (name, tds.into()))
+            .collect();
+
+        let cache_control = server_config
+            .cache_control
+            .map(|cc| HeaderValue::from_str(cc.as_str()))
+            .unwrap_or_else(|| Ok(HeaderValue::from_static("no-cache")))?;
+
         let reg = Self {
-            datasets: server_config
-                .datasets
-                .drain()
-                .map(|(name, tds)| (name, tds.into()))
-                .collect(),
+            datasets,
             loader: S3ArrowLoader::new(s3_client, server_config.cache_capacity.unwrap_or(120)),
+            cache_control,
         };
         Ok(reg)
     }
