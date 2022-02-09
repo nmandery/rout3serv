@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use h3ron::{H3Cell, HasH3Resolution, Index};
 use h3ron_graph::algorithm::WithinWeightThresholdMany;
-use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
 use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;

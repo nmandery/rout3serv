@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::ops::{Add, Deref};
 use std::sync::Arc;
 
+use float_cmp::ApproxEqRatio;
 use h3ron::{H3Cell, H3Edge, HasH3Resolution};
 use h3ron_graph::graph::node::NodeType;
 use h3ron_graph::graph::{EdgeWeight, GetCellNode, GetEdge, PreparedH3EdgeGraph};
@@ -12,8 +13,13 @@ use crate::weight::Weight;
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub enum ComparisonKind {
+    /// Exact comparison
     Exact,
-    Fuzzy(f32),
+
+    /// Approximate equality comparisons bounding the ratio of the difference to the larger.
+    ///
+    /// Provided by [`ApproxEqRatio`].
+    DifferenceRatio(f32),
 }
 
 impl Default for ComparisonKind {
@@ -26,14 +32,7 @@ impl TryFrom<f32> for ComparisonKind {
     type Error = eyre::Report;
 
     fn try_from(value: f32) -> Result<Self, Self::Error> {
-        if value < 1.0 {
-            Err(Self::Error::msg(format!(
-                "fuzzy percentage must be >= 1.0 (got {})",
-                value
-            )))
-        } else {
-            Ok(Self::Fuzzy(value))
-        }
+        Self::difference_ratio(value)
     }
 }
 
@@ -42,34 +41,32 @@ impl ComparisonKind {
         Self::default()
     }
 
-    pub fn fuzzy(fuzzy_percentage: f32) -> eyre::Result<Self> {
-        fuzzy_percentage.try_into()
+    pub fn difference_ratio(ratio: f32) -> eyre::Result<Self> {
+        if ratio < 1.0 {
+            Ok(Self::DifferenceRatio(ratio))
+        } else {
+            Err(eyre::Report::msg(format!(
+                "ratio must be < 1.0 (got {})",
+                ratio
+            )))
+        }
     }
 
-    pub fn abs_partial_cmp(&self, mut this_value: f32, mut other_value: f32) -> Option<Ordering> {
+    pub fn compare_values(&self, this_value: f32, other_value: f32) -> Option<Ordering> {
         match self {
             ComparisonKind::Exact => this_value.partial_cmp(&other_value),
-            ComparisonKind::Fuzzy(fuzzy_percentage) => {
-                this_value = this_value.abs();
-                other_value = other_value.abs();
-
-                Some(if this_value < other_value {
-                    if (other_value / this_value) > *fuzzy_percentage {
-                        Ordering::Less
-                    } else {
-                        Ordering::Equal
-                    }
-                } else if (this_value / other_value) > *fuzzy_percentage {
-                    Ordering::Greater
+            ComparisonKind::DifferenceRatio(ratio) => {
+                if this_value.approx_eq_ratio(&other_value, *ratio) {
+                    Some(Ordering::Equal)
                 } else {
-                    Ordering::Equal
-                })
+                    this_value.partial_cmp(&other_value)
+                }
             }
         }
     }
 
-    pub fn abs_partial_eq(&self, this_value: f32, other_value: f32) -> bool {
-        self.abs_partial_cmp(this_value, other_value)
+    pub fn are_equal(&self, this_value: f32, other_value: f32) -> bool {
+        self.compare_values(this_value, other_value)
             .unwrap_or(Ordering::Equal)
             == Ordering::Equal
     }
@@ -91,13 +88,13 @@ where
     fn add(mut self, rhs: Self) -> Self::Output {
         self.road_weight = self.road_weight + rhs.road_weight;
 
-        // any ComparisonKind takes precedence over Exact
-        // as Exact is default and so this may be just initialized
+        // any ComparisonKind takes precedence over the default
+        // as this may be just initialized
         // to default when the instance was created using zero()
-        if self.road_category_weight_cmp == ComparisonKind::Exact {
+        if self.road_category_weight_cmp == ComparisonKind::default() {
             self.road_category_weight_cmp = rhs.road_category_weight_cmp
         }
-        if self.travel_duration_cmp == ComparisonKind::Exact {
+        if self.travel_duration_cmp == ComparisonKind::default() {
             self.travel_duration_cmp = rhs.travel_duration_cmp
         }
         self
@@ -134,10 +131,10 @@ where
     W: Weight,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.travel_duration_cmp.abs_partial_eq(
+        self.travel_duration_cmp.are_equal(
             self.road_weight.travel_duration().value,
             other.road_weight.travel_duration().value,
-        ) && self.road_category_weight_cmp.abs_partial_eq(
+        ) && self.road_category_weight_cmp.are_equal(
             self.road_weight.category_weight(),
             other.road_weight.category_weight(),
         )
@@ -150,13 +147,13 @@ where
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.travel_duration_cmp
-            .abs_partial_cmp(
+            .compare_values(
                 self.road_weight.travel_duration().value,
                 other.road_weight.travel_duration().value,
             )
             .map(|ordering| {
                 if ordering == Ordering::Equal {
-                    self.road_category_weight_cmp.abs_partial_cmp(
+                    self.road_category_weight_cmp.compare_values(
                         self.road_weight.category_weight(),
                         other.road_weight.category_weight(),
                     )
@@ -262,29 +259,29 @@ mod tests {
     use crate::customization::ComparisonKind;
 
     #[test]
-    fn test_fuzzy_cmp() {
+    fn test_difference_ratio_cmp() {
         assert_eq!(
-            ComparisonKind::fuzzy(1.0)
+            ComparisonKind::difference_ratio(0.05)
                 .unwrap()
-                .abs_partial_cmp(10.0, 10.0),
+                .compare_values(10.0, 10.0),
             Some(Ordering::Equal)
         );
         assert_eq!(
-            ComparisonKind::fuzzy(1.2)
+            ComparisonKind::difference_ratio(0.1)
                 .unwrap()
-                .abs_partial_cmp(10.0, 11.0),
+                .compare_values(10.0, 11.0),
             Some(Ordering::Equal)
         );
         assert_eq!(
-            ComparisonKind::fuzzy(1.2)
+            ComparisonKind::difference_ratio(0.2)
                 .unwrap()
-                .abs_partial_cmp(10.0, 14.0),
+                .compare_values(10.0, 14.0),
             Some(Ordering::Less)
         );
         assert_eq!(
-            ComparisonKind::fuzzy(1.2)
+            ComparisonKind::difference_ratio(0.2)
                 .unwrap()
-                .abs_partial_cmp(10.0, 7.0),
+                .compare_values(10.0, 7.0),
             Some(Ordering::Greater)
         );
     }
