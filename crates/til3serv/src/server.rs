@@ -20,7 +20,7 @@ use crate::state::Registry;
 use crate::ui::{main_page, tile_viewer, ui_static_files};
 
 async fn serve_tile(
-    Path((dataset_name, z, x, y)): Path<(String, u16, u32, u32)>,
+    Path((dataset_name, z, x, y)): Path<(String, u8, u32, u32)>,
     registry_state: Extension<Arc<Registry>>,
 ) -> Result<OutDataFrame, StatusCode> {
     let tile = Tile { x, y, z };
@@ -34,7 +34,7 @@ async fn serve_tile(
 }
 
 async fn serve_tile_with_format(
-    Path((dataset_name, z, x, y, format)): Path<(String, u16, u32, u32, String)>,
+    Path((dataset_name, z, x, y, format)): Path<(String, u8, u32, u32, String)>,
     registry_state: Extension<Arc<Registry>>,
 ) -> Result<OutDataFrame, StatusCode> {
     let tile = Tile { x, y, z };

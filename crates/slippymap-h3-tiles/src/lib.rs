@@ -9,6 +9,7 @@
 )]
 
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::f64::consts::PI;
 use std::fmt;
 
@@ -24,11 +25,38 @@ use h3ron::{Error, H3Cell, H3Edge, ToCoordinate, ToH3Cells, H3_MAX_RESOLUTION};
 /// and
 /// <https://github.com/openlayers/openlayers/blob/fdba3ecf0e47503dd8e8711a44cf34620be70b2d/src/ol/proj/epsg3857.js#L26>
 
-#[derive(PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct Tile {
     pub x: u32,
     pub y: u32,
-    pub z: u16,
+    pub z: u8,
+}
+
+impl Tile {
+    pub fn new(x: u32, y: u32, z: u8) -> Self {
+        Self { x, y, z }
+    }
+}
+
+impl PartialOrd<Self> for Tile {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// order by z, x, y values
+impl Ord for Tile {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.z.cmp(&other.z) {
+            Ordering::Less => Ordering::Less,
+            Ordering::Equal => match self.x.cmp(&other.x) {
+                Ordering::Less => Ordering::Less,
+                Ordering::Equal => self.y.cmp(&other.y),
+                Ordering::Greater => Ordering::Greater,
+            },
+            Ordering::Greater => Ordering::Greater,
+        }
+    }
 }
 
 impl fmt::Display for Tile {
@@ -294,5 +322,18 @@ mod tests {
         assert!(h3_res <= 7);
         assert!(cells.iter().count() < 2000);
         assert!(cells.iter().count() > 200);
+    }
+
+    #[test]
+    fn tiles_ordering() {
+        let mut tiles = vec![
+            Tile::new(56, 23, 10),
+            Tile::new(56, 23, 5),
+            Tile::new(10, 23, 5),
+        ];
+        tiles.sort_unstable();
+        assert_eq!(tiles[0], Tile::new(10, 23, 5));
+        assert_eq!(tiles[1], Tile::new(56, 23, 5));
+        assert_eq!(tiles[2], Tile::new(56, 23, 10));
     }
 }
