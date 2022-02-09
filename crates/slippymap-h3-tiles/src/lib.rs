@@ -1,3 +1,13 @@
+#![warn(
+    clippy::all,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    nonstandard_style
+)]
+
 use std::borrow::Borrow;
 use std::f64::consts::PI;
 use std::fmt;
@@ -61,20 +71,14 @@ impl Tile {
             let wm_bbox = self.webmercator_bounding_rect();
 
             Rect::new(
-                webmercator_to_lnglat(&truncate_to(
-                    &Coordinate::from((
-                        wm_bbox.min().x - buffer_meters,
-                        wm_bbox.min().y - buffer_meters,
-                    )),
-                    &EXTEND_EPSG_3857,
-                )),
-                webmercator_to_lnglat(&truncate_to(
-                    &Coordinate::from((
-                        wm_bbox.max().x + buffer_meters,
-                        wm_bbox.max().y + buffer_meters,
-                    )),
-                    &EXTEND_EPSG_3857,
-                )),
+                webmercator_to_lnglat(EXTEND_EPSG_3857.truncate_coordinate(Coordinate::from((
+                    wm_bbox.min().x - buffer_meters,
+                    wm_bbox.min().y - buffer_meters,
+                )))),
+                webmercator_to_lnglat(EXTEND_EPSG_3857.truncate_coordinate(Coordinate::from((
+                    wm_bbox.max().x + buffer_meters,
+                    wm_bbox.max().y + buffer_meters,
+                )))),
             )
         };
         if buffered_bbox.is_empty() {
@@ -119,23 +123,43 @@ impl BoundingRect<f64> for Tile {
     }
 }
 
+pub struct Extend([f64; 4]);
+
+impl Extend {
+    pub const fn min_x(&self) -> f64 {
+        self.0[0]
+    }
+
+    pub const fn min_y(&self) -> f64 {
+        self.0[1]
+    }
+
+    pub const fn max_x(&self) -> f64 {
+        self.0[2]
+    }
+
+    pub const fn max_y(&self) -> f64 {
+        self.0[3]
+    }
+
+    pub fn truncate_coordinate(&self, coord: Coordinate<f64>) -> Coordinate<f64> {
+        Coordinate::from((
+            restrict_between(self.min_x(), self.max_x(), coord.x),
+            restrict_between(self.min_y(), self.max_y(), coord.y),
+        ))
+    }
+}
+
 const EARTH_RADIUS_EQUATOR: f64 = 6378137.0;
 const R2D: f64 = 180.0 / PI;
 const CE: f64 = 2.0 * PI * EARTH_RADIUS_EQUATOR;
 const HALF_SIZE: f64 = EARTH_RADIUS_EQUATOR * PI;
 
-// spherical mercator
-const EXTEND_EPSG_3857: [f64; 4] = [-HALF_SIZE, -HALF_SIZE, HALF_SIZE, HALF_SIZE];
+/// spherical mercator
+pub const EXTEND_EPSG_3857: Extend = Extend([-HALF_SIZE, -HALF_SIZE, HALF_SIZE, HALF_SIZE]);
 
-// bounds of spherical mercator in WGS84 coordinates
-const EXTEND_EPSG_4326: [f64; 4] = [-180.0, -85.0, 180.0, 85.0];
-
-fn truncate_to(c: &Coordinate<f64>, extend: &[f64; 4]) -> Coordinate<f64> {
-    Coordinate::from((
-        restrict_between(extend[0], extend[2], c.x),
-        restrict_between(extend[1], extend[3], c.y),
-    ))
-}
+/// bounds of spherical mercator in WGS84 coordinates
+pub const EXTEND_EPSG_4326: Extend = Extend([-180.0, -85.0, 180.0, 85.0]);
 
 #[inline(always)]
 fn restrict_between(value_min: f64, value_max: f64, value: f64) -> f64 {
@@ -150,8 +174,8 @@ fn restrict_between(value_min: f64, value_max: f64, value: f64) -> f64 {
 
 /// Convert longitude and latitude to web mercator
 #[allow(dead_code)]
-fn lnglat_to_webmercator(c: &Coordinate<f64>) -> Coordinate<f64> {
-    let c = truncate_to(c, &EXTEND_EPSG_4326);
+fn lnglat_to_webmercator(c: Coordinate<f64>) -> Coordinate<f64> {
+    let c = EXTEND_EPSG_4326.truncate_coordinate(c);
     Coordinate::from((
         EARTH_RADIUS_EQUATOR * c.x.to_radians(),
         EARTH_RADIUS_EQUATOR * PI.mul_add(0.25, 0.5 * c.y.to_radians()).tan().ln(),
@@ -159,12 +183,12 @@ fn lnglat_to_webmercator(c: &Coordinate<f64>) -> Coordinate<f64> {
 }
 
 /// Convert web mercator x, y to longitude and latitude
-fn webmercator_to_lnglat(c: &Coordinate<f64>) -> Coordinate<f64> {
+fn webmercator_to_lnglat(c: Coordinate<f64>) -> Coordinate<f64> {
     let ll_c = Coordinate::from((
         c.x * R2D / EARTH_RADIUS_EQUATOR,
         ((PI * 0.5) - 2.0 * (-1.0 * c.y / EARTH_RADIUS_EQUATOR).exp().atan()) * R2D,
     ));
-    truncate_to(&ll_c, &EXTEND_EPSG_4326)
+    EXTEND_EPSG_4326.truncate_coordinate(ll_c)
 }
 
 pub struct CellBuilder {
