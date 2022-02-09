@@ -20,7 +20,6 @@ mod config;
 mod response;
 mod server;
 mod state;
-mod tile;
 mod ui;
 mod util;
 

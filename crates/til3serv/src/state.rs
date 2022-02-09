@@ -1,9 +1,12 @@
-use crate::config::{ServerConfig, TileDataset};
-use crate::tile::CellBuilder;
-use axum::http::HeaderValue;
-use s3io::s3::{S3ArrowLoader, S3Client};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use axum::http::HeaderValue;
+
+use s3io::s3::{S3ArrowLoader, S3Client};
+use slippymap_h3_tiles::CellBuilder;
+
+use crate::config::{ServerConfig, TileDataset};
 
 pub struct WrappedTileDataset {
     pub tile_dataset: TileDataset,

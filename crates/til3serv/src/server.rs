@@ -12,11 +12,11 @@ use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
 
 use s3io::dataframe::H3DataFrame;
+use slippymap_h3_tiles::Tile;
 
 use crate::config::ServerConfig;
 use crate::response::{OutDataFrame, OutputFormat};
 use crate::state::Registry;
-use crate::tile::Tile;
 use crate::ui::{main_page, tile_viewer, ui_static_files};
 
 async fn serve_tile(

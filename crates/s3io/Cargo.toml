@@ -2,6 +2,8 @@
 name = "s3io"
 version = "0.1.0"
 edition = "2021"
+authors = ["Nico Mandery <nico@nmandery.net>"]
+publish = false
 
 [dependencies]
 bytesize = "1"
