@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::ui::ViewerStyleConfig;
 use eyre::Result;
 use s3io::s3::{S3Config, S3H3Dataset};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::util::Validate;
 
@@ -21,13 +21,48 @@ pub struct TileDataset {
     pub style: Option<ViewerStyleConfig>,
 }
 
+#[derive(Deserialize, Serialize, Clone)]
+pub enum UiBaseLayer {
+    #[serde(rename = "builtin")]
+    Builtin,
+
+    #[serde(rename = "eoc-baseoverlay")]
+    EocBaseOverlay,
+}
+
+impl Default for UiBaseLayer {
+    fn default() -> Self {
+        Self::Builtin
+    }
+}
+
+#[derive(Deserialize, Clone)]
+pub struct UiConfig {
+    #[serde(default)]
+    pub enable_ui: bool,
+
+    #[serde(default)]
+    pub base_layer: UiBaseLayer,
+}
+
+impl Default for UiConfig {
+    fn default() -> Self {
+        Self {
+            enable_ui: false,
+            base_layer: UiBaseLayer::default(),
+        }
+    }
+}
+
 #[derive(Deserialize)]
 pub struct ServerConfig {
     pub bind_to: String,
     pub cache_capacity: Option<usize>,
-    pub enable_ui: Option<bool>,
     pub s3: S3Config,
     pub datasets: HashMap<String, TileDataset>,
+
+    #[serde(default)]
+    pub ui: UiConfig,
 
     /// value for the cache-control header
     /// Defaults to `no-cache` when not set.

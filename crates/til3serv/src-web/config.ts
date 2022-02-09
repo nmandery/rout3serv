@@ -7,7 +7,8 @@ export interface ViewerConfig {
     baseUrl: string,
     datasetName: string,
     h3indexPropertyName: string,
-    styleConfig: ViewerStyleConfig | undefined | null
+    styleConfig: ViewerStyleConfig | undefined | null,
+    baseLayer: string
 }
 
 export function getViewerConfig()  {

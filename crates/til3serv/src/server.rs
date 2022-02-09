@@ -147,7 +147,7 @@ pub async fn run_server(server_config: ServerConfig) -> Result<()> {
     let addr = server_config.bind_to.parse()?;
     log::info!("{} is listening on {}", env!("CARGO_PKG_NAME"), addr);
 
-    let enable_ui = server_config.enable_ui.unwrap_or(true);
+    let enable_ui = server_config.ui.enable_ui;
     let registry: Arc<Registry> = Arc::new(server_config.try_into()?);
 
     // build our application

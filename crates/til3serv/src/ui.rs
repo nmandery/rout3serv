@@ -1,4 +1,5 @@
 use crate::build_info::{app_name, version};
+use crate::config::UiBaseLayer;
 use crate::state::Registry;
 use axum::extract::{Extension, Path};
 use axum::http::header::CONTENT_TYPE;
@@ -97,6 +98,9 @@ struct ViewerConfig<'a> {
 
     #[serde(rename(serialize = "styleConfig"))]
     pub style_config: Option<&'a ViewerStyleConfig>,
+
+    #[serde(rename(serialize = "baseLayer"))]
+    pub base_layer: UiBaseLayer,
 }
 
 #[derive(Serialize)]
@@ -122,6 +126,7 @@ pub async fn tile_viewer(
                 dataset_name,
                 h3index_property_name: wrapped_tds.tile_dataset.h3index_column(),
                 style_config: wrapped_tds.tile_dataset.style.as_ref(),
+                base_layer: registry.ui.base_layer.clone(),
             },
         },
     )

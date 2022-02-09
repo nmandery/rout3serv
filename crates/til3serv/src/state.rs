@@ -6,7 +6,7 @@ use axum::http::HeaderValue;
 use s3io::s3::{S3ArrowLoader, S3Client};
 use slippymap_h3_tiles::CellBuilder;
 
-use crate::config::{ServerConfig, TileDataset};
+use crate::config::{ServerConfig, TileDataset, UiConfig};
 
 pub struct WrappedTileDataset {
     pub tile_dataset: TileDataset,
@@ -29,6 +29,8 @@ pub struct Registry {
 
     /// value for the cache-control header
     pub cache_control: HeaderValue,
+
+    pub ui: UiConfig,
 }
 
 impl TryFrom<ServerConfig> for Registry {
@@ -52,6 +54,7 @@ impl TryFrom<ServerConfig> for Registry {
             datasets,
             loader: S3ArrowLoader::new(s3_client, server_config.cache_capacity.unwrap_or(120)),
             cache_control,
+            ui: server_config.ui.clone(),
         };
         Ok(reg)
     }

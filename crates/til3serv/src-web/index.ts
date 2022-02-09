@@ -1,10 +1,7 @@
 import 'ol/ol.css';
 import Map from 'ol/Map';
-import VectorLayer from "ol/layer/Vector";
-import VectorSource from "ol/source/Vector";
-import {GeoJSON} from "ol/format";
 import View from 'ol/View';
-import {Fill, Stroke, Style, Text} from "ol/style";
+import {Fill, Stroke, Style} from "ol/style";
 import VectorTileLayer from "ol/layer/VectorTile";
 import VectorTileSource from 'ol/source/VectorTile'
 import {Feature} from "ol";
@@ -12,26 +9,8 @@ import {Geometry} from "ol/geom";
 import {scaleLinear} from 'd3-scale'
 import {getViewerConfig} from "./config";
 import ArrowH3 from "./format/arrowh3";
+import {layerComposition} from "./composition";
 
-const countryStyle = new Style({
-    fill: new Fill({
-        color: 'rgba(255, 255, 255, 0.6)',
-    }),
-    stroke: new Stroke({
-        color: '#319FD3',
-        width: 1,
-    }),
-    text: new Text({
-        font: '12px Calibri,sans-serif',
-        fill: new Fill({
-            color: '#000',
-        }),
-        stroke: new Stroke({
-            color: '#fff',
-            width: 1,
-        }),
-    }),
-});
 
 const getView = () => {
     let view = new View({
@@ -90,28 +69,19 @@ const cellStyleFn = () => {
 
 const map = new Map({
     target: 'map',
-    layers: [
-        new VectorLayer({
-            source: new VectorSource({
-                url: getViewerConfig().baseUrl + '/_ui/countries.geojson',
-                format: new GeoJSON(),
-            }),
-            style: function (feature) {
-                countryStyle.getText().setText(feature.get('name'));
-                return countryStyle;
-            },
-        }),
+    layers: layerComposition(
         new VectorTileLayer({
                 declutter: true,
                 source: new VectorTileSource({
-                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}/ipc',
+                        url: getViewerConfig().baseUrl + "/tiles/" + getViewerConfig().datasetName + '/{z}/{x}/{y}',
                         format: new ArrowH3(getViewerConfig().h3indexPropertyName),
                     }
                 ),
                 style: cellStyleFn(),
             }
         ),
-    ],
+        getViewerConfig().baseLayer
+    ),
     view: getView(),
 });
 

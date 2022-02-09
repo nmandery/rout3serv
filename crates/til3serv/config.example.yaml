@@ -1,10 +1,13 @@
 ---
 #bind_to: "127.0.0.1:9001"
 bind_to: "0.0.0.0:9001"
-enable_ui: true
 
 # value for the cache-control header. Defaults to `no-cache` when not set.
 cache_control: "max-age=3600"
+
+ui:
+  enable_ui: true
+  base_layer: eoc-baseoverlay
 
 s3:
   endpoint: "http://127.0.0.1:9000"
