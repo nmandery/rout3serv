@@ -57,16 +57,17 @@ async fn build_tile(
 
     if let Some((h3_resolution, cell_vec)) = wrapped_tds
         .cell_builder
-        .cells_bounded(&tile, 120000)
+        .cells_bounded(&tile, 120000, false)
         .map_err(|e| {
-        log::error!(
-            "no suitable cells for {} of {} : {:?}",
-            tile,
-            dataset_name,
-            e
-        );
-        StatusCode::NO_CONTENT
-    })? {
+            log::error!(
+                "no suitable cells for {} of {} : {:?}",
+                tile,
+                dataset_name,
+                e
+            );
+            StatusCode::NO_CONTENT
+        })?
+    {
         //let cell_vec: Vec<_> = cells.iter().collect();
         log::debug!(
             "using h3_resolution {} for {} of {} (len: {})",

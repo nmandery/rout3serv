@@ -14,9 +14,10 @@ use std::fmt;
 
 use geo::algorithm::bounding_rect::BoundingRect;
 use geo::algorithm::dimensions::HasDimensions;
+use geo::prelude::Contains;
 use geo_types::{Coordinate, Rect};
 use h3ron::iter::change_resolution;
-use h3ron::{Error, H3Cell, H3Edge, ToH3Cells, H3_MAX_RESOLUTION};
+use h3ron::{Error, H3Cell, H3Edge, ToCoordinate, ToH3Cells, H3_MAX_RESOLUTION};
 
 /// parts of this file have been ported from
 /// <https://github.com/mapbox/mercantile/blob/fe3762d14001ca400caf7462f59433b906fc25bd/mercantile/__init__.py#L200>
@@ -55,7 +56,8 @@ impl Tile {
         )
     }
 
-    fn to_h3_cells(&self, h3_resolution: u8) -> Result<Vec<H3Cell>, Error> {
+    /// `remove_excess` removes cells from outside the box bounding_rect, but this brings in additional cpu usage.
+    fn to_h3_cells(&self, h3_resolution: u8, remove_excess: bool) -> Result<Vec<H3Cell>, Error> {
         // operating on a lower resolution reduces the number of point-in-polygon
         // operations to perform during polyfill. As a drawback this over-fetches and
         // and delivers more cells than required to the browser.
@@ -84,16 +86,18 @@ impl Tile {
         if buffered_bbox.is_empty() {
             Ok(Default::default())
         } else {
-            //let latlon_rect = self.bounding_rect();
-            let cells = change_resolution(
-                buffered_bbox
-                    .to_h3_cells(h3_resolution.saturating_sub(h3_resolution_offset))?
-                    .iter(),
-                h3_resolution,
-            )
-            // remove cells from outside the box bounding_rect, but this brings in additional cpu usage.
-            //.filter(|cell| latlon_rect.contains(&cell.to_coordinate()))
-            .collect();
+            let buffered =
+                buffered_bbox.to_h3_cells(h3_resolution.saturating_sub(h3_resolution_offset))?;
+            let cells_iter = change_resolution(buffered.iter(), h3_resolution);
+            let cells = if remove_excess {
+                // remove cells from outside the box bounding_rect, but this brings in additional cpu usage.
+                let latlon_rect = self.bounding_rect();
+                cells_iter
+                    .filter(|cell| latlon_rect.contains(&cell.to_coordinate()))
+                    .collect()
+            } else {
+                cells_iter.collect()
+            };
             Ok(cells)
         }
     }
@@ -225,6 +229,7 @@ impl CellBuilder {
         &self,
         tile: &Tile,
         max_num_cells: usize,
+        remove_excess: bool,
     ) -> Result<Option<(u8, Vec<H3Cell>)>, Error> {
         let area_tile_m2 = tile.area_m2();
         let mut select_h3_resolution = None;
@@ -235,7 +240,10 @@ impl CellBuilder {
             select_h3_resolution = Some(*h3_resolution);
         }
         if let Some(h3_resolution) = select_h3_resolution {
-            Ok(Some((h3_resolution, tile.to_h3_cells(h3_resolution)?)))
+            Ok(Some((
+                h3_resolution,
+                tile.to_h3_cells(h3_resolution, remove_excess)?,
+            )))
         } else {
             Ok(None)
         }
@@ -279,7 +287,10 @@ mod tests {
     fn cell_builder_cells_bounded() {
         let tile = Tile { x: 10, y: 10, z: 5 };
         let cell_builder = CellBuilder::new(&[1, 2, 3, 4, 5, 6, 7]);
-        let (h3_res, cells) = cell_builder.cells_bounded(&tile, 2000).unwrap().unwrap();
+        let (h3_res, cells) = cell_builder
+            .cells_bounded(&tile, 2000, false)
+            .unwrap()
+            .unwrap();
         assert!(h3_res <= 7);
         assert!(cells.iter().count() < 2000);
         assert!(cells.iter().count() > 200);
