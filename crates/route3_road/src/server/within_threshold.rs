@@ -113,7 +113,7 @@ where
     );
 
     let capacity = cellmap.len();
-    let (cell_h3indexes, travel_duration_secs, road_category_weights) = cellmap.iter().fold(
+    let (cell_h3indexes, travel_duration_secs, edge_preferences) = cellmap.iter().fold(
         (
             Vec::with_capacity(capacity),
             Vec::with_capacity(capacity),
@@ -122,7 +122,7 @@ where
         |mut acc, item| {
             acc.0.push(item.0.h3index() as u64);
             acc.1.push(item.1.travel_duration().get::<second>() as f32);
-            acc.2.push(item.1.category_weight());
+            acc.2.push(item.1.edge_preference());
             acc
         },
     );
@@ -130,7 +130,7 @@ where
     let mut df = DataFrame::new(vec![
         Series::new(names::COL_H3INDEX_ORIGIN, cell_h3indexes),
         Series::new(names::COL_TRAVEL_DURATION_SECS, travel_duration_secs),
-        Series::new(names::COL_ROAD_CATEGORY_WEIGHT, road_category_weights),
+        Series::new(names::COL_EDGE_PREFERENCE, edge_preferences),
     ])?;
 
     // join origin dataframe if there is any

@@ -86,7 +86,7 @@ impl ComparisonKind {
 pub struct CustomizedWeight<W> {
     weight: W,
     travel_duration_cmp: ComparisonKind,
-    road_category_weight_cmp: ComparisonKind,
+    edge_preference_cmp: ComparisonKind,
 
     /// order key to maintain a consistent ordering in case
     /// the other ComparisonKind lead to non-repeatable orderings
@@ -106,8 +106,8 @@ where
         // any ComparisonKind takes precedence over the default
         // as this may be just initialized
         // to default when the instance was created using zero()
-        if self.road_category_weight_cmp == ComparisonKind::default() {
-            self.road_category_weight_cmp = rhs.road_category_weight_cmp
+        if self.edge_preference_cmp == ComparisonKind::default() {
+            self.edge_preference_cmp = rhs.edge_preference_cmp
         }
         if self.travel_duration_cmp == ComparisonKind::default() {
             self.travel_duration_cmp = rhs.travel_duration_cmp
@@ -158,9 +158,9 @@ where
         self.travel_duration_cmp.are_equal(
             self.weight.travel_duration().value,
             other.weight.travel_duration().value,
-        ) && self.road_category_weight_cmp.are_equal(
-            self.weight.category_weight(),
-            other.weight.category_weight(),
+        ) && self.edge_preference_cmp.are_equal(
+            self.weight.edge_preference(),
+            other.weight.edge_preference(),
         )
     }
 }
@@ -177,10 +177,10 @@ where
             )
             .map(|ordering| {
                 if ordering == Ordering::Equal {
-                    self.road_category_weight_cmp
+                    self.edge_preference_cmp
                         .compare_values(
-                            self.weight.category_weight(),
-                            other.weight.category_weight(),
+                            self.weight.edge_preference(),
+                            other.weight.edge_preference(),
                         )
                         .map(|ordering| {
                             if ordering == Ordering::Equal {
@@ -206,8 +206,8 @@ where
         self.weight.travel_duration()
     }
 
-    fn category_weight(&self) -> f32 {
-        self.weight.category_weight()
+    fn edge_preference(&self) -> f32 {
+        self.weight.edge_preference()
     }
 
     fn from_travel_duration(travel_duration: Time) -> Self {
@@ -230,7 +230,7 @@ impl<W: Weight> Ord for CustomizedWeight<W> {
 pub struct CustomizedGraph<W: Sync + Send> {
     inner_graph: Arc<PreparedH3EdgeGraph<W>>,
     pub travel_duration_cmp: ComparisonKind,
-    pub road_category_weight_cmp: ComparisonKind,
+    pub edge_preference_cmp: ComparisonKind,
 }
 
 impl<W: Sync + Send> From<Arc<PreparedH3EdgeGraph<W>>> for CustomizedGraph<W> {
@@ -238,7 +238,7 @@ impl<W: Sync + Send> From<Arc<PreparedH3EdgeGraph<W>>> for CustomizedGraph<W> {
         CustomizedGraph {
             inner_graph,
             travel_duration_cmp: Default::default(),
-            road_category_weight_cmp: Default::default(),
+            edge_preference_cmp: Default::default(),
         }
     }
 }
@@ -262,7 +262,7 @@ where
                 weight: CustomizedWeight {
                     weight: edge_weight.weight,
                     travel_duration_cmp: self.travel_duration_cmp,
-                    road_category_weight_cmp: self.road_category_weight_cmp,
+                    edge_preference_cmp: self.edge_preference_cmp,
                     ..Default::default()
                 },
                 longedge: edge_weight.longedge.map(|(longedge, road_weight)| {
@@ -271,7 +271,7 @@ where
                         CustomizedWeight {
                             weight: road_weight,
                             travel_duration_cmp: self.travel_duration_cmp,
-                            road_category_weight_cmp: self.road_category_weight_cmp,
+                            edge_preference_cmp: self.edge_preference_cmp,
                             ..Default::default()
                         },
                     )
@@ -333,7 +333,7 @@ mod tests {
                 CustomizedWeight {
                     weight: RoadWeight::new(1.0, Time::new::<second>(10.0)),
                     travel_duration_cmp: ComparisonKind::DifferenceRatio(1.2),
-                    road_category_weight_cmp: ComparisonKind::DifferenceRatio(1.2),
+                    edge_preference_cmp: ComparisonKind::DifferenceRatio(1.2),
                     ord_tiebreaker: Default::default(),
                 }
             })

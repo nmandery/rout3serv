@@ -10,7 +10,7 @@ use crate::weight::RoadWeight;
 
 pub struct CarWayProperties {
     max_speed: Velocity,
-    category_weight: f32,
+    edge_preference: f32,
     is_bidirectional: bool,
 }
 
@@ -53,7 +53,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
 
             Some(CarWayProperties {
                 max_speed,
-                category_weight,
+                edge_preference: category_weight,
                 is_bidirectional,
             })
         } else {
@@ -67,7 +67,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
         way_properties: &Self::WayProperties,
     ) -> EdgeProperties<RoadWeight> {
         let weight = RoadWeight::new(
-            way_properties.category_weight,
+            way_properties.edge_preference,
             Length::new::<meter>(edge.cell_centroid_distance_m() as f32) / way_properties.max_speed,
         );
         EdgeProperties {

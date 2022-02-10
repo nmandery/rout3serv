@@ -14,7 +14,7 @@ pub trait Weight {
         Time::new::<second>(0.0)
     }
 
-    fn category_weight(&self) -> f32 {
+    fn edge_preference(&self) -> f32 {
         0.0
     }
 
@@ -23,11 +23,11 @@ pub trait Weight {
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct RoadWeight {
-    /// the higher the preference for the edge is, the lower is the `edge_category_weight`.
+    /// the higher the preference for the edge is, the lower is the `edge_preference`.
     ///
     /// Must be positive.
     #[serde(rename = "rcw")]
-    road_category_weight: f32,
+    edge_preference: f32,
 
     /// travel duration
     #[serde(rename = "td")]
@@ -35,9 +35,9 @@ pub struct RoadWeight {
 }
 
 impl RoadWeight {
-    pub fn new(road_category_weight: f32, travel_duration: Time) -> Self {
+    pub fn new(edge_preference: f32, travel_duration: Time) -> Self {
         Self {
-            road_category_weight,
+            edge_preference,
             travel_duration,
         }
     }
@@ -48,13 +48,13 @@ impl Weight for RoadWeight {
         self.travel_duration
     }
 
-    fn category_weight(&self) -> f32 {
-        self.road_category_weight
+    fn edge_preference(&self) -> f32 {
+        self.edge_preference
     }
 
     fn from_travel_duration(travel_duration: Time) -> Self {
         Self {
-            road_category_weight: 0.0,
+            edge_preference: 0.0,
             travel_duration,
         }
     }
@@ -64,7 +64,7 @@ impl WeightFeatureField for RoadWeight {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
         let td_field_defn = FieldDefn::new("travel_duration", OGRFieldType::OFTReal)?;
         td_field_defn.add_to_layer(layer)?;
-        let cw_field_defn = FieldDefn::new("category_weight", OGRFieldType::OFTReal)?;
+        let cw_field_defn = FieldDefn::new("edge_preference", OGRFieldType::OFTReal)?;
         cw_field_defn.add_to_layer(layer)?;
         Ok(())
     }
@@ -74,7 +74,7 @@ impl WeightFeatureField for RoadWeight {
             "travel_duration",
             self.travel_duration().get::<second>() as f64,
         )?;
-        feature.set_field_double("category_weight", self.road_category_weight as f64)?;
+        feature.set_field_double("edge_preference", self.edge_preference as f64)?;
         Ok(())
     }
 }
@@ -86,10 +86,10 @@ impl Add for RoadWeight {
         // change the category proportionally to the travel durations
         let td_self = self.travel_duration.value.abs().max(1.0);
         let td_rhs = rhs.travel_duration.value.abs().max(1.0);
-        self.road_category_weight = self
-            .road_category_weight
+        self.edge_preference = self
+            .edge_preference
             .abs()
-            .mul_add(td_self, rhs.road_category_weight.abs() * td_rhs)
+            .mul_add(td_self, rhs.edge_preference.abs() * td_rhs)
             / (td_self + td_rhs);
 
         self.travel_duration += rhs.travel_duration;
@@ -100,13 +100,13 @@ impl Add for RoadWeight {
 impl Zero for RoadWeight {
     fn zero() -> Self {
         Self {
-            road_category_weight: 10.0,
+            edge_preference: 10.0,
             travel_duration: Time::new::<second>(1.0),
         }
     }
 
     fn is_zero(&self) -> bool {
-        self.travel_duration == Time::new::<second>(0.0) && self.road_category_weight.is_zero()
+        self.travel_duration == Time::new::<second>(0.0) && self.edge_preference.is_zero()
     }
 }
 
@@ -125,8 +125,7 @@ impl PartialOrd for RoadWeight {
             .partial_cmp(&other.travel_duration.value)
             .map(|ordering| {
                 if ordering == Ordering::Equal {
-                    self.road_category_weight
-                        .partial_cmp(&other.road_category_weight)
+                    self.edge_preference.partial_cmp(&other.edge_preference)
                 } else {
                     Some(ordering)
                 }

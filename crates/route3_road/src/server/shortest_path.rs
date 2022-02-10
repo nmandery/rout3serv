@@ -135,7 +135,7 @@ where
         let mut destination_cell_vec = Vec::with_capacity(capacity);
         let mut path_cell_length_m_vec = Vec::with_capacity(capacity);
         let mut travel_duration_secs_vec = Vec::with_capacity(capacity);
-        let mut road_category_weight_vec = Vec::with_capacity(capacity);
+        let mut edge_preferences_vec = Vec::with_capacity(capacity);
 
         for (origin_cell, paths) in pathmap.iter() {
             if paths.is_empty() {
@@ -146,7 +146,7 @@ where
                 destination_cell_vec.push(None);
                 path_cell_length_m_vec.push(None);
                 travel_duration_secs_vec.push(None);
-                road_category_weight_vec.push(None);
+                edge_preferences_vec.push(None);
             } else {
                 for (cost, path_length_dm, destination) in paths.iter() {
                     origin_cell_vec.push(origin_cell.h3index() as u64);
@@ -154,7 +154,7 @@ where
                     path_cell_length_m_vec.push(Some(path_length_dm.into_inner()));
                     travel_duration_secs_vec
                         .push(Some(cost.travel_duration().get::<second>() as f32));
-                    road_category_weight_vec.push(Some(cost.category_weight()));
+                    edge_preferences_vec.push(Some(cost.edge_preference()));
                 }
             }
         }
@@ -163,7 +163,7 @@ where
             Series::new(names::COL_H3INDEX_DESTINATION, destination_cell_vec),
             Series::new(names::COL_PATH_LENGTH_METERS, path_cell_length_m_vec),
             Series::new(names::COL_TRAVEL_DURATION_SECS, travel_duration_secs_vec),
-            Series::new(names::COL_ROAD_CATEGORY_WEIGHT, road_category_weight_vec),
+            Series::new(names::COL_EDGE_PREFERENCE, edge_preferences_vec),
         ])?
     };
 

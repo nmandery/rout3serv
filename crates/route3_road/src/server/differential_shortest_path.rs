@@ -306,7 +306,7 @@ where
             Some(
                 paths
                     .iter()
-                    .map(|p| p.cost().category_weight() as f64)
+                    .map(|p| p.cost().edge_preference() as f64)
                     .sum::<f64>()
                     / paths.len() as f64,
             )
