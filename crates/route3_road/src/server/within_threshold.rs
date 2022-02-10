@@ -17,6 +17,7 @@ use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 use crate::server::storage::S3Storage;
 use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream};
 use crate::weight::Weight;
+use crate::ServerConfig;
 
 use super::names;
 
@@ -34,6 +35,7 @@ pub struct H3WithinThresholdParameters<W: Send + Sync> {
 pub async fn create_parameters<W: Send + Sync>(
     request: super::api::generated::H3WithinThresholdRequest,
     storage: Arc<S3Storage<W>>,
+    config: Arc<ServerConfig>,
 ) -> Result<H3WithinThresholdParameters<W>, Status>
 where
     W: Serialize + DeserializeOwned,
@@ -46,10 +48,15 @@ where
         return Err(Status::invalid_argument("invalid or no threshold given"));
     };
 
+    let routing_mode = config.get_routing_mode(&request.routing_mode)?;
     let graph = storage
         .load_graph_from_option(&request.graph_handle)
         .await
-        .map(|(graph, _)| CustomizedGraph::from(graph))?;
+        .map(|(graph, _)| {
+            let mut cg = CustomizedGraph::from(graph);
+            cg.set_routing_mode(routing_mode);
+            cg
+        })?;
 
     let (origin_cells, origin_dataframe) = storage
         .load_cell_selection(

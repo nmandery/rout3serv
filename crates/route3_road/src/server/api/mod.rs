@@ -56,7 +56,7 @@ impl RouteWkb {
             origin_cell: cell_h3index(path.origin_cell()),
             destination_cell: cell_h3index(path.destination_cell()),
             travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
-            category_weight: path.cost().edge_preference() as f64,
+            edge_preference: path.cost().edge_preference() as f64,
             wkb: wkb_bytes,
             path_length_m: path.length_m(),
         })
@@ -90,7 +90,7 @@ impl RouteH3Indexes {
             origin_cell: cell_h3index(path.origin_cell()),
             destination_cell: cell_h3index(path.destination_cell()),
             travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
-            category_weight: path.cost().edge_preference() as f64,
+            edge_preference: path.cost().edge_preference() as f64,
             h3indexes,
             path_length_m: path.length_m(),
         })

@@ -2,96 +2,37 @@ use std::cmp::Ordering;
 use std::ops::{Add, Deref};
 use std::sync::Arc;
 
-use float_cmp::ApproxEqRatio;
+use crate::config::{NonZeroPositiveFactor, RoutingMode};
 use h3ron::{H3Cell, H3Edge, HasH3Resolution};
 use h3ron_graph::graph::node::NodeType;
 use h3ron_graph::graph::{EdgeWeight, GetCellNode, GetEdge, PreparedH3EdgeGraph};
 use num_traits::Zero;
-use rand::{thread_rng, Rng};
 use uom::si::f32::Time;
 
 use crate::weight::Weight;
 
-#[derive(PartialOrd, PartialEq, Copy, Clone)]
-pub struct RandomU32(u32);
-
-impl Default for RandomU32 {
-    fn default() -> Self {
-        Self(thread_rng().gen())
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
-pub enum ComparisonKind {
-    /// Exact comparison
-    Exact,
-
-    /// Approximate equality comparisons bounding the ratio of the difference to the larger.
-    ///
-    /// Provided by [`ApproxEqRatio`].
-    DifferenceRatio(f32),
-}
-
-impl Default for ComparisonKind {
-    fn default() -> Self {
-        Self::exact()
-    }
-}
-
-impl TryFrom<f32> for ComparisonKind {
-    type Error = eyre::Report;
-
-    fn try_from(value: f32) -> Result<Self, Self::Error> {
-        Self::difference_ratio(value)
-    }
-}
-
-impl ComparisonKind {
-    pub fn exact() -> Self {
-        Self::Exact
-    }
-
-    pub fn difference_ratio(ratio: f32) -> eyre::Result<Self> {
-        if ratio < 1.0 {
-            Ok(Self::DifferenceRatio(ratio))
-        } else {
-            Err(eyre::Report::msg(format!(
-                "ratio must be < 1.0 (got {})",
-                ratio
-            )))
-        }
-    }
-
-    pub fn compare_values(&self, this_value: f32, other_value: f32) -> Option<Ordering> {
-        match self {
-            ComparisonKind::Exact => this_value.partial_cmp(&other_value),
-            ComparisonKind::DifferenceRatio(ratio) => {
-                if this_value.approx_eq_ratio(&other_value, *ratio) {
-                    Some(Ordering::Equal)
-                } else {
-                    this_value.partial_cmp(&other_value)
-                }
-            }
-        }
-    }
-
-    pub fn are_equal(&self, this_value: f32, other_value: f32) -> bool {
-        self.compare_values(this_value, other_value)
-            .unwrap_or(Ordering::Equal)
-            == Ordering::Equal
-    }
-}
+// TODO: mid term: configurable road_preferences for road_types
 
 #[derive(Copy, Clone)]
 pub struct CustomizedWeight<W> {
     weight: W,
-    travel_duration_cmp: ComparisonKind,
-    edge_preference_cmp: ComparisonKind,
+    edge_preference_factor: Option<NonZeroPositiveFactor>,
+}
 
-    /// order key to maintain a consistent ordering in case
-    /// the other ComparisonKind lead to non-repeatable orderings
-    /// because of equality
-    ord_tiebreaker: RandomU32,
+impl<W> CustomizedWeight<W>
+where
+    W: Weight,
+{
+    /// the calculated overall_weight to be used in comparison operations
+    ///
+    /// Takes all set factors into account
+    fn overall_weight(&self) -> f32 {
+        self.weight.travel_duration().value
+            * self
+                .edge_preference_factor
+                .map(|epf| *epf * self.weight.edge_preference())
+                .unwrap_or(1.0)
+    }
 }
 
 impl<W: Weight> Add for CustomizedWeight<W>
@@ -103,14 +44,11 @@ where
     fn add(mut self, rhs: Self) -> Self::Output {
         self.weight = self.weight + rhs.weight;
 
-        // any ComparisonKind takes precedence over the default
+        // any factors takes precedence over the default
         // as this may be just initialized
         // to default when the instance was created using zero()
-        if self.edge_preference_cmp == ComparisonKind::default() {
-            self.edge_preference_cmp = rhs.edge_preference_cmp
-        }
-        if self.travel_duration_cmp == ComparisonKind::default() {
-            self.travel_duration_cmp = rhs.travel_duration_cmp
+        if self.edge_preference_factor.is_none() {
+            self.edge_preference_factor = rhs.edge_preference_factor
         }
 
         self
@@ -133,11 +71,12 @@ where
     fn zero() -> Self {
         Self {
             weight: W::zero(),
-            ..Default::default()
+            edge_preference_factor: None,
         }
     }
 
     fn is_zero(&self) -> bool {
+        // factors are irrelevant for this check
         self.weight.is_zero()
     }
 }
@@ -155,13 +94,7 @@ where
     W: Weight,
 {
     fn eq(&self, other: &Self) -> bool {
-        self.travel_duration_cmp.are_equal(
-            self.weight.travel_duration().value,
-            other.weight.travel_duration().value,
-        ) && self.edge_preference_cmp.are_equal(
-            self.weight.edge_preference(),
-            other.weight.edge_preference(),
-        )
+        self.overall_weight().eq(&other.overall_weight())
     }
 }
 
@@ -170,31 +103,7 @@ where
     W: Weight,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.travel_duration_cmp
-            .compare_values(
-                self.weight.travel_duration().value,
-                other.weight.travel_duration().value,
-            )
-            .map(|ordering| {
-                if ordering == Ordering::Equal {
-                    self.edge_preference_cmp
-                        .compare_values(
-                            self.weight.edge_preference(),
-                            other.weight.edge_preference(),
-                        )
-                        .map(|ordering| {
-                            if ordering == Ordering::Equal {
-                                self.ord_tiebreaker.partial_cmp(&other.ord_tiebreaker)
-                            } else {
-                                Some(ordering)
-                            }
-                        })
-                        .flatten()
-                } else {
-                    Some(ordering)
-                }
-            })
-            .flatten()
+        self.overall_weight().partial_cmp(&other.overall_weight())
     }
 }
 
@@ -213,7 +122,7 @@ where
     fn from_travel_duration(travel_duration: Time) -> Self {
         Self {
             weight: W::from_travel_duration(travel_duration),
-            ..Default::default()
+            edge_preference_factor: None,
         }
     }
 }
@@ -229,16 +138,20 @@ impl<W: Weight> Ord for CustomizedWeight<W> {
 /// A prepared graph with customized weight comparisons
 pub struct CustomizedGraph<W: Sync + Send> {
     inner_graph: Arc<PreparedH3EdgeGraph<W>>,
-    pub travel_duration_cmp: ComparisonKind,
-    pub edge_preference_cmp: ComparisonKind,
+    routing_mode: RoutingMode,
+}
+
+impl<W: Sync + Send> CustomizedGraph<W> {
+    pub fn set_routing_mode(&mut self, routing_mode: RoutingMode) {
+        self.routing_mode = routing_mode;
+    }
 }
 
 impl<W: Sync + Send> From<Arc<PreparedH3EdgeGraph<W>>> for CustomizedGraph<W> {
     fn from(inner_graph: Arc<PreparedH3EdgeGraph<W>>) -> Self {
         CustomizedGraph {
             inner_graph,
-            travel_duration_cmp: Default::default(),
-            edge_preference_cmp: Default::default(),
+            routing_mode: RoutingMode::default(),
         }
     }
 }
@@ -261,18 +174,14 @@ where
             .map(|edge_weight| EdgeWeight {
                 weight: CustomizedWeight {
                     weight: edge_weight.weight,
-                    travel_duration_cmp: self.travel_duration_cmp,
-                    edge_preference_cmp: self.edge_preference_cmp,
-                    ..Default::default()
+                    edge_preference_factor: self.routing_mode.edge_preference_factor,
                 },
                 longedge: edge_weight.longedge.map(|(longedge, road_weight)| {
                     (
                         longedge,
                         CustomizedWeight {
                             weight: road_weight,
-                            travel_duration_cmp: self.travel_duration_cmp,
-                            edge_preference_cmp: self.edge_preference_cmp,
-                            ..Default::default()
+                            edge_preference_factor: self.routing_mode.edge_preference_factor,
                         },
                     )
                 }),

@@ -32,12 +32,14 @@ mod within_threshold;
 
 struct ServerImpl {
     storage: Arc<S3Storage<RoadWeight>>,
+    config: Arc<ServerConfig>,
 }
 
 impl ServerImpl {
     pub async fn create(config: ServerConfig) -> eyre::Result<Self> {
-        let storage = Arc::new(S3Storage::<RoadWeight>::from_config(Arc::new(config))?);
-        Ok(Self { storage })
+        let config = Arc::new(config);
+        let storage = Arc::new(S3Storage::<RoadWeight>::from_config(config.clone())?);
+        Ok(Self { storage, config })
     }
 }
 
@@ -92,8 +94,12 @@ impl Route3Road for ServerImpl {
         &self,
         request: Request<H3ShortestPathRequest>,
     ) -> Result<Response<Self::H3ShortestPathStream>, Status> {
-        let parameters =
-            shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        let parameters = shortest_path::create_parameters(
+            request.into_inner(),
+            self.storage.clone(),
+            self.config.clone(),
+        )
+        .await?;
         shortest_path::h3_shortest_path(parameters).await
     }
 
@@ -105,7 +111,9 @@ impl Route3Road for ServerImpl {
     ) -> Result<Response<Self::H3ShortestPathRoutesStream>, Status> {
         let req = request.into_inner();
         let smoothen_geometries = req.smoothen_geometries;
-        let parameters = shortest_path::create_parameters(req, self.storage.clone()).await?;
+        let parameters =
+            shortest_path::create_parameters(req, self.storage.clone(), self.config.clone())
+                .await?;
         shortest_path::h3_shortest_path_routes(parameters, move |p| {
             RouteWkb::from_path(&p, smoothen_geometries)
         })
@@ -118,8 +126,12 @@ impl Route3Road for ServerImpl {
         &self,
         request: Request<H3ShortestPathRequest>,
     ) -> Result<Response<Self::H3ShortestPathCellsStream>, Status> {
-        let parameters =
-            shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        let parameters = shortest_path::create_parameters(
+            request.into_inner(),
+            self.storage.clone(),
+            self.config.clone(),
+        )
+        .await?;
         shortest_path::h3_shortest_path_routes(parameters, move |p| {
             RouteH3Indexes::from_path(&p, RouteH3IndexesKind::Cells)
         })
@@ -132,8 +144,12 @@ impl Route3Road for ServerImpl {
         &self,
         request: Request<H3ShortestPathRequest>,
     ) -> Result<Response<Self::H3ShortestPathEdgesStream>, Status> {
-        let parameters =
-            shortest_path::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        let parameters = shortest_path::create_parameters(
+            request.into_inner(),
+            self.storage.clone(),
+            self.config.clone(),
+        )
+        .await?;
         shortest_path::h3_shortest_path_routes(parameters, move |p| {
             RouteH3Indexes::from_path(&p, RouteH3IndexesKind::Edges)
         })
@@ -246,8 +262,12 @@ impl Route3Road for ServerImpl {
         &self,
         request: Request<H3WithinThresholdRequest>,
     ) -> Result<Response<Self::H3CellsWithinThresholdStream>, Status> {
-        let parameters =
-            within_threshold::create_parameters(request.into_inner(), self.storage.clone()).await?;
+        let parameters = within_threshold::create_parameters(
+            request.into_inner(),
+            self.storage.clone(),
+            self.config.clone(),
+        )
+        .await?;
         within_threshold::within_threshold(parameters).await
     }
 }

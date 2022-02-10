@@ -62,7 +62,6 @@ message DifferentialShortestPathRequest {
 
   /* dataset to use for providing population/... data */
   string ref_dataset_name = 8;
-
 }
 
 /** A reference to an ID string */
@@ -95,7 +94,7 @@ message RouteWKB {
   uint64 origin_cell = 1;
   uint64 destination_cell = 2;
   double travel_duration_secs = 3;
-  double category_weight = 4;
+  double edge_preference = 4;
   bytes wkb = 5;
   double path_length_m = 6;
 }
@@ -104,7 +103,7 @@ message RouteH3Indexes {
   uint64 origin_cell = 1;
   uint64 destination_cell = 2;
   double travel_duration_secs = 3;
-  double category_weight = 4;
+  double edge_preference = 4;
 
   /** h3indexes ordered from origin_cell to destination_cell */
   repeated uint64 h3indexes = 5;
@@ -124,6 +123,9 @@ message H3ShortestPathRequest {
 
   /** apply a slight smoothing to any returned geometries to break sharp edges */
   bool smoothen_geometries = 5;
+
+  /** any of the configured routing modes or empty to use the default */
+  string routing_mode = 6;
 }
 
 /** A single Arrow chunk in Arrow IPC File format */
@@ -176,6 +178,9 @@ message H3WithinThresholdRequest {
 
   /** travel_duration threshold in seconds */
   float travel_duration_secs_threshold = 3;
+
+  /** any of the configured routing modes or empty to use the default */
+  string routing_mode = 4;
 }
 
 service Route3Road {

@@ -47,6 +47,7 @@ def build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, dest
                                    num_destinations_to_reach: int = 3,
                                    num_gap_cells_to_graph: int = 1,
                                    smoothen_geometries: bool = False,
+                                   routing_mode: typing.Optional[str] = None,
                                    ) -> route3_road_pb2.H3ShortestPathRequest:
     shortest_path_options = route3_road_pb2.ShortestPathOptions()
     shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
@@ -58,16 +59,21 @@ def build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, dest
     request.origins.MergeFrom(_to_cell_selection(origin_cells))
     request.destinations.MergeFrom(_to_cell_selection(destination_cells))
     request.smoothen_geometries = smoothen_geometries
+    if routing_mode:
+        request.routing_mode = routing_mode
     return request
 
 
 def build_h3_within_threshold_request(graph_handle: GraphHandle, origin_cells,
-                                      travel_duration_secs_threshold: float = 0.0
+                                      travel_duration_secs_threshold: float = 0.0,
+                                      routing_mode: typing.Optional[str] = None,
                                       ) -> route3_road_pb2.H3WithinThresholdRequest:
     request = route3_road_pb2.H3WithinThresholdRequest()
     request.graph_handle.MergeFrom(graph_handle)
     request.origins.MergeFrom(_to_cell_selection(origin_cells))
     request.travel_duration_secs_threshold = travel_duration_secs_threshold
+    if routing_mode:
+        request.routing_mode = routing_mode
     return request
 
 
@@ -213,14 +219,14 @@ def _h3_shortest_path_linestrings_gdf(gen: typing.Generator[RouteWKB, None, None
     h3index_origin = []
     h3index_destination = []
     travel_duration_secs = []
-    category_weight = []
+    edge_preference = []
     path_length_m = []
 
     for route in gen:
         h3index_origin.append(route.origin_cell)
         h3index_destination.append(route.destination_cell)
         travel_duration_secs.append(route.travel_duration_secs)
-        category_weight.append(route.category_weight)
+        edge_preference.append(route.edge_preference)
         path_length_m.append(route.path_length_m)
         geoms.append(shapely.wkb.loads(route.wkb))
 
@@ -229,7 +235,7 @@ def _h3_shortest_path_linestrings_gdf(gen: typing.Generator[RouteWKB, None, None
         "h3index_origin": np.asarray(h3index_origin, dtype=np.uint64),
         "h3index_destination": np.asarray(h3index_destination, dtype=np.uint64),
         "travel_duration_secs": np.asarray(travel_duration_secs, dtype=np.float64),
-        "category_weight": np.asarray(category_weight, dtype=np.float64),
+        "edge_preference": np.asarray(edge_preference, dtype=np.float64),
         "path_length_m": np.asarray(path_length_m, dtype=np.float64),
     }, crs=4326)
     return gdf
@@ -244,7 +250,7 @@ def _get_differential_shortest_path_routes_gdf(
     h3index_origin = []
     h3index_destination = []
     travel_duration_secs = []
-    category_weight = []
+    edge_preference = []
     with_disturbance_list = []
     for stream_item in response:
         for with_disturbance, route_list in (
@@ -254,7 +260,7 @@ def _get_differential_shortest_path_routes_gdf(
                 h3index_destination.append(route.destination_cell)
                 with_disturbance_list.append(with_disturbance)
                 travel_duration_secs.append(route.travel_duration_secs)
-                category_weight.append(route.category_weight)
+                edge_preference.append(route.edge_preference)
                 geoms.append(shapely.wkb.loads(route.wkb))
 
     gdf = GeoDataFrame({
@@ -262,7 +268,7 @@ def _get_differential_shortest_path_routes_gdf(
         "h3index_origin": np.asarray(h3index_origin, dtype=np.uint64),
         "h3index_destination": np.asarray(h3index_destination, dtype=np.uint64),
         "travel_duration_secs": np.asarray(travel_duration_secs, dtype=np.float64),
-        "category_weight": np.asarray(category_weight, dtype=np.float64),
+        "edge_preference": np.asarray(edge_preference, dtype=np.float64),
         "with_disturbance": np.asarray(with_disturbance_list, dtype=np.int),
     }, crs=4326)
     return gdf

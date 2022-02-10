@@ -25,6 +25,7 @@ use crate::server::util::{
     spawn_blocking_status, stream_dataframe, stream_routes, ArrowIpcChunkStream,
 };
 use crate::weight::Weight;
+use crate::ServerConfig;
 
 pub struct H3ShortestPathParameters<W: Send + Sync> {
     graph: CustomizedGraph<W>,
@@ -38,14 +39,20 @@ pub struct H3ShortestPathParameters<W: Send + Sync> {
 pub async fn create_parameters<W: Send + Sync>(
     request: super::api::generated::H3ShortestPathRequest,
     storage: Arc<S3Storage<W>>,
+    config: Arc<ServerConfig>,
 ) -> Result<H3ShortestPathParameters<W>, Status>
 where
     W: Serialize + DeserializeOwned,
 {
+    let routing_mode = config.get_routing_mode(&request.routing_mode)?;
     let graph = storage
         .load_graph_from_option(&request.graph_handle)
         .await
-        .map(|(graph, _)| CustomizedGraph::from(graph))?;
+        .map(|(graph, _)| {
+            let mut cg = CustomizedGraph::from(graph);
+            cg.set_routing_mode(routing_mode);
+            cg
+        })?;
 
     let (origin_cells, origin_dataframe) = storage
         .load_cell_selection(
