@@ -7,9 +7,19 @@ use h3ron::{H3Cell, H3Edge, HasH3Resolution};
 use h3ron_graph::graph::node::NodeType;
 use h3ron_graph::graph::{EdgeWeight, GetCellNode, GetEdge, PreparedH3EdgeGraph};
 use num_traits::Zero;
+use rand::{thread_rng, Rng};
 use uom::si::f32::Time;
 
 use crate::weight::Weight;
+
+#[derive(PartialOrd, PartialEq, Copy, Clone)]
+pub struct RandomU32(u32);
+
+impl Default for RandomU32 {
+    fn default() -> Self {
+        Self(thread_rng().gen())
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub enum ComparisonKind {
@@ -24,7 +34,7 @@ pub enum ComparisonKind {
 
 impl Default for ComparisonKind {
     fn default() -> Self {
-        Self::Exact
+        Self::exact()
     }
 }
 
@@ -38,7 +48,7 @@ impl TryFrom<f32> for ComparisonKind {
 
 impl ComparisonKind {
     pub fn exact() -> Self {
-        Self::default()
+        Self::Exact
     }
 
     pub fn difference_ratio(ratio: f32) -> eyre::Result<Self> {
@@ -74,9 +84,14 @@ impl ComparisonKind {
 
 #[derive(Copy, Clone)]
 pub struct CustomizedWeight<W> {
-    road_weight: W,
+    weight: W,
     travel_duration_cmp: ComparisonKind,
     road_category_weight_cmp: ComparisonKind,
+
+    /// order key to maintain a consistent ordering in case
+    /// the other ComparisonKind lead to non-repeatable orderings
+    /// because of equality
+    ord_tiebreaker: RandomU32,
 }
 
 impl<W: Weight> Add for CustomizedWeight<W>
@@ -86,7 +101,7 @@ where
     type Output = Self;
 
     fn add(mut self, rhs: Self) -> Self::Output {
-        self.road_weight = self.road_weight + rhs.road_weight;
+        self.weight = self.weight + rhs.weight;
 
         // any ComparisonKind takes precedence over the default
         // as this may be just initialized
@@ -97,7 +112,17 @@ where
         if self.travel_duration_cmp == ComparisonKind::default() {
             self.travel_duration_cmp = rhs.travel_duration_cmp
         }
+
         self
+    }
+}
+
+impl<W: Weight> Default for CustomizedWeight<W>
+where
+    W: Zero,
+{
+    fn default() -> Self {
+        Self::zero()
     }
 }
 
@@ -107,14 +132,13 @@ where
 {
     fn zero() -> Self {
         Self {
-            road_weight: W::zero(),
-            travel_duration_cmp: Default::default(),
-            road_category_weight_cmp: Default::default(),
+            weight: W::zero(),
+            ..Default::default()
         }
     }
 
     fn is_zero(&self) -> bool {
-        self.road_weight.is_zero()
+        self.weight.is_zero()
     }
 }
 
@@ -122,7 +146,7 @@ impl<W: Weight> Deref for CustomizedWeight<W> {
     type Target = W;
 
     fn deref(&self) -> &Self::Target {
-        &self.road_weight
+        &self.weight
     }
 }
 
@@ -132,11 +156,11 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.travel_duration_cmp.are_equal(
-            self.road_weight.travel_duration().value,
-            other.road_weight.travel_duration().value,
+            self.weight.travel_duration().value,
+            other.weight.travel_duration().value,
         ) && self.road_category_weight_cmp.are_equal(
-            self.road_weight.category_weight(),
-            other.road_weight.category_weight(),
+            self.weight.category_weight(),
+            other.weight.category_weight(),
         )
     }
 }
@@ -148,15 +172,24 @@ where
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.travel_duration_cmp
             .compare_values(
-                self.road_weight.travel_duration().value,
-                other.road_weight.travel_duration().value,
+                self.weight.travel_duration().value,
+                other.weight.travel_duration().value,
             )
             .map(|ordering| {
                 if ordering == Ordering::Equal {
-                    self.road_category_weight_cmp.compare_values(
-                        self.road_weight.category_weight(),
-                        other.road_weight.category_weight(),
-                    )
+                    self.road_category_weight_cmp
+                        .compare_values(
+                            self.weight.category_weight(),
+                            other.weight.category_weight(),
+                        )
+                        .map(|ordering| {
+                            if ordering == Ordering::Equal {
+                                self.ord_tiebreaker.partial_cmp(&other.ord_tiebreaker)
+                            } else {
+                                Some(ordering)
+                            }
+                        })
+                        .flatten()
                 } else {
                     Some(ordering)
                 }
@@ -167,21 +200,20 @@ where
 
 impl<W> Weight for CustomizedWeight<W>
 where
-    W: Weight,
+    W: Weight + Zero,
 {
     fn travel_duration(&self) -> Time {
-        self.road_weight.travel_duration()
+        self.weight.travel_duration()
     }
 
     fn category_weight(&self) -> f32 {
-        self.road_weight.category_weight()
+        self.weight.category_weight()
     }
 
     fn from_travel_duration(travel_duration: Time) -> Self {
         Self {
-            road_weight: W::from_travel_duration(travel_duration),
-            travel_duration_cmp: Default::default(),
-            road_category_weight_cmp: Default::default(),
+            weight: W::from_travel_duration(travel_duration),
+            ..Default::default()
         }
     }
 }
@@ -219,7 +251,7 @@ impl<W: Sync + Send> GetCellNode for CustomizedGraph<W> {
 
 impl<W: Sync + Send> GetEdge for CustomizedGraph<W>
 where
-    W: Weight + Copy,
+    W: Weight + Copy + Zero,
 {
     type EdgeWeightType = CustomizedWeight<W>;
 
@@ -228,17 +260,19 @@ where
             .get_edge(edge)
             .map(|edge_weight| EdgeWeight {
                 weight: CustomizedWeight {
-                    road_weight: edge_weight.weight,
+                    weight: edge_weight.weight,
                     travel_duration_cmp: self.travel_duration_cmp,
                     road_category_weight_cmp: self.road_category_weight_cmp,
+                    ..Default::default()
                 },
                 longedge: edge_weight.longedge.map(|(longedge, road_weight)| {
                     (
                         longedge,
                         CustomizedWeight {
-                            road_weight,
+                            weight: road_weight,
                             travel_duration_cmp: self.travel_duration_cmp,
                             road_category_weight_cmp: self.road_category_weight_cmp,
+                            ..Default::default()
                         },
                     )
                 }),
@@ -254,9 +288,14 @@ impl<W: Sync + Send> HasH3Resolution for CustomizedGraph<W> {
 
 #[cfg(test)]
 mod tests {
+    use rand::prelude::SliceRandom;
+    use rand::thread_rng;
     use std::cmp::Ordering;
+    use uom::si::f32::Time;
+    use uom::si::time::second;
 
-    use crate::customization::ComparisonKind;
+    use crate::customization::{ComparisonKind, CustomizedWeight};
+    use crate::RoadWeight;
 
     #[test]
     fn test_difference_ratio_cmp() {
@@ -284,5 +323,34 @@ mod tests {
                 .compare_values(10.0, 7.0),
             Some(Ordering::Greater)
         );
+    }
+
+    #[test]
+    fn repeated_sort_same_result() {
+        let mut cws = (0..100)
+            .map(|_| {
+                // separate creation of both structs instead of clone to get different `final_ord_decider`
+                CustomizedWeight {
+                    weight: RoadWeight::new(1.0, Time::new::<second>(10.0)),
+                    travel_duration_cmp: ComparisonKind::DifferenceRatio(1.2),
+                    road_category_weight_cmp: ComparisonKind::DifferenceRatio(1.2),
+                    ord_tiebreaker: Default::default(),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        cws.sort_unstable();
+        let expected_tiebreaker_order =
+            cws.iter().map(|cw| cw.ord_tiebreaker.0).collect::<Vec<_>>();
+        //dbg!(&expected_random_key_order);
+
+        let mut rng = thread_rng();
+        for _ in 0..100 {
+            cws.shuffle(&mut rng);
+            cws.sort_unstable();
+
+            let found_order = cws.iter().map(|cw| cw.ord_tiebreaker.0).collect::<Vec<_>>();
+            assert_eq!(expected_tiebreaker_order, found_order);
+        }
     }
 }

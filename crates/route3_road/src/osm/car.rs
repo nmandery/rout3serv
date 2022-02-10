@@ -79,6 +79,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
 
 #[cfg(test)]
 mod tests {
+    use float_cmp::approx_eq;
     use h3ron::H3Edge;
     use uom::si::f32::{Length, Velocity};
     use uom::si::length::meter;
@@ -87,7 +88,10 @@ mod tests {
     #[test]
     fn test_calc() {
         let speed = Velocity::new::<kilometer_per_hour>(30.0);
-        let distance = Length::new::<meter>(H3Edge::edge_length_m(10) as f32);
-        dbg!(distance / speed);
+        let distance = Length::new::<meter>(H3Edge::edge_length_m(6) as f32);
+
+        let travel_time = distance / speed;
+        assert!(approx_eq!(f32, travel_time.value, 387.5379f32));
+        dbg!(travel_time);
     }
 }
