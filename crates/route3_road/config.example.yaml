@@ -27,3 +27,11 @@ graph_store:
 output:
   bucket: "outputs"
   key_prefix: "out-"
+
+routing_modes:
+  exact:
+    edge_preference_factor:
+
+  # strong preference for better roads even when the driving duration gets worse
+  prefer-better-roads:
+    edge_preference_factor: 0.8

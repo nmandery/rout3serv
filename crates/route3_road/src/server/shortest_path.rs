@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use h3ron::{H3Cell, HasH3Resolution, Index};
 use h3ron_graph::algorithm::path::Path;
-use h3ron_graph::algorithm::shortest_path::{ShortestPathManyToMany, ShortestPathOptions};
-use h3ron_graph::graph::PreparedH3EdgeGraph;
+use h3ron_graph::algorithm::shortest_path::ShortestPathOptions;
+use h3ron_graph::algorithm::ShortestPathManyToMany;
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
 use polars_core::prelude::{DataFrame, NamedFrom, Series};
@@ -15,6 +15,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Response, Status};
 use uom::si::time::second;
 
+use crate::customization::{CustomizedGraph, CustomizedWeight};
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::api::Route;
@@ -24,9 +25,10 @@ use crate::server::util::{
     spawn_blocking_status, stream_dataframe, stream_routes, ArrowIpcChunkStream,
 };
 use crate::weight::Weight;
+use crate::ServerConfig;
 
 pub struct H3ShortestPathParameters<W: Send + Sync> {
-    graph: Arc<PreparedH3EdgeGraph<W>>,
+    graph: CustomizedGraph<W>,
     options: super::api::generated::ShortestPathOptions,
     origin_cells: Vec<H3Cell>,
     origin_dataframe: Option<H3DataFrame>,
@@ -37,13 +39,20 @@ pub struct H3ShortestPathParameters<W: Send + Sync> {
 pub async fn create_parameters<W: Send + Sync>(
     request: super::api::generated::H3ShortestPathRequest,
     storage: Arc<S3Storage<W>>,
+    config: Arc<ServerConfig>,
 ) -> Result<H3ShortestPathParameters<W>, Status>
 where
     W: Serialize + DeserializeOwned,
 {
-    let (graph, _) = storage
+    let routing_mode = config.get_routing_mode(&request.routing_mode)?;
+    let graph = storage
         .load_graph_from_option(&request.graph_handle)
-        .await?;
+        .await
+        .map(|(graph, _)| {
+            let mut cg = CustomizedGraph::from(graph);
+            cg.set_routing_mode(routing_mode);
+            cg
+        })?;
 
     let (origin_cells, origin_dataframe) = storage
         .load_cell_selection(
@@ -110,7 +119,7 @@ where
         &parameters.origin_cells,
         &parameters.destination_cells,
         &parameters.options,
-        |p: Path<W>| {
+        |p: Path<CustomizedWeight<W>>| {
             (
                 *p.cost(),
                 p.edges()
@@ -133,7 +142,7 @@ where
         let mut destination_cell_vec = Vec::with_capacity(capacity);
         let mut path_cell_length_m_vec = Vec::with_capacity(capacity);
         let mut travel_duration_secs_vec = Vec::with_capacity(capacity);
-        let mut road_category_weight_vec = Vec::with_capacity(capacity);
+        let mut edge_preferences_vec = Vec::with_capacity(capacity);
 
         for (origin_cell, paths) in pathmap.iter() {
             if paths.is_empty() {
@@ -144,7 +153,7 @@ where
                 destination_cell_vec.push(None);
                 path_cell_length_m_vec.push(None);
                 travel_duration_secs_vec.push(None);
-                road_category_weight_vec.push(None);
+                edge_preferences_vec.push(None);
             } else {
                 for (cost, path_length_dm, destination) in paths.iter() {
                     origin_cell_vec.push(origin_cell.h3index() as u64);
@@ -152,7 +161,7 @@ where
                     path_cell_length_m_vec.push(Some(path_length_dm.into_inner()));
                     travel_duration_secs_vec
                         .push(Some(cost.travel_duration().get::<second>() as f32));
-                    road_category_weight_vec.push(Some(cost.category_weight()));
+                    edge_preferences_vec.push(Some(cost.edge_preference()));
                 }
             }
         }
@@ -161,7 +170,7 @@ where
             Series::new(names::COL_H3INDEX_DESTINATION, destination_cell_vec),
             Series::new(names::COL_PATH_LENGTH_METERS, path_cell_length_m_vec),
             Series::new(names::COL_TRAVEL_DURATION_SECS, travel_duration_secs_vec),
-            Series::new(names::COL_ROAD_CATEGORY_WEIGHT, road_category_weight_vec),
+            Series::new(names::COL_EDGE_PREFERENCE, edge_preferences_vec),
         ])?
     };
 
@@ -194,7 +203,7 @@ where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
     R: Route + Send + 'static,
     E: Debug + Send + 'static,
-    F: FnMut(Path<W>) -> Result<R, E> + Send + 'static,
+    F: FnMut(Path<CustomizedWeight<W>>) -> Result<R, E> + Send + 'static,
 {
     let routes = spawn_blocking_status(move || {
         match parameters.graph.shortest_path_many_to_many(

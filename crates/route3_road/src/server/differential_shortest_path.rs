@@ -299,14 +299,14 @@ where
         }
     };
 
-    let avg_category_weight = |paths: &[Path<W>]| -> Option<f64> {
+    let avg_edge_preference = |paths: &[Path<W>]| -> Option<f64> {
         if paths.is_empty() {
             None
         } else {
             Some(
                 paths
                     .iter()
-                    .map(|p| p.cost().category_weight() as f64)
+                    .map(|p| p.cost().edge_preference() as f64)
                     .sum::<f64>()
                     / paths.len() as f64,
             )
@@ -329,9 +329,9 @@ where
         Vec::with_capacity(output.differential_shortest_paths.len());
     let mut avg_travel_duration_with_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
-    let mut avg_category_weight_without_disturbance =
+    let mut avg_edge_preference_without_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
-    let mut avg_category_weight_with_disturbance =
+    let mut avg_edge_preference_with_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
     let mut preferred_destination_without_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
@@ -344,12 +344,12 @@ where
         num_reached_without_disturbance.push(diff.before_cell_exclusion.len() as u64);
         avg_travel_duration_without_disturbance
             .push(avg_travel_duration(&diff.before_cell_exclusion));
-        avg_category_weight_without_disturbance
-            .push(avg_category_weight(&diff.before_cell_exclusion));
+        avg_edge_preference_without_disturbance
+            .push(avg_edge_preference(&diff.before_cell_exclusion));
 
         num_reached_with_disturbance.push(diff.after_cell_exclusion.len() as u64);
         avg_travel_duration_with_disturbance.push(avg_travel_duration(&diff.after_cell_exclusion));
-        avg_category_weight_with_disturbance.push(avg_category_weight(&diff.after_cell_exclusion));
+        avg_edge_preference_with_disturbance.push(avg_edge_preference(&diff.after_cell_exclusion));
 
         preferred_destination_without_disturbance
             .push(preferred_destination(&diff.before_cell_exclusion));
@@ -372,8 +372,8 @@ where
             &avg_travel_duration_without_disturbance,
         ),
         Series::new(
-            "avg_category_weight_without_disturbance",
-            &avg_category_weight_without_disturbance,
+            "avg_edge_preference_without_disturbance",
+            &avg_edge_preference_without_disturbance,
         ),
         Series::new(
             "preferred_dest_h3index_with_disturbance",
@@ -388,8 +388,8 @@ where
             &avg_travel_duration_with_disturbance,
         ),
         Series::new(
-            "avg_category_weight_with_disturbance",
-            &avg_category_weight_with_disturbance,
+            "avg_edge_preference_with_disturbance",
+            &avg_edge_preference_with_disturbance,
         ),
     ])?;
     let df = df.join(

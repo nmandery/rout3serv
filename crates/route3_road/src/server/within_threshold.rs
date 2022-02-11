@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use h3ron::{H3Cell, HasH3Resolution, Index};
 use h3ron_graph::algorithm::WithinWeightThresholdMany;
-use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
 use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;
@@ -12,11 +11,13 @@ use tonic::{Response, Status};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
+use crate::customization::{CustomizedGraph, CustomizedWeight};
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::storage::S3Storage;
 use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream};
 use crate::weight::Weight;
+use crate::ServerConfig;
 
 use super::names;
 
@@ -25,7 +26,7 @@ enum Threshold {
 }
 
 pub struct H3WithinThresholdParameters<W: Send + Sync> {
-    graph: Arc<PreparedH3EdgeGraph<W>>,
+    graph: CustomizedGraph<W>,
     origin_cells: Vec<H3Cell>,
     origin_dataframe: Option<H3DataFrame>,
     threshold: Threshold,
@@ -34,6 +35,7 @@ pub struct H3WithinThresholdParameters<W: Send + Sync> {
 pub async fn create_parameters<W: Send + Sync>(
     request: super::api::generated::H3WithinThresholdRequest,
     storage: Arc<S3Storage<W>>,
+    config: Arc<ServerConfig>,
 ) -> Result<H3WithinThresholdParameters<W>, Status>
 where
     W: Serialize + DeserializeOwned,
@@ -46,9 +48,15 @@ where
         return Err(Status::invalid_argument("invalid or no threshold given"));
     };
 
-    let (graph, _) = storage
+    let routing_mode = config.get_routing_mode(&request.routing_mode)?;
+    let graph = storage
         .load_graph_from_option(&request.graph_handle)
-        .await?;
+        .await
+        .map(|(graph, _)| {
+            let mut cg = CustomizedGraph::from(graph);
+            cg.set_routing_mode(routing_mode);
+            cg
+        })?;
 
     let (origin_cells, origin_dataframe) = storage
         .load_cell_selection(
@@ -93,11 +101,13 @@ where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {
     let threshold_weight = match parameters.threshold {
-        Threshold::TravelDuration(travel_duration) => W::from_travel_duration(travel_duration),
+        Threshold::TravelDuration(travel_duration) => {
+            CustomizedWeight::<W>::from_travel_duration(travel_duration)
+        }
     };
 
     // use the minimum weight encountered
-    let agg_fn = |existing: &mut W, new: W| {
+    let agg_fn = |existing: &mut CustomizedWeight<W>, new: CustomizedWeight<W>| {
         if new < *existing {
             *existing = new;
         }
@@ -110,7 +120,7 @@ where
     );
 
     let capacity = cellmap.len();
-    let (cell_h3indexes, travel_duration_secs, road_category_weights) = cellmap.iter().fold(
+    let (cell_h3indexes, travel_duration_secs, edge_preferences) = cellmap.iter().fold(
         (
             Vec::with_capacity(capacity),
             Vec::with_capacity(capacity),
@@ -119,7 +129,7 @@ where
         |mut acc, item| {
             acc.0.push(item.0.h3index() as u64);
             acc.1.push(item.1.travel_duration().get::<second>() as f32);
-            acc.2.push(item.1.category_weight());
+            acc.2.push(item.1.edge_preference());
             acc
         },
     );
@@ -127,7 +137,7 @@ where
     let mut df = DataFrame::new(vec![
         Series::new(names::COL_H3INDEX_ORIGIN, cell_h3indexes),
         Series::new(names::COL_TRAVEL_DURATION_SECS, travel_duration_secs),
-        Series::new(names::COL_ROAD_CATEGORY_WEIGHT, road_category_weights),
+        Series::new(names::COL_EDGE_PREFERENCE, edge_preferences),
     ])?;
 
     // join origin dataframe if there is any

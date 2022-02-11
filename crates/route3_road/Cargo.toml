@@ -11,18 +11,17 @@ async-trait = "0.1"
 clap = "^3"
 env_logger = "0.9"
 eyre = "0.6"
+geo-types = "0.7"
+itertools = "0.10"
 lazy_static = "1.4"
 log = "0.4"
+num-traits = "0.2"
+ordered-float = "2.8.0"
 prost = "0.9"
 rayon = "^1.5"
 regex = "1.5"
-tokio-stream = "0.1"
-itertools = "0.10"
-geo-types = "0.7"
 serde_yaml = "0.8"
-num-traits = "0.2"
-approx = "0.5"
-ordered-float = "2.8.0"
+tokio-stream = "0.1"
 
 [dependencies.geo]
 # version = "0.18"
@@ -45,11 +44,15 @@ version = "0.1"
 default_features = false
 
 [dependencies.h3ron]
-version = "0.14"
+#version = "0.14"
+git = "https://github.com/nmandery/h3ron.git"
+rev = "321de12b393331072737df1e16f853368b78d9b5"
 features = ["io", "use-rayon", "roaring", "use-serde", "compression"]
 
 [dependencies.h3ron-graph]
-version = "0.3"
+#version = "0.3"
+git = "https://github.com/nmandery/h3ron.git"
+rev = "321de12b393331072737df1e16f853368b78d9b5"
 features = ["use-gdal", "osm"]
 
 [dependencies.uuid]

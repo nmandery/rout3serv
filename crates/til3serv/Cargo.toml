@@ -33,7 +33,9 @@ features = [
 path = "../slippymap-h3-tiles"
 
 [dependencies.h3ron]
-version = "0.14"
+#version = "0.14"
+git = "https://github.com/nmandery/h3ron.git"
+rev = "321de12b393331072737df1e16f853368b78d9b5"
 
 [dependencies.serde]
 version = "1"

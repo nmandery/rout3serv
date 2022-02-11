@@ -17,7 +17,7 @@ use crate::osm::WALKING_SPEED;
 use crate::RoadWeight;
 
 pub struct FootwayProperties {
-    road_category_weight: f32,
+    edge_preference: f32,
 }
 
 pub struct FootwayAnalyzer {}
@@ -28,10 +28,10 @@ impl WayAnalyzer<RoadWeight> for FootwayAnalyzer {
     fn analyze_way_tags(&self, tags: &Tags) -> Option<Self::WayProperties> {
         // https://wiki.openstreetmap.org/wiki/Key:highway or https://wiki.openstreetmap.org/wiki/DE:Key:highway
         // TODO: make use of `access` tag: https://wiki.openstreetmap.org/wiki/Key:access
-        let mut road_category_weight = None;
+        let mut edge_preference = None;
 
         if let Some(highway_value) = tags.get("highway") {
-            road_category_weight = match highway_value.to_lowercase().as_str() {
+            edge_preference = match highway_value.to_lowercase().as_str() {
                 "motorway" | "motorway_link" | "trunk" | "trunk_link" | "primary"
                 | "primary_link" => infer_sidewalk(tags).map(|_| 10.0),
                 "secondary" | "secondary_link" | "tertiary" | "tertiary_link" => {
@@ -51,14 +51,14 @@ impl WayAnalyzer<RoadWeight> for FootwayAnalyzer {
         }
 
         if let Some(footway_value) = tags.get("footway") {
-            road_category_weight = match footway_value.to_lowercase().as_str() {
+            edge_preference = match footway_value.to_lowercase().as_str() {
                 "sidewalk" | "crossing" => Some(1.0),
-                _ => road_category_weight,
+                _ => edge_preference,
             };
         }
 
-        road_category_weight.map(|rcw| FootwayProperties {
-            road_category_weight: rcw,
+        edge_preference.map(|rcw| FootwayProperties {
+            edge_preference: rcw,
         })
     }
 
@@ -68,7 +68,7 @@ impl WayAnalyzer<RoadWeight> for FootwayAnalyzer {
         way_properties: &Self::WayProperties,
     ) -> EdgeProperties<RoadWeight> {
         let weight = RoadWeight::new(
-            way_properties.road_category_weight,
+            way_properties.edge_preference,
             Length::new::<meter>(edge.cell_centroid_distance_m() as f32) / *WALKING_SPEED,
         );
         EdgeProperties {

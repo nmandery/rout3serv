@@ -10,7 +10,7 @@ use crate::weight::RoadWeight;
 
 pub struct CarWayProperties {
     max_speed: Velocity,
-    category_weight: f32,
+    edge_preference: f32,
     is_bidirectional: bool,
 }
 
@@ -53,7 +53,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
 
             Some(CarWayProperties {
                 max_speed,
-                category_weight,
+                edge_preference: category_weight,
                 is_bidirectional,
             })
         } else {
@@ -67,7 +67,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
         way_properties: &Self::WayProperties,
     ) -> EdgeProperties<RoadWeight> {
         let weight = RoadWeight::new(
-            way_properties.category_weight,
+            way_properties.edge_preference,
             Length::new::<meter>(edge.cell_centroid_distance_m() as f32) / way_properties.max_speed,
         );
         EdgeProperties {
@@ -79,6 +79,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
 
 #[cfg(test)]
 mod tests {
+    use float_cmp::approx_eq;
     use h3ron::H3Edge;
     use uom::si::f32::{Length, Velocity};
     use uom::si::length::meter;
@@ -87,7 +88,10 @@ mod tests {
     #[test]
     fn test_calc() {
         let speed = Velocity::new::<kilometer_per_hour>(30.0);
-        let distance = Length::new::<meter>(H3Edge::edge_length_m(10) as f32);
-        dbg!(distance / speed);
+        let distance = Length::new::<meter>(H3Edge::edge_length_m(6) as f32);
+
+        let travel_time = distance / speed;
+        assert!(approx_eq!(f32, travel_time.value, 387.5379f32));
+        dbg!(travel_time);
     }
 }

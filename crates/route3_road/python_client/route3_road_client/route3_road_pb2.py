@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x11route3_road.proto\x12\x0broute3.road\"\x07\n\x05\x45mpty\"S\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0egit_commit_sha\x18\x02 \x01(\t\x12\x17\n\x0f\x62uild_timestamp\x18\x03 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"X\n\x13ShortestPathOptions\x12!\n\x19num_destinations_to_reach\x18\x04 \x01(\r\x12\x1e\n\x16num_gap_cells_to_graph\x18\x06 \x01(\r\"\xb7\x02\n\x1f\x44ifferentialShortestPathRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12 \n\x18\x64isturbance_wkb_geometry\x18\x02 \x01(\x0c\x12\x15\n\rradius_meters\x18\x03 \x01(\x01\x12\x31\n\x07options\x18\x04 \x01(\x0b\x32 .route3.road.ShortestPathOptions\x12(\n\x0c\x64\x65stinations\x18\x05 \x03(\x0b\x32\x12.route3.road.Point\x12\x1e\n\x16\x64ownsampled_prerouting\x18\x06 \x01(\x08\x12\x14\n\x0cstore_output\x18\x07 \x01(\x08\x12\x18\n\x10ref_dataset_name\x18\x08 \x01(\t\"\x1a\n\x05IdRef\x12\x11\n\tobject_id\x18\x01 \x01(\t\"4\n\rCellSelection\x12\r\n\x05\x63\x65lls\x18\x01 \x03(\x04\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"f\n%DifferentialShortestPathRoutesRequest\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x1b\n\x13smoothen_geometries\x18\x02 \x01(\x08\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"\x94\x01\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x1c\n\x14travel_duration_secs\x18\x03 \x01(\x01\x12\x17\n\x0f\x63\x61tegory_weight\x18\x04 \x01(\x01\x12\x0b\n\x03wkb\x18\x05 \x01(\x0c\x12\x15\n\rpath_length_m\x18\x06 \x01(\x01\"\xa0\x01\n\x0eRouteH3Indexes\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x1c\n\x14travel_duration_secs\x18\x03 \x01(\x01\x12\x17\n\x0f\x63\x61tegory_weight\x18\x04 \x01(\x01\x12\x11\n\th3indexes\x18\x05 \x03(\x04\x12\x15\n\rpath_length_m\x18\x06 \x01(\x01\"\xf6\x01\n\x15H3ShortestPathRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12+\n\x07origins\x18\x02 \x01(\x0b\x32\x1a.route3.road.CellSelection\x12\x30\n\x0c\x64\x65stinations\x18\x03 \x01(\x0b\x32\x1a.route3.road.CellSelection\x12\x31\n\x07options\x18\x04 \x01(\x0b\x32 .route3.road.ShortestPathOptions\x12\x1b\n\x13smoothen_geometries\x18\x05 \x01(\x08\"0\n\rArrowIPCChunk\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x93\x01\n\x1e\x44ifferentialShortestPathRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.route3.road.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.route3.road.RouteWKB\"2\n\x0bGraphHandle\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x15\n\rh3_resolution\x18\x02 \x01(\r\"n\n\tGraphInfo\x12(\n\x06handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12\x11\n\tis_cached\x18\x02 \x01(\x08\x12\x11\n\tnum_edges\x18\x03 \x01(\x04\x12\x11\n\tnum_nodes\x18\x04 \x01(\x04\"<\n\x12ListGraphsResponse\x12&\n\x06graphs\x18\x01 \x03(\x0b\x32\x16.route3.road.GraphInfo\",\n\x14ListDatasetsResponse\x12\x14\n\x0c\x64\x61taset_name\x18\x01 \x03(\t\"\x9f\x01\n\x18H3WithinThresholdRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12+\n\x07origins\x18\x02 \x01(\x0b\x32\x1a.route3.road.CellSelection\x12&\n\x1etravel_duration_secs_threshold\x18\x03 \x01(\x02\x32\xdd\x07\n\nRoute3Road\x12=\n\x07Version\x12\x12.route3.road.Empty\x1a\x1c.route3.road.VersionResponse\"\x00\x12\x43\n\nListGraphs\x12\x12.route3.road.Empty\x1a\x1f.route3.road.ListGraphsResponse\"\x00\x12G\n\x0cListDatasets\x12\x12.route3.road.Empty\x1a!.route3.road.ListDatasetsResponse\"\x00\x12R\n\x0eH3ShortestPath\x12\".route3.road.H3ShortestPathRequest\x1a\x1a.route3.road.ArrowIPCChunk0\x01\x12S\n\x14H3ShortestPathRoutes\x12\".route3.road.H3ShortestPathRequest\x1a\x15.route3.road.RouteWKB0\x01\x12X\n\x13H3ShortestPathCells\x12\".route3.road.H3ShortestPathRequest\x1a\x1b.route3.road.RouteH3Indexes0\x01\x12X\n\x13H3ShortestPathEdges\x12\".route3.road.H3ShortestPathRequest\x1a\x1b.route3.road.RouteH3Indexes0\x01\x12h\n\x18\x44ifferentialShortestPath\x12,.route3.road.DifferentialShortestPathRequest\x1a\x1a.route3.road.ArrowIPCChunk\"\x00\x30\x01\x12Q\n\x1bGetDifferentialShortestPath\x12\x12.route3.road.IdRef\x1a\x1a.route3.road.ArrowIPCChunk\"\x00\x30\x01\x12\x88\x01\n!GetDifferentialShortestPathRoutes\x12\x32.route3.road.DifferentialShortestPathRoutesRequest\x1a+.route3.road.DifferentialShortestPathRoutes\"\x00\x30\x01\x12]\n\x16H3CellsWithinThreshold\x12%.route3.road.H3WithinThresholdRequest\x1a\x1a.route3.road.ArrowIPCChunk0\x01\x62\x06proto3'
+  serialized_pb=b'\n\x11route3_road.proto\x12\x0broute3.road\"\x07\n\x05\x45mpty\"S\n\x0fVersionResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0egit_commit_sha\x18\x02 \x01(\t\x12\x17\n\x0f\x62uild_timestamp\x18\x03 \x01(\t\"\x1d\n\x05Point\x12\t\n\x01x\x18\x01 \x01(\x01\x12\t\n\x01y\x18\x02 \x01(\x01\"X\n\x13ShortestPathOptions\x12!\n\x19num_destinations_to_reach\x18\x04 \x01(\r\x12\x1e\n\x16num_gap_cells_to_graph\x18\x06 \x01(\r\"\xb7\x02\n\x1f\x44ifferentialShortestPathRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12 \n\x18\x64isturbance_wkb_geometry\x18\x02 \x01(\x0c\x12\x15\n\rradius_meters\x18\x03 \x01(\x01\x12\x31\n\x07options\x18\x04 \x01(\x0b\x32 .route3.road.ShortestPathOptions\x12(\n\x0c\x64\x65stinations\x18\x05 \x03(\x0b\x32\x12.route3.road.Point\x12\x1e\n\x16\x64ownsampled_prerouting\x18\x06 \x01(\x08\x12\x14\n\x0cstore_output\x18\x07 \x01(\x08\x12\x18\n\x10ref_dataset_name\x18\x08 \x01(\t\"\x1a\n\x05IdRef\x12\x11\n\tobject_id\x18\x01 \x01(\t\"4\n\rCellSelection\x12\r\n\x05\x63\x65lls\x18\x01 \x03(\x04\x12\x14\n\x0c\x64\x61taset_name\x18\x02 \x01(\t\"f\n%DifferentialShortestPathRoutesRequest\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x1b\n\x13smoothen_geometries\x18\x02 \x01(\x08\x12\r\n\x05\x63\x65lls\x18\x03 \x03(\x04\"\x94\x01\n\x08RouteWKB\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x1c\n\x14travel_duration_secs\x18\x03 \x01(\x01\x12\x17\n\x0f\x65\x64ge_preference\x18\x04 \x01(\x01\x12\x0b\n\x03wkb\x18\x05 \x01(\x0c\x12\x15\n\rpath_length_m\x18\x06 \x01(\x01\"\xa0\x01\n\x0eRouteH3Indexes\x12\x13\n\x0borigin_cell\x18\x01 \x01(\x04\x12\x18\n\x10\x64\x65stination_cell\x18\x02 \x01(\x04\x12\x1c\n\x14travel_duration_secs\x18\x03 \x01(\x01\x12\x17\n\x0f\x65\x64ge_preference\x18\x04 \x01(\x01\x12\x11\n\th3indexes\x18\x05 \x03(\x04\x12\x15\n\rpath_length_m\x18\x06 \x01(\x01\"\x8c\x02\n\x15H3ShortestPathRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12+\n\x07origins\x18\x02 \x01(\x0b\x32\x1a.route3.road.CellSelection\x12\x30\n\x0c\x64\x65stinations\x18\x03 \x01(\x0b\x32\x1a.route3.road.CellSelection\x12\x31\n\x07options\x18\x04 \x01(\x0b\x32 .route3.road.ShortestPathOptions\x12\x1b\n\x13smoothen_geometries\x18\x05 \x01(\x08\x12\x14\n\x0crouting_mode\x18\x06 \x01(\t\"0\n\rArrowIPCChunk\x12\x11\n\tobject_id\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x93\x01\n\x1e\x44ifferentialShortestPathRoutes\x12\x39\n\x1aroutes_without_disturbance\x18\x02 \x03(\x0b\x32\x15.route3.road.RouteWKB\x12\x36\n\x17routes_with_disturbance\x18\x03 \x03(\x0b\x32\x15.route3.road.RouteWKB\"2\n\x0bGraphHandle\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x15\n\rh3_resolution\x18\x02 \x01(\r\"n\n\tGraphInfo\x12(\n\x06handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12\x11\n\tis_cached\x18\x02 \x01(\x08\x12\x11\n\tnum_edges\x18\x03 \x01(\x04\x12\x11\n\tnum_nodes\x18\x04 \x01(\x04\"<\n\x12ListGraphsResponse\x12&\n\x06graphs\x18\x01 \x03(\x0b\x32\x16.route3.road.GraphInfo\",\n\x14ListDatasetsResponse\x12\x14\n\x0c\x64\x61taset_name\x18\x01 \x03(\t\"\xb5\x01\n\x18H3WithinThresholdRequest\x12.\n\x0cgraph_handle\x18\x01 \x01(\x0b\x32\x18.route3.road.GraphHandle\x12+\n\x07origins\x18\x02 \x01(\x0b\x32\x1a.route3.road.CellSelection\x12&\n\x1etravel_duration_secs_threshold\x18\x03 \x01(\x02\x12\x14\n\x0crouting_mode\x18\x04 \x01(\t2\xdd\x07\n\nRoute3Road\x12=\n\x07Version\x12\x12.route3.road.Empty\x1a\x1c.route3.road.VersionResponse\"\x00\x12\x43\n\nListGraphs\x12\x12.route3.road.Empty\x1a\x1f.route3.road.ListGraphsResponse\"\x00\x12G\n\x0cListDatasets\x12\x12.route3.road.Empty\x1a!.route3.road.ListDatasetsResponse\"\x00\x12R\n\x0eH3ShortestPath\x12\".route3.road.H3ShortestPathRequest\x1a\x1a.route3.road.ArrowIPCChunk0\x01\x12S\n\x14H3ShortestPathRoutes\x12\".route3.road.H3ShortestPathRequest\x1a\x15.route3.road.RouteWKB0\x01\x12X\n\x13H3ShortestPathCells\x12\".route3.road.H3ShortestPathRequest\x1a\x1b.route3.road.RouteH3Indexes0\x01\x12X\n\x13H3ShortestPathEdges\x12\".route3.road.H3ShortestPathRequest\x1a\x1b.route3.road.RouteH3Indexes0\x01\x12h\n\x18\x44ifferentialShortestPath\x12,.route3.road.DifferentialShortestPathRequest\x1a\x1a.route3.road.ArrowIPCChunk\"\x00\x30\x01\x12Q\n\x1bGetDifferentialShortestPath\x12\x12.route3.road.IdRef\x1a\x1a.route3.road.ArrowIPCChunk\"\x00\x30\x01\x12\x88\x01\n!GetDifferentialShortestPathRoutes\x12\x32.route3.road.DifferentialShortestPathRoutesRequest\x1a+.route3.road.DifferentialShortestPathRoutes\"\x00\x30\x01\x12]\n\x16H3CellsWithinThreshold\x12%.route3.road.H3WithinThresholdRequest\x1a\x1a.route3.road.ArrowIPCChunk0\x01\x62\x06proto3'
 )
 
 
@@ -402,7 +402,7 @@ _ROUTEWKB = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='category_weight', full_name='route3.road.RouteWKB.category_weight', index=3,
+      name='edge_preference', full_name='route3.road.RouteWKB.edge_preference', index=3,
       number=4, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
@@ -469,7 +469,7 @@ _ROUTEH3INDEXES = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='category_weight', full_name='route3.road.RouteH3Indexes.category_weight', index=3,
+      name='edge_preference', full_name='route3.road.RouteH3Indexes.edge_preference', index=3,
       number=4, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=float(0),
       message_type=None, enum_type=None, containing_type=None,
@@ -549,6 +549,13 @@ _H3SHORTESTPATHREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='routing_mode', full_name='route3.road.H3ShortestPathRequest.routing_mode', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -562,7 +569,7 @@ _H3SHORTESTPATHREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=1064,
-  serialized_end=1310,
+  serialized_end=1332,
 )
 
 
@@ -600,8 +607,8 @@ _ARROWIPCCHUNK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1312,
-  serialized_end=1360,
+  serialized_start=1334,
+  serialized_end=1382,
 )
 
 
@@ -639,8 +646,8 @@ _DIFFERENTIALSHORTESTPATHROUTES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1363,
-  serialized_end=1510,
+  serialized_start=1385,
+  serialized_end=1532,
 )
 
 
@@ -678,8 +685,8 @@ _GRAPHHANDLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1512,
-  serialized_end=1562,
+  serialized_start=1534,
+  serialized_end=1584,
 )
 
 
@@ -731,8 +738,8 @@ _GRAPHINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1564,
-  serialized_end=1674,
+  serialized_start=1586,
+  serialized_end=1696,
 )
 
 
@@ -763,8 +770,8 @@ _LISTGRAPHSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1676,
-  serialized_end=1736,
+  serialized_start=1698,
+  serialized_end=1758,
 )
 
 
@@ -795,8 +802,8 @@ _LISTDATASETSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1738,
-  serialized_end=1782,
+  serialized_start=1760,
+  serialized_end=1804,
 )
 
 
@@ -829,6 +836,13 @@ _H3WITHINTHRESHOLDREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='routing_mode', full_name='route3.road.H3WithinThresholdRequest.routing_mode', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -841,8 +855,8 @@ _H3WITHINTHRESHOLDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1785,
-  serialized_end=1944,
+  serialized_start=1807,
+  serialized_end=1988,
 )
 
 _DIFFERENTIALSHORTESTPATHREQUEST.fields_by_name['graph_handle'].message_type = _GRAPHHANDLE
@@ -1013,8 +1027,8 @@ _ROUTE3ROAD = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=1947,
-  serialized_end=2936,
+  serialized_start=1991,
+  serialized_end=2980,
   methods=[
   _descriptor.MethodDescriptor(
     name='Version',
