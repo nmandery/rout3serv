@@ -2,9 +2,9 @@ use std::io::Cursor;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use h3ron::io::deserialize_from;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use regex::Regex;
+use s3io::ser_and_de::deserialize_from;
 use serde::de::DeserializeOwned;
 use tokio::task::block_in_place;
 

@@ -18,3 +18,4 @@ mod error;
 pub mod fetch;
 pub mod format;
 pub mod s3;
+pub mod ser_and_de;

@@ -87,6 +87,9 @@ features = ["bindgen"]
 version = "^0.2"
 features = ["trace"]
 
+[dev-dependencies]
+float-cmp = "0.9"
+
 [build-dependencies]
 tonic-build = { version = "0.6", features = ["compression"] }
 vergen = { version = "6", features = ["rustc", "build"] }

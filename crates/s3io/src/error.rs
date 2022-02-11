@@ -49,4 +49,7 @@ pub enum Error {
 
     #[error("{0}")]
     Generic(String),
+
+    #[error("panic during deserialization")]
+    DeserializePanic,
 }

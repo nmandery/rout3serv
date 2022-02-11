@@ -4,7 +4,6 @@ use std::io::Cursor;
 use std::sync::Arc;
 
 use h3ron::collections::H3CellSet;
-use h3ron::io::{deserialize_from, serialize_into};
 use h3ron::iter::change_resolution;
 use h3ron::H3Cell;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
@@ -17,6 +16,7 @@ use tonic::Status;
 use s3io::dataframe::H3DataFrame;
 use s3io::fetch::FetchError;
 use s3io::s3::{ObjectRef, S3ArrowLoader, S3Client};
+use s3io::ser_and_de::{deserialize_from, serialize_into};
 
 use crate::config::{GenericDataset, ServerConfig};
 use crate::io::graph_store::{GraphCacheKey, GraphStore};
