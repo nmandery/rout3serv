@@ -30,6 +30,7 @@ impl MaxSpeed {
         }
     }
 
+    #[allow(dead_code)]
     pub fn velocity(&self) -> Option<Velocity> {
         match self {
             Self::Limited(v) => Some(*v),

@@ -67,8 +67,6 @@ impl fmt::Display for Tile {
 
 impl Tile {
     pub fn area_m2(&self) -> f64 {
-        // TODO: look at the tiles and decide which area calculation to use
-        //area_m2(&self.bounding_rect())
         let wbr = self.webmercator_bounding_rect();
         wbr.width() * wbr.height()
     }
@@ -283,30 +281,6 @@ impl CellBuilder {
     }
 }
 
-/*
-/// Calculate the approximate area of the given linestring ring (wgs84 coordinates) in square meters
-///
-/// Roughly taken from [stackoverflow](https://gis.stackexchange.com/questions/711/how-can-i-measure-area-from-geographic-coordinates).
-///
-/// Published in Chamberlain, R. and W. Duquette. “Some algorithms for polygons on a sphere.” (2007).
-/// The full paper is available [here](https://www.semanticscholar.org/paper/Some-algorithms-for-polygons-on-a-sphere.-Chamberlain-Duquette/79668c0fe32788176758a2285dd674fa8e7b8fa8).
-fn area_m2(rect: &Rect<f64>) -> f64 {
-    rect.to_polygon()
-        .exterior()
-        .0
-        .windows(2)
-        .map(|coords| {
-            (coords[1].x - coords[0].x).to_radians()
-                * (2.0 + coords[0].y.to_radians().sin() + coords[1].y.to_radians().sin())
-        })
-        .sum::<f64>()
-        .abs()
-        * EARTH_RADIUS_EQUATOR.powi(2)
-        / 2.0
-}
-
- */
-
 #[cfg(test)]
 mod tests {
     use super::{CellBuilder, Tile};
@@ -320,8 +294,8 @@ mod tests {
             .unwrap()
             .unwrap();
         assert!(h3_res <= 7);
-        assert!(cells.iter().count() < 2000);
-        assert!(cells.iter().count() > 200);
+        assert!(cells.len() < 2000);
+        assert!(cells.len() > 200);
     }
 
     #[test]

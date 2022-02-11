@@ -45,6 +45,7 @@ pub struct UiConfig {
     pub base_layer: UiBaseLayer,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for UiConfig {
     fn default() -> Self {
         Self {
