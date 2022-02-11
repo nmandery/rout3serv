@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/route3_road",
+    "crates/rout3serv",
     "crates/s3io",
     "crates/til3serv",
     "crates/slippymap-h3-tiles"

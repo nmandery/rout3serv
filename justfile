@@ -16,5 +16,5 @@ extract-sample-data:
     osmium export -f geojson -o data/hospital.geojson -c datasources/osmium.hospital.json --progress --overwrite data/hospital.osm.pbf
 
 build-docker:
-    sudo docker build -f route3_road.Dockerfile -t nmandery/route3_road:latest --pull .
+    sudo docker build -f rout3serv.Dockerfile -t nmandery/rout3serv:latest --pull .
     sudo docker build -f til3serv.Dockerfile -t nmandery/til3serv:latest --pull .

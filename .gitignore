@@ -17,7 +17,7 @@ poetry.lock
 perf.data*
 flamegraph*.svg
 .minio.sys
-/crates/route3_road/src/server/api/generated.rs
+/crates/rout3serv/src/server/api/generated.rs
 .ipynb_checkpoints
 node_modules
 package-lock.json

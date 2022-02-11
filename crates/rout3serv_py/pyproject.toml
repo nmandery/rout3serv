@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "route3_road_client"
+name = "rout3serv"
 version = "0.2.0"
-description = "api client for route3"
+description = "api client for rout3serv"
 authors = ["Nico Mandery <nico@nmandery.net>"]
 
 [tool.poetry.dependencies]
@@ -22,6 +22,7 @@ folium = "^0.12.1"
 h3 = "^3.7.3"
 branca = "^0.4.2"
 geojson = "^2.5.0"
+matplotlib = "^3.5.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

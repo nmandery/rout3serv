@@ -2,7 +2,7 @@
 /data
 **/venv
 .ipynb_checkpoints
-/crates/route3_road/python_client
+/crates/rout3serv/python_client
 **/perf.data*
 # /.git needs to be COPYied to obtain the commit-sha from
 /*.Dockerfile

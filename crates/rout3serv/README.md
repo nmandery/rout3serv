@@ -1,4 +1,4 @@
-# route3_road
+# rout3serv
 
 ![](doc/within-threshold.gif)
 
@@ -20,4 +20,4 @@ Features:
 
 Configuration: [config.example.yaml](config.example.yaml)
 
-GRPC API: [route3_road.proto](proto/route3_road.proto)
+GRPC API: [rout3serv.proto](proto/rout3serv.proto)

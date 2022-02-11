@@ -1,5 +1,5 @@
 [package]
-name = "route3_road"
+name = "rout3serv"
 version = "0.4.0"
 authors = ["Nico Mandery <nico@nmandery.net>"]
 publish = false

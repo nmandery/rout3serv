@@ -10,7 +10,7 @@ use tonic::{Request, Response, Status};
 use tower_http::trace::TraceLayer;
 
 use crate::config::ServerConfig;
-use crate::server::api::generated::route3_road_server::{Route3Road, Route3RoadServer};
+use crate::server::api::generated::rout3_serv_server::{Rout3Serv, Rout3ServServer};
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes,
     DifferentialShortestPathRoutesRequest, Empty, H3ShortestPathRequest, H3WithinThresholdRequest,
@@ -44,7 +44,7 @@ impl ServerImpl {
 }
 
 #[tonic::async_trait]
-impl Route3Road for ServerImpl {
+impl Rout3Serv for ServerImpl {
     async fn version(&self, _request: Request<Empty>) -> Result<Response<VersionResponse>, Status> {
         Ok(Response::new(VersionResponse {
             version: crate::build_info::version().to_string(),
@@ -289,7 +289,7 @@ async fn run_server(server_config: ServerConfig) -> eyre::Result<()> {
 
     Server::builder()
         .layer(TraceLayer::new_for_grpc())
-        .add_service(Route3RoadServer::new(server_impl).send_gzip().accept_gzip())
+        .add_service(Rout3ServServer::new(server_impl).send_gzip().accept_gzip())
         .serve(addr)
         .await?;
     Ok(())

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package route3.road;
+package rout3serv;
 
 message Empty {
 }
@@ -183,7 +183,7 @@ message H3WithinThresholdRequest {
   string routing_mode = 4;
 }
 
-service Route3Road {
+service Rout3Serv {
   // general methods -------------------------------------
   rpc Version(Empty) returns (VersionResponse) {}
   rpc ListGraphs(Empty) returns (ListGraphsResponse) {}

@@ -8,9 +8,9 @@ import shapely.wkb
 from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 
-from . import route3_road_pb2
-from .route3_road_pb2 import GraphHandle, RouteWKB, RouteH3Indexes
-from .route3_road_pb2_grpc import Route3RoadStub
+from . import rout3serv_pb2
+from .rout3serv_pb2 import GraphHandle, RouteWKB, RouteH3Indexes
+from .rout3serv_pb2_grpc import Rout3ServStub
 
 DEFAULT_PORT = 7088
 DEFAULT_HOST = "127.0.0.1"
@@ -25,8 +25,8 @@ class TableWithId:
         self.table = table
 
 
-def cell_selection(cells: typing.Iterable[int], dataset_name: str = None) -> route3_road_pb2.CellSelection:
-    cs = route3_road_pb2.CellSelection()
+def cell_selection(cells: typing.Iterable[int], dataset_name: str = None) -> rout3serv_pb2.CellSelection:
+    cs = rout3serv_pb2.CellSelection()
     if dataset_name is not None:
         cs.dataset_name = dataset_name
     for cell in cells:
@@ -34,8 +34,8 @@ def cell_selection(cells: typing.Iterable[int], dataset_name: str = None) -> rou
     return cs
 
 
-def _to_cell_selection(arg, **kwargs) -> route3_road_pb2.CellSelection:
-    if isinstance(arg, route3_road_pb2.CellSelection):
+def _to_cell_selection(arg, **kwargs) -> rout3serv_pb2.CellSelection:
+    if isinstance(arg, rout3serv_pb2.CellSelection):
         return arg
     dataset_name = kwargs.get("dataset_name")
     if hasattr(arg, '__iter__'):
@@ -48,12 +48,12 @@ def build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, dest
                                    num_gap_cells_to_graph: int = 1,
                                    smoothen_geometries: bool = False,
                                    routing_mode: typing.Optional[str] = None,
-                                   ) -> route3_road_pb2.H3ShortestPathRequest:
-    shortest_path_options = route3_road_pb2.ShortestPathOptions()
+                                   ) -> rout3serv_pb2.H3ShortestPathRequest:
+    shortest_path_options = rout3serv_pb2.ShortestPathOptions()
     shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
     shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
 
-    request = route3_road_pb2.H3ShortestPathRequest()
+    request = rout3serv_pb2.H3ShortestPathRequest()
     request.graph_handle.MergeFrom(graph_handle)
     request.options.MergeFrom(shortest_path_options)
     request.origins.MergeFrom(_to_cell_selection(origin_cells))
@@ -67,8 +67,8 @@ def build_h3_shortest_path_request(graph_handle: GraphHandle, origin_cells, dest
 def build_h3_within_threshold_request(graph_handle: GraphHandle, origin_cells,
                                       travel_duration_secs_threshold: float = 0.0,
                                       routing_mode: typing.Optional[str] = None,
-                                      ) -> route3_road_pb2.H3WithinThresholdRequest:
-    request = route3_road_pb2.H3WithinThresholdRequest()
+                                      ) -> rout3serv_pb2.H3WithinThresholdRequest:
+    request = rout3serv_pb2.H3WithinThresholdRequest()
     request.graph_handle.MergeFrom(graph_handle)
     request.origins.MergeFrom(_to_cell_selection(origin_cells))
     request.travel_duration_secs_threshold = travel_duration_secs_threshold
@@ -85,12 +85,12 @@ def build_differential_shortest_path_request(graph_handle: GraphHandle, disturba
                                              num_gap_cells_to_graph: int = 1,
                                              downsampled_prerouting: bool = False,
                                              store_output: bool = True,
-                                             ) -> route3_road_pb2.DifferentialShortestPathRequest:
-    shortest_path_options = route3_road_pb2.ShortestPathOptions()
+                                             ) -> rout3serv_pb2.DifferentialShortestPathRequest:
+    shortest_path_options = rout3serv_pb2.ShortestPathOptions()
     shortest_path_options.num_destinations_to_reach = num_destinations_to_reach
     shortest_path_options.num_gap_cells_to_graph = num_gap_cells_to_graph
 
-    request = route3_road_pb2.DifferentialShortestPathRequest()
+    request = rout3serv_pb2.DifferentialShortestPathRequest()
     request.ref_dataset_name = ref_dataset_name
     request.graph_handle.MergeFrom(graph_handle)
     request.options.MergeFrom(shortest_path_options)
@@ -107,8 +107,8 @@ def build_differential_shortest_path_request(graph_handle: GraphHandle, disturba
 
 
 def build_differential_shortest_path_routes_request(object_id: str, cells: typing.Iterable[
-    int], smoothen_geometries: bool = False) -> route3_road_pb2.DifferentialShortestPathRoutesRequest:
-    request = route3_road_pb2.DifferentialShortestPathRoutesRequest()
+    int], smoothen_geometries: bool = False) -> rout3serv_pb2.DifferentialShortestPathRoutesRequest:
+    request = rout3serv_pb2.DifferentialShortestPathRoutesRequest()
     request.object_id = object_id
     request.smoothen_geometries = smoothen_geometries
     for cell in cells:
@@ -128,52 +128,52 @@ class Server:
             self.channel = grpc.secure_channel(hostport, credentials, compression=compression, options=grpc_options)
         else:
             self.channel = grpc.insecure_channel(hostport, compression=compression, options=grpc_options)
-        self.stub = Route3RoadStub(self.channel)
+        self.stub = Rout3ServStub(self.channel)
 
-    def version(self) -> route3_road_pb2.VersionResponse:
-        return self.stub.Version(route3_road_pb2.Empty())
+    def version(self) -> rout3serv_pb2.VersionResponse:
+        return self.stub.Version(rout3serv_pb2.Empty())
 
-    def list_graphs(self) -> route3_road_pb2.ListGraphsResponse:
-        return self.stub.ListGraphs(route3_road_pb2.Empty())
+    def list_graphs(self) -> rout3serv_pb2.ListGraphsResponse:
+        return self.stub.ListGraphs(rout3serv_pb2.Empty())
 
     def list_datasets(self) -> typing.List[str]:
-        return self.stub.ListDatasets(route3_road_pb2.Empty()).dataset_name
+        return self.stub.ListDatasets(rout3serv_pb2.Empty()).dataset_name
 
-    def h3_shortest_path(self, request: route3_road_pb2.H3ShortestPathRequest) -> TableWithId:
+    def h3_shortest_path(self, request: rout3serv_pb2.H3ShortestPathRequest) -> TableWithId:
         return _arrowipcchunks_to_table(self.stub.H3ShortestPath(request))
 
-    def h3_shortest_path_routes(self, request: route3_road_pb2.H3ShortestPathRequest) -> typing.Generator[
+    def h3_shortest_path_routes(self, request: rout3serv_pb2.H3ShortestPathRequest) -> typing.Generator[
         RouteWKB, None, None]:
         """generator to yield the calculated routes as RouteWKB objects"""
         for route in self.stub.H3ShortestPathRoutes(request):
             yield route
 
-    def h3_shortest_path_cells(self, request: route3_road_pb2.H3ShortestPathRequest) -> typing.Generator[
+    def h3_shortest_path_cells(self, request: rout3serv_pb2.H3ShortestPathRequest) -> typing.Generator[
         RouteH3Indexes, None, None]:
         """generator to yield the calculated routes as cells in RouteH3Indexes objects"""
         for route in self.stub.H3ShortestPathCells(request):
             yield route
 
-    def h3_shortest_path_edges(self, request: route3_road_pb2.H3ShortestPathRequest) -> typing.Generator[
+    def h3_shortest_path_edges(self, request: rout3serv_pb2.H3ShortestPathRequest) -> typing.Generator[
         RouteH3Indexes, None, None]:
         """generator to yield the calculated routes as edges in RouteH3Indexes objects"""
         for route in self.stub.H3ShortestPathEdges(request):
             yield route
 
-    def h3_shortest_path_linestrings(self, request: route3_road_pb2.H3ShortestPathRequest) -> "GeoDataFrame":
+    def h3_shortest_path_linestrings(self, request: rout3serv_pb2.H3ShortestPathRequest) -> "GeoDataFrame":
         """returns a geodataframe of the calculates routes. Routes are returned as
         linestring geometries."""
         return _h3_shortest_path_linestrings_gdf(self.h3_shortest_path_routes(request))
 
-    def h3_cells_within_threshold(self, request: route3_road_pb2.H3WithinThresholdRequest) -> TableWithId:
+    def h3_cells_within_threshold(self, request: rout3serv_pb2.H3WithinThresholdRequest) -> TableWithId:
         """graph cells with in a certain threshold of origin cells"""
         return _arrowipcchunks_to_table(self.stub.H3CellsWithinThreshold(request))
 
-    def differential_shortest_path(self, request: route3_road_pb2.DifferentialShortestPathRequest) -> TableWithId:
+    def differential_shortest_path(self, request: rout3serv_pb2.DifferentialShortestPathRequest) -> TableWithId:
         return _arrowipcchunks_to_table(self.stub.DifferentialShortestPath(request))
 
     def get_differential_shortest_path(self, object_id: str) -> TableWithId:
-        req = route3_road_pb2.IdRef()
+        req = rout3serv_pb2.IdRef()
         req.object_id = object_id
         return _arrowipcchunks_to_table(self.stub.GetDifferentialShortestPath(req))
 
@@ -188,7 +188,7 @@ class Server:
         return _get_differential_shortest_path_routes_gdf(response)
 
 
-def _arrowipcchunks_to_table(response: route3_road_pb2.ArrowIPCChunk) -> TableWithId:
+def _arrowipcchunks_to_table(response: rout3serv_pb2.ArrowIPCChunk) -> TableWithId:
     """convert a streamed ArrowIPCChunk response to a pyarrow.Table"""
     object_id = None
     table = None
@@ -242,7 +242,7 @@ def _h3_shortest_path_linestrings_gdf(gen: typing.Generator[RouteWKB, None, None
 
 
 def _get_differential_shortest_path_routes_gdf(
-        response: route3_road_pb2.DifferentialShortestPathRoutes) -> "GeoDataFrame":
+        response: rout3serv_pb2.DifferentialShortestPathRoutes) -> "GeoDataFrame":
     from geopandas import GeoDataFrame
     import numpy as np
 
