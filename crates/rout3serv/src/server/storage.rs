@@ -217,7 +217,7 @@ where
     ) -> Result<(Vec<H3Cell>, Option<H3DataFrame>), Status> {
         // build a complete list of the requested h3cells transformed to the
         // correct resolution
-        let mut cells: Vec<_> = change_resolution(
+        let mut cells = change_resolution(
             cell_selection.cells.iter().filter_map(|v| {
                 if let Ok(cell) = H3Cell::try_from(*v) {
                     Some(cell)
@@ -228,7 +228,14 @@ where
             }),
             h3_resolution,
         )
-        .collect();
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            log::error!(
+                "transforming input cell selection resolution failed: {:?}",
+                e
+            );
+            Status::internal("transforming input cell selection resolution failed")
+        })?;
         cells.sort_unstable();
         cells.dedup();
 

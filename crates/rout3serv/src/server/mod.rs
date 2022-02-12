@@ -23,6 +23,7 @@ use crate::weight::RoadWeight;
 
 mod api;
 mod differential_shortest_path;
+mod error;
 mod names;
 mod shortest_path;
 mod storage;

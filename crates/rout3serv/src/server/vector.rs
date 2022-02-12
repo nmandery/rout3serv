@@ -33,7 +33,7 @@ pub fn gdal_geom_to_h3(
     if include_centroid {
         // add centroid in case of small geometries
         if let Some(point) = gt_geom.centroid() {
-            if let Ok(cell) = H3Cell::from_coordinate(&point.0, h3_resolution) {
+            if let Ok(cell) = H3Cell::from_coordinate(point.0, h3_resolution) {
                 cells.push(cell);
             }
         }

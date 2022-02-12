@@ -19,7 +19,7 @@ use std::path::Path;
 use clap::{App, Arg, ArgMatches};
 use eyre::Result;
 use h3ron::io::{deserialize_from, serialize_into};
-use h3ron::H3Edge;
+use h3ron::H3DirectedEdge;
 use h3ron_graph::algorithm::covered_area::CoveredArea;
 use h3ron_graph::formats::osm::OsmPbfH3EdgeGraphBuilder;
 use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
@@ -141,7 +141,7 @@ fn dispatch_command(matches: ArgMatches) -> Result<()> {
             Some(("stats", sc_matches)) => {
                 let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
                 let prepared_graph = read_graph_from_filename(&graph_filename)?;
-                println!("{}", serde_yaml::to_string(&prepared_graph.get_stats())?);
+                println!("{}", serde_yaml::to_string(&prepared_graph.get_stats()?)?);
             }
             Some(("to-ogr", sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
             Some(("covered-area", sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
@@ -194,8 +194,9 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
     let h3_resolution: u8 = sc_matches.value_of("h3_resolution").unwrap().parse()?;
     let graph_output = sc_matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
 
-    let edge_length =
-        Length::new::<meter>(H3Edge::cell_centroid_distance_m_at_resolution(h3_resolution) as f32);
+    let edge_length = Length::new::<meter>(
+        H3DirectedEdge::cell_centroid_distance_avg_m_at_resolution(h3_resolution)? as f32,
+    );
     log::info!(
         "Building graph using resolution {} with edge length ~= {:?}",
         h3_resolution,
@@ -210,7 +211,7 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
     log::info!("Preparing graph");
     let prepared_graph: PreparedH3EdgeGraph<_> = graph.try_into()?;
 
-    let stats = prepared_graph.get_stats();
+    let stats = prepared_graph.get_stats()?;
     log::info!(
         "Created graph ({} nodes, {} edges)",
         stats.num_nodes,

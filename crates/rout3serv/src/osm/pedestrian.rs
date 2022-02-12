@@ -6,7 +6,7 @@
 //! - use a DEM (Copernicus DEM-30) to derive inclines and declines in height
 //!   along edges. This could also be of use for other models.
 //!
-use h3ron::H3Edge;
+use h3ron::H3DirectedEdge;
 use h3ron_graph::formats::osm::osmpbfreader::Tags;
 use h3ron_graph::formats::osm::{EdgeProperties, WayAnalyzer};
 use uom::si::f32::Length;
@@ -25,7 +25,10 @@ pub struct FootwayAnalyzer {}
 impl WayAnalyzer<RoadWeight> for FootwayAnalyzer {
     type WayProperties = FootwayProperties;
 
-    fn analyze_way_tags(&self, tags: &Tags) -> Option<Self::WayProperties> {
+    fn analyze_way_tags(
+        &self,
+        tags: &Tags,
+    ) -> Result<Option<Self::WayProperties>, h3ron_graph::Error> {
         // https://wiki.openstreetmap.org/wiki/Key:highway or https://wiki.openstreetmap.org/wiki/DE:Key:highway
         // TODO: make use of `access` tag: https://wiki.openstreetmap.org/wiki/Key:access
         let mut edge_preference = None;
@@ -57,23 +60,23 @@ impl WayAnalyzer<RoadWeight> for FootwayAnalyzer {
             };
         }
 
-        edge_preference.map(|rcw| FootwayProperties {
+        Ok(edge_preference.map(|rcw| FootwayProperties {
             edge_preference: rcw,
-        })
+        }))
     }
 
     fn way_edge_properties(
         &self,
-        edge: H3Edge,
+        edge: H3DirectedEdge,
         way_properties: &Self::WayProperties,
-    ) -> EdgeProperties<RoadWeight> {
+    ) -> Result<EdgeProperties<RoadWeight>, h3ron_graph::Error> {
         let weight = RoadWeight::new(
             way_properties.edge_preference,
-            Length::new::<meter>(edge.cell_centroid_distance_m() as f32) / *WALKING_SPEED,
+            Length::new::<meter>(edge.cell_centroid_distance_m()? as f32) / *WALKING_SPEED,
         );
-        EdgeProperties {
+        Ok(EdgeProperties {
             is_bidirectional: true,
             weight,
-        }
+        })
     }
 }
