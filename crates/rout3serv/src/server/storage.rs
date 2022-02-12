@@ -11,7 +11,7 @@ use polars_core::prelude::DataFrame;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::task::block_in_place;
-use tonic::Status;
+use tonic::{Code, Status};
 
 use s3io::dataframe::H3DataFrame;
 use s3io::fetch::FetchError;
@@ -21,6 +21,7 @@ use s3io::ser_and_de::{deserialize_from, serialize_into};
 use crate::config::{GenericDataset, ServerConfig};
 use crate::io::graph_store::{GraphCacheKey, GraphStore};
 use crate::server::api::generated::{CellSelection, GraphHandle};
+use crate::server::error::ToStatusResult;
 use crate::server::util::StrId;
 
 /// storage backend to use in the server.
@@ -229,12 +230,8 @@ where
             h3_resolution,
         )
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            log::error!(
-                "transforming input cell selection resolution failed: {:?}",
-                e
-            );
-            Status::internal("transforming input cell selection resolution failed")
+        .to_status_message_result(Code::Internal, || {
+            "transforming input cell selection resolution failed".to_string()
         })?;
         cells.sort_unstable();
         cells.dedup();
@@ -252,9 +249,8 @@ where
 
             let reduced_cells =
                 filter_cells_by_dataframe_contents(&df.dataframe, cells, &df.h3index_column_name)
-                    .map_err(|e| {
-                    log::error!("reducing input cell selection failed: {:?}", e);
-                    Status::internal("reducing input cell selection failed")
+                    .to_status_message_result(Code::Internal, || {
+                    "reducing input cell selection failed: {:?}".to_string()
                 })?;
             Ok((reduced_cells, Some(df)))
         }

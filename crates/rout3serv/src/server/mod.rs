@@ -6,7 +6,7 @@ use h3ron::H3Cell;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
-use tonic::{Request, Response, Status};
+use tonic::{Code, Request, Response, Status};
 use tower_http::trace::TraceLayer;
 
 use crate::config::ServerConfig;
@@ -17,6 +17,7 @@ use crate::server::api::generated::{
     IdRef, ListDatasetsResponse, ListGraphsResponse, RouteH3Indexes, RouteWkb, VersionResponse,
 };
 use crate::server::api::RouteH3IndexesKind;
+use crate::server::error::ToStatusResult;
 use crate::server::storage::S3Storage;
 use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream};
 use crate::weight::RoadWeight;
@@ -170,10 +171,7 @@ impl Rout3Serv for ServerImpl {
         let do_store_output = input.store_output;
         let output = spawn_blocking_status(move || differential_shortest_path::calculate(input))
             .await?
-            .map_err(|e| {
-                log::error!("calculating routes failed: {:?}", e);
-                Status::internal("calculating routes failed")
-            })?;
+            .to_status_message_result(Code::Internal, || "calculating routes failed".to_string())?;
 
         let response_fut = stream_dataframe(
             output.object_id.clone(),

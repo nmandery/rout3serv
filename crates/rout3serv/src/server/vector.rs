@@ -2,17 +2,18 @@
 //!
 use std::convert::TryInto;
 
+use crate::server::error::ToStatusResult;
 use gdal::spatial_ref::SpatialRef;
 use gdal::vector::{Geometry, ToGdal};
 use geo::algorithm::centroid::Centroid;
 use geo_types::Geometry as GTGeometry;
-use h3ron::collections::indexvec::IndexVec;
 use h3ron::{H3Cell, ToH3Cells};
-use tonic::Status;
+use tonic::{Code, Status};
 
 /// read binary WKB into a gdal `Geometry`
 pub fn read_wkb_to_gdal(wkb_bytes: &[u8]) -> Result<Geometry, Status> {
-    Geometry::from_wkb(wkb_bytes).map_err(|_e| Status::invalid_argument("Can not parse WKB"))
+    Geometry::from_wkb(wkb_bytes)
+        .to_status_message_result(Code::InvalidArgument, || "Can not parse WKB".to_string())
 }
 
 /// convert a gdal `Geometry` to `H3Cell`s.
@@ -20,15 +21,16 @@ pub fn gdal_geom_to_h3(
     geom: &Geometry,
     h3_resolution: u8,
     include_centroid: bool,
-) -> Result<IndexVec<H3Cell>, Status> {
-    let gt_geom: GTGeometry<f64> = geom.clone().try_into().map_err(|e| {
-        log::error!("Converting GDAL geometry to geo-types failed: {:?}", e);
-        Status::internal("unsupported geometry")
-    })?;
-    let mut cells = gt_geom.to_h3_cells(h3_resolution).map_err(|e| {
-        log::error!("could not convert to h3: {:?}", e);
-        Status::internal("could not convert to h3")
-    })?;
+) -> Result<Vec<H3Cell>, Status> {
+    let gt_geom: GTGeometry<f64> = geom
+        .clone()
+        .try_into()
+        .to_status_message_result(Code::Internal, || "unsupported geometry".to_string())?;
+    let mut cells = gt_geom
+        .to_h3_cells(h3_resolution)
+        .to_status_message_result(Code::Internal, || "could not convert to h3".to_string())?
+        .iter()
+        .collect::<Vec<_>>();
 
     if include_centroid {
         // add centroid in case of small geometries
@@ -50,10 +52,8 @@ pub fn gdal_geom_to_h3(
 /// This function creates some distortion as the geometry is transformed
 /// between WGS84 and Spherical Mercator
 pub fn buffer_meters(geom: &Geometry, meters: f64) -> Result<Geometry, Status> {
-    buffer_meters_internal(geom, meters).map_err(|e| {
-        log::error!("Buffering disturbance geom failed: {:?}", e);
-        Status::internal("buffer failed")
-    })
+    buffer_meters_internal(geom, meters)
+        .to_status_message_result(Code::Internal, || "geometry buffering failed".to_string())
 }
 
 /// mainly used for debugging
@@ -62,7 +62,7 @@ pub fn to_geojson(geom: GTGeometry<f64>) -> eyre::Result<String> {
     Ok(geom.to_gdal()?.json()?)
 }
 
-fn buffer_meters_internal(geom: &Geometry, meters: f64) -> eyre::Result<Geometry> {
+fn buffer_meters_internal(geom: &Geometry, meters: f64) -> gdal::errors::Result<Geometry> {
     let srs_wgs84 = SpatialRef::from_epsg(4326)?;
     let srs_spherical_mercator = SpatialRef::from_epsg(3857)?;
     let mut geom_sm_buffered = {
@@ -73,19 +73,16 @@ fn buffer_meters_internal(geom: &Geometry, meters: f64) -> eyre::Result<Geometry
             .buffer(meters, 4)?
     };
     geom_sm_buffered.set_spatial_ref(srs_spherical_mercator);
-    Ok(geom_sm_buffered.transform_to(&srs_wgs84)?)
+    geom_sm_buffered.transform_to(&srs_wgs84)
 }
 
 /// convert a geotypes `Geometry` to WKB using GDAL
 pub fn to_wkb(geom: &GTGeometry<f64>) -> Result<Vec<u8>, Status> {
-    let bytes = to_wkb_internal(geom).map_err(|e| {
-        log::error!("can not encode geometry to wkb: {:?}", e);
-        Status::internal("can not encode wkb")
-    })?;
-    Ok(bytes)
+    to_wkb_internal(geom)
+        .to_status_message_result(Code::Internal, || "can not encode WKB".to_string())
 }
 
 #[inline]
-fn to_wkb_internal(geom: &GTGeometry<f64>) -> eyre::Result<Vec<u8>> {
-    Ok(geom.to_gdal()?.wkb()?)
+fn to_wkb_internal(geom: &GTGeometry<f64>) -> gdal::errors::Result<Vec<u8>> {
+    geom.to_gdal()?.wkb()
 }

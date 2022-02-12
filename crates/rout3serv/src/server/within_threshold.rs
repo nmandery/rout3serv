@@ -7,11 +7,12 @@ use num_traits::Zero;
 use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use tonic::{Response, Status};
+use tonic::{Code, Response, Status};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
 use crate::customization::{CustomizedGraph, CustomizedWeight};
+use crate::server::error::ToStatusResult;
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::storage::S3Storage;
@@ -86,9 +87,8 @@ where
         uuid::Uuid::new_v4().to_string(),
         spawn_blocking_status(move || within_threshold_internal(parameters))
             .await?
-            .map_err(|e| {
-                log::error!("calculating within threshold failed: {:?}", e);
-                Status::internal("calculating within threshold failed")
+            .to_status_message_result(Code::Internal, || {
+                "calculating within threshold failed".to_string()
             })?,
     )
     .await
