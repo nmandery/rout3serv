@@ -23,19 +23,11 @@ where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static,
 {
-    tokio::task::spawn_blocking(f).await.map_err(|e| {
-        log::error!("joining blocking task failed: {:?}", e);
-        Status::internal("join error")
-    })
-}
-
-#[inline]
-fn dataframe_to_bytes_status(dataframe: &DataFrame) -> Result<Vec<u8>, Status> {
-    let dataframe_bytes = dataframe_to_bytes(dataframe).map_err(|e| {
-        log::error!("serializing dataframe failed: {:?}", e);
-        Status::internal("serializing dataframe failed")
-    })?;
-    Ok(dataframe_bytes)
+    tokio::task::spawn_blocking(f)
+        .await
+        .to_status_message_result(Code::Internal, || {
+            "joining blocking task failed".to_string()
+        })
 }
 
 pub trait StrId {
@@ -69,18 +61,15 @@ where
     C: FromIterator<I>,
     I: Index,
 {
-    h3dataframe.index_collection().map_err(|e| {
-        log::error!(
-            "extracting {} from column {} failed: {:?}",
-            std::any::type_name::<I>(),
-            h3dataframe.h3index_column_name,
-            e
-        );
-        Status::invalid_argument(format!(
-            "extracting indexes from column {} failed",
-            h3dataframe.h3index_column_name
-        ))
-    })
+    h3dataframe
+        .index_collection()
+        .to_status_message_result(Code::InvalidArgument, || {
+            format!(
+                "extracting {} from column {} failed",
+                std::any::type_name::<I>(),
+                h3dataframe.h3index_column_name,
+            )
+        })
 }
 
 pub fn change_cell_resolution_dedup(
@@ -134,9 +123,11 @@ pub async fn stream_dataframe_with_max_rows(
     let (tx, rx) = mpsc::channel(5);
     tokio::spawn(async move {
         for df_part in dataframe_parts.drain(..) {
-            let serialization_result =
-            // TODO: dataframe_to_bytes(&df_part).to_status_message_result(Code::Internal, ||)
-                dataframe_to_bytes_status(&df_part).map(|ipc_bytes| ArrowIpcChunk {
+            let serialization_result = dataframe_to_bytes(&df_part)
+                .to_status_message_result(Code::Internal, || {
+                    "serializing dataframe failed".to_string()
+                })
+                .map(|ipc_bytes| ArrowIpcChunk {
                     object_id: id.clone(),
                     data: ipc_bytes,
                 });

@@ -135,9 +135,8 @@ fn destination_cells(
         .iter()
         .map(|pt| H3Cell::from_coordinate(Coordinate::from((pt.x, pt.y)), h3_resolution))
         .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| {
-            log::error!("can not convert the target_points to h3: {:?}", e);
-            Status::internal("can not convert the target_points to h3")
+        .to_status_message_result(Code::Internal, || {
+            "can not convert the target points to h3".to_string()
         })?;
     destination_cells.sort_unstable();
     destination_cells.dedup();
@@ -151,16 +150,14 @@ fn disturbance_and_buffered_cells(
 ) -> Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
     let disturbance_geom = read_wkb_to_gdal(disturbance_wkb_geometry)?;
     let disturbed_cells: H3Treemap<H3Cell> = H3Treemap::from_iter_with_sort(
-        gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?.drain(),
+        gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?.drain(..),
     );
 
-    let buffered_cells: Vec<_> = gdal_geom_to_h3(
+    let buffered_cells = gdal_geom_to_h3(
         &buffer_meters(&disturbance_geom, radius_meters)?,
         h3_resolution,
         true,
-    )?
-    .drain()
-    .collect();
+    )?;
     Ok((disturbed_cells, buffered_cells))
 }
 
@@ -408,11 +405,9 @@ pub fn disturbance_statistics<W: Send + Sync>(output: &DspOutput<W>) -> Result<D
 where
     W: Weight,
 {
-    let rbs = disturbance_statistics_internal(output).map_err(|e| {
-        log::error!("calculating population movement stats failed: {:?}", e);
-        Status::internal("calculating population movement stats failed")
-    })?;
-    Ok(rbs)
+    disturbance_statistics_internal(output).to_status_message_result(Code::Internal, || {
+        "calculating population movement stats failed".to_string()
+    })
 }
 
 pub fn build_routes_response<W: Send + Sync>(

@@ -12,13 +12,14 @@ use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::{Response, Status};
+use tonic::{Code, Response, Status};
 use uom::si::time::second;
 
 use crate::customization::{CustomizedGraph, CustomizedWeight};
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
 
 use crate::server::api::Route;
+use crate::server::error::ToStatusResult;
 use crate::server::names;
 use crate::server::storage::S3Storage;
 use crate::server::util::{
@@ -90,10 +91,11 @@ where
     E: Debug + Send + 'static,
     R: Send + 'static,
 {
-    Ok(spawn_blocking_status(func).await?.map_err(|e| {
-        log::error!("calculating h3 shortest path failed: {:?}", e);
-        Status::internal("calculating h3 shortest path failed")
-    })?)
+    spawn_blocking_status(func)
+        .await?
+        .to_status_message_result(Code::Internal, || {
+            "calculating h3 shortest path failed".to_string()
+        })
 }
 
 pub async fn h3_shortest_path<W: 'static + Send + Sync>(
@@ -236,9 +238,8 @@ where
                 .flat_map(|(_k, v)| v)
                 .map(transformer)
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| {
-                    log::error!("transforming routes failed: {:?}", e);
-                    Status::internal("transforming routes failed")
+                .to_status_message_result(Code::Internal, || {
+                    "transforming routes failed".to_string()
                 }),
             Err(e) => {
                 log::error!("calculating h3 shortest path failed: {:?}", e);
