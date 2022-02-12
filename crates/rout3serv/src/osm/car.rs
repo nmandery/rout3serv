@@ -1,4 +1,4 @@
-use h3ron::H3Edge;
+use h3ron::H3DirectedEdge;
 use h3ron_graph::formats::osm::osmpbfreader::Tags;
 use h3ron_graph::formats::osm::{EdgeProperties, WayAnalyzer};
 use uom::si::f32::{Length, Velocity};
@@ -19,7 +19,10 @@ pub struct CarAnalyzer {}
 impl WayAnalyzer<RoadWeight> for CarAnalyzer {
     type WayProperties = CarWayProperties;
 
-    fn analyze_way_tags(&self, tags: &Tags) -> Option<Self::WayProperties> {
+    fn analyze_way_tags(
+        &self,
+        tags: &Tags,
+    ) -> Result<Option<Self::WayProperties>, h3ron_graph::Error> {
         // https://wiki.openstreetmap.org/wiki/Key:highway or https://wiki.openstreetmap.org/wiki/DE:Key:highway
         // TODO: make use of `access` tag: https://wiki.openstreetmap.org/wiki/Key:access
         if let Some(highway_value) = tags.get("highway") {
@@ -36,7 +39,7 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
                 "road" => (9.0, 0.9),
                 // "track" => Some(200.0), // mostly non-public agriculture/forestry roads
                 "pedestrian" | "footway" => (50.0, 1.0), // fussgängerzone
-                _ => return None,
+                _ => return Ok(None),
             };
             // oneway streets (https://wiki.openstreetmap.org/wiki/Key:oneway)
             // NOTE: reversed direction "oneway=-1" is not supported
@@ -51,36 +54,37 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
                 MaxSpeed::Unknown => Velocity::new::<kilometer_per_hour>(40.0),
             } * estimated_speed_reduction_percent;
 
-            Some(CarWayProperties {
+            Ok(Some(CarWayProperties {
                 max_speed,
                 edge_preference: category_weight,
                 is_bidirectional,
-            })
+            }))
         } else {
-            None
+            Ok(None)
         }
     }
 
     fn way_edge_properties(
         &self,
-        edge: H3Edge,
+        edge: H3DirectedEdge,
         way_properties: &Self::WayProperties,
-    ) -> EdgeProperties<RoadWeight> {
+    ) -> Result<EdgeProperties<RoadWeight>, h3ron_graph::Error> {
         let weight = RoadWeight::new(
             way_properties.edge_preference,
-            Length::new::<meter>(edge.cell_centroid_distance_m() as f32) / way_properties.max_speed,
+            Length::new::<meter>(edge.cell_centroid_distance_m()? as f32)
+                / way_properties.max_speed,
         );
-        EdgeProperties {
+        Ok(EdgeProperties {
             is_bidirectional: way_properties.is_bidirectional,
             weight,
-        }
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use float_cmp::approx_eq;
-    use h3ron::H3Edge;
+    use h3ron::H3DirectedEdge;
     use uom::si::f32::{Length, Velocity};
     use uom::si::length::meter;
     use uom::si::velocity::kilometer_per_hour;
@@ -88,7 +92,7 @@ mod tests {
     #[test]
     fn test_calc() {
         let speed = Velocity::new::<kilometer_per_hour>(30.0);
-        let distance = Length::new::<meter>(H3Edge::edge_length_m(6) as f32);
+        let distance = Length::new::<meter>(H3DirectedEdge::edge_length_avg_m(6).unwrap() as f32);
 
         let travel_time = distance / speed;
         assert!(approx_eq!(f32, travel_time.value, 387.5379f32));

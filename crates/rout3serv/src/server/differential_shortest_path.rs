@@ -5,23 +5,23 @@ use std::sync::Arc;
 use geo_types::Coordinate;
 use h3ron::collections::{H3CellSet, H3Treemap};
 use h3ron::iter::change_resolution;
-use h3ron::{H3Cell, H3Edge, HasH3Resolution, Index};
+use h3ron::{H3Cell, H3DirectedEdge, HasH3Resolution, Index};
 use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPath, ExclusionDiff};
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
 use polars_core::prelude::{DataFrame, JoinType, NamedFrom, Series};
-use rayon::prelude::*;
 use s3io::dataframe::H3DataFrame;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use tonic::Status;
+use tonic::{Code, Status};
 use uom::si::time::second;
 
 use crate::io::graph_store::GraphCacheKey;
 use crate::server::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes, RouteWkb, ShortestPathOptions,
 };
+use crate::server::error::ToStatusResult;
 use crate::server::storage::S3Storage;
 use crate::server::util::{change_cell_resolution_dedup, index_collection_from_h3dataframe, StrId};
 use crate::server::vector::{buffer_meters, gdal_geom_to_h3, read_wkb_to_gdal};
@@ -133,7 +133,7 @@ fn destination_cells(
 ) -> Result<Vec<H3Cell>, Status> {
     let mut destination_cells = destinations
         .iter()
-        .map(|pt| H3Cell::from_coordinate(&Coordinate::from((pt.x, pt.y)), h3_resolution))
+        .map(|pt| H3Cell::from_coordinate(Coordinate::from((pt.x, pt.y)), h3_resolution))
         .collect::<Result<Vec<_>, _>>()
         .map_err(|e| {
             log::error!("can not convert the target_points to h3: {:?}", e);
@@ -201,61 +201,63 @@ where
 
         if let Some(downsampled_graph) = input.downsampled_graph {
             let origin_cells_ds =
-                change_cell_resolution_dedup(&origin_cells, downsampled_graph.h3_resolution());
+                change_cell_resolution_dedup(&origin_cells, downsampled_graph.h3_resolution())?;
 
             let destinations_ds = change_cell_resolution_dedup(
                 &input.destinations,
                 downsampled_graph.h3_resolution(),
-            );
+            )?;
 
-            let disturbance_ds: H3Treemap<_> = H3Treemap::from_iter_with_sort(change_resolution(
-                input.disturbance.iter(),
-                downsampled_graph.h3_resolution(),
-            ));
+            let disturbance_ds: H3Treemap<_> = H3Treemap::from_result_iter_with_sort(
+                change_resolution(input.disturbance.iter(), downsampled_graph.h3_resolution()),
+            )
+            .to_status_result(Code::Internal)?;
 
             let diff_ds = downsampled_graph.differential_shortest_path_map(
                 &origin_cells_ds,
                 &destinations_ds,
                 &disturbance_ds,
                 &input.options,
-                |path| (*path.cost(), path.len()),
+                |path| Ok((*path.cost(), path.len())),
             )?;
 
             // determinate the size of the k-ring to use to include enough full-resolution
             // cells around the found disturbance effect. This is essentially a buffering.
             let k_affected = max(
                 1,
-                (1500.0 / H3Edge::edge_length_m(downsampled_graph.h3_resolution())).ceil() as u32,
+                (1500.0 / H3DirectedEdge::edge_length_avg_m(downsampled_graph.h3_resolution())?)
+                    .ceil() as u32,
             );
-            let affected_downsampled: H3CellSet = diff_ds
-                .par_keys()
-                .filter(|cell| {
-                    // the k_ring creates essentially a buffer so the skew-effects of the
-                    // reduction of the resolution at the borders of the disturbance effect
-                    // are reduced. The result is a larger number of full-resolution routing runs
-                    // is performed.
-                    !cell.k_ring(k_affected).iter().all(|ring_cell| {
-                        if let Some(diff) = diff_ds.get(&ring_cell) {
-                            diff.before_cell_exclusion == diff.after_cell_exclusion
-                        } else {
-                            true
-                        }
-                    })
-                })
-                .copied()
-                .collect();
+            let mut affected_downsampled: H3CellSet = H3CellSet::with_capacity(diff_ds.len());
+            for cell in diff_ds.keys() {
+                // the grid_disk creates essentially a buffer so the skew-effects of the
+                // reduction of the resolution at the borders of the disturbance effect
+                // are reduced. The result is a larger number of full-resolution routing runs
+                // is performed.
+                if !cell.grid_disk(k_affected)?.iter().all(|ring_cell| {
+                    if let Some(diff) = diff_ds.get(&ring_cell) {
+                        diff.before_cell_exclusion == diff.after_cell_exclusion
+                    } else {
+                        true
+                    }
+                }) {
+                    affected_downsampled.insert(*cell);
+                }
+            }
 
-            origin_cells
-                .iter()
-                .filter(|cell| {
-                    let parent_cell = cell.get_parent_unchecked(downsampled_graph.h3_resolution());
-                    // always add cells within the downsampled disturbance to avoid ignoring cells directly
-                    // bordering to the disturbance.
-                    affected_downsampled.contains(&parent_cell)
-                        || disturbance_ds.contains(&parent_cell)
-                })
-                .copied()
-                .collect()
+            let mut reduced_origin_cells = Vec::with_capacity(origin_cells.len());
+            for cell in origin_cells {
+                let parent_cell = cell.get_parent(downsampled_graph.h3_resolution())?;
+
+                // always add cells within the downsampled disturbance to avoid ignoring cells directly
+                // bordering to the disturbance.
+                if affected_downsampled.contains(&parent_cell)
+                    || disturbance_ds.contains(&parent_cell)
+                {
+                    reduced_origin_cells.push(cell);
+                }
+            }
+            reduced_origin_cells
         } else {
             origin_cells
         }

@@ -18,7 +18,7 @@ use geo::algorithm::dimensions::HasDimensions;
 use geo::prelude::Contains;
 use geo_types::{Coordinate, Rect};
 use h3ron::iter::change_resolution;
-use h3ron::{Error, H3Cell, H3Edge, ToCoordinate, ToH3Cells, H3_MAX_RESOLUTION};
+use h3ron::{Error, H3Cell, H3DirectedEdge, ToCoordinate, ToH3Cells, H3_MAX_RESOLUTION};
 
 /// parts of this file have been ported from
 /// <https://github.com/mapbox/mercantile/blob/fe3762d14001ca400caf7462f59433b906fc25bd/mercantile/__init__.py#L200>
@@ -94,8 +94,9 @@ impl Tile {
         // are also included.
         // web-mercator uses meters as units.
         let buffered_bbox = {
-            let buffer_meters =
-                H3Edge::edge_length_m(h3_resolution.saturating_sub(h3_resolution_offset)) * 1.8;
+            let buffer_meters = H3DirectedEdge::edge_length_avg_m(
+                h3_resolution.saturating_sub(h3_resolution_offset),
+            )? * 1.8;
             let wm_bbox = self.webmercator_bounding_rect();
 
             Rect::new(
@@ -115,14 +116,22 @@ impl Tile {
             let buffered =
                 buffered_bbox.to_h3_cells(h3_resolution.saturating_sub(h3_resolution_offset))?;
             let cells_iter = change_resolution(buffered.iter(), h3_resolution);
-            let cells = if remove_excess {
+            let mut cells = Vec::with_capacity(cells_iter.size_hint().0);
+            if remove_excess {
                 // remove cells from outside the box bounding_rect, but this brings in additional cpu usage.
                 let latlon_rect = self.bounding_rect();
-                cells_iter
-                    .filter(|cell| latlon_rect.contains(&cell.to_coordinate()))
-                    .collect()
+
+                for cell in cells_iter {
+                    let cell = cell?;
+                    if latlon_rect.contains(&cell.to_coordinate()?) {
+                        cells.push(cell);
+                    }
+                }
             } else {
-                cells_iter.collect()
+                for cell in cells_iter {
+                    let cell = cell?;
+                    cells.push(cell);
+                }
             };
             Ok(cells)
         }
@@ -260,7 +269,7 @@ impl CellBuilder {
         let area_tile_m2 = tile.area_m2();
         let mut select_h3_resolution = None;
         for h3_resolution in self.h3_resolutions.iter() {
-            if ((area_tile_m2 / H3Cell::area_m2(*h3_resolution)) as usize) > max_num_cells {
+            if ((area_tile_m2 / H3Cell::area_avg_m2(*h3_resolution)?) as usize) > max_num_cells {
                 break;
             }
             select_h3_resolution = Some(*h3_resolution);

@@ -7,13 +7,14 @@ use geo_types::Geometry;
 use h3ron::{H3Cell, Index};
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::algorithm::shortest_path;
-use tonic::Status;
+use tonic::{Code, Status};
 use uom::si::time::second;
 
 use crate::io::graph_store::GraphCacheKey;
 use crate::server::api::generated::{
     GraphHandle, GraphInfo, RouteH3Indexes, RouteWkb, ShortestPathOptions,
 };
+use crate::server::error::ToStatusResult;
 use crate::server::vector::to_wkb;
 use crate::weight::Weight;
 
@@ -30,6 +31,17 @@ fn cell_h3index(cell_result: Result<H3Cell, h3ron_graph::error::Error>) -> u64 {
     cell_result.map(|c| c.h3index()).unwrap_or(0)
 }
 
+#[inline(always)]
+fn path_length_m<T>(path: &Path<T>) -> Result<f64, Status>
+where
+    T: Weight,
+{
+    path.length_m()
+        .to_status_message_result(Code::Internal, || {
+            "can not determinate path length".to_string()
+        })
+}
+
 const SIMPLIFICATION_EPSILON: f64 = 0.00001;
 
 impl RouteWkb {
@@ -37,10 +49,11 @@ impl RouteWkb {
     where
         T: Weight,
     {
-        let mut linestring = path.to_linestring().map_err(|e| {
-            log::error!("can not build linestring from path: {:?}", e);
-            Status::internal("can not build linestring from path")
-        })?;
+        let mut linestring = path
+            .to_linestring()
+            .to_status_message_result(Code::Internal, || {
+                "can not build linestring from path".to_string()
+            })?;
 
         if smoothen {
             // apply only one iteration to break edges
@@ -58,7 +71,7 @@ impl RouteWkb {
             travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
             edge_preference: path.cost().edge_preference() as f64,
             wkb: wkb_bytes,
-            path_length_m: path.length_m(),
+            path_length_m: path_length_m(path)?,
         })
     }
 }
@@ -77,6 +90,9 @@ impl RouteH3Indexes {
         let h3indexes = match kind {
             RouteH3IndexesKind::Cells => path
                 .cells()
+                .to_status_message_result(Code::Internal, || {
+                    "can not extract cells from path".to_string()
+                })?
                 .iter()
                 .map(|cell| cell.h3index() as u64)
                 .collect(),
@@ -92,7 +108,7 @@ impl RouteH3Indexes {
             travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
             edge_preference: path.cost().edge_preference() as f64,
             h3indexes,
-            path_length_m: path.length_m(),
+            path_length_m: path_length_m(path)?,
         })
     }
 }

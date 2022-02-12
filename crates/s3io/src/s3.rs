@@ -359,7 +359,7 @@ impl S3ArrowLoader {
             cells.iter(),
             dataset.file_h3_resolution_checked(data_h3_resolution)?,
         )
-        .collect::<HashSet<_>>();
+        .collect::<Result<HashSet<_>, _>>()?;
 
         let mut keys = file_cells
             .iter()

@@ -200,7 +200,7 @@ mod tests {
     #[test]
     fn test_to_index_series() {
         let idx = H3Cell::new(0x89283080ddbffff_u64);
-        let series = to_index_series("cells", &idx.k_ring(1));
+        let series = to_index_series("cells", &idx.grid_disk(1).unwrap());
         assert_eq!(series.name(), "cells");
         assert_eq!(series.len(), 7);
     }

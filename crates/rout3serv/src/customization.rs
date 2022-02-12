@@ -3,7 +3,7 @@ use std::ops::{Add, Deref};
 use std::sync::Arc;
 
 use crate::config::{NonZeroPositiveFactor, RoutingMode};
-use h3ron::{H3Cell, H3Edge, HasH3Resolution};
+use h3ron::{H3Cell, H3DirectedEdge, HasH3Resolution};
 use h3ron_graph::graph::node::NodeType;
 use h3ron_graph::graph::{EdgeWeight, GetCellNode, GetEdge, PreparedH3EdgeGraph};
 use num_traits::Zero;
@@ -168,9 +168,13 @@ where
 {
     type EdgeWeightType = CustomizedWeight<W>;
 
-    fn get_edge(&self, edge: &H3Edge) -> Option<EdgeWeight<Self::EdgeWeightType>> {
-        self.inner_graph
-            .get_edge(edge)
+    fn get_edge(
+        &self,
+        edge: &H3DirectedEdge,
+    ) -> Result<Option<EdgeWeight<Self::EdgeWeightType>>, h3ron_graph::Error> {
+        let ew = self
+            .inner_graph
+            .get_edge(edge)?
             .map(|edge_weight| EdgeWeight {
                 weight: CustomizedWeight {
                     weight: edge_weight.weight,
@@ -185,7 +189,8 @@ where
                         },
                     )
                 }),
-            })
+            });
+        Ok(ew)
     }
 }
 

@@ -117,7 +117,7 @@ where
         &parameters.origin_cells,
         threshold_weight,
         agg_fn,
-    );
+    )?;
 
     let capacity = cellmap.len();
     let (cell_h3indexes, travel_duration_secs, edge_preferences) = cellmap.iter().fold(
