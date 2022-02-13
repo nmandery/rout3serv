@@ -67,13 +67,11 @@ where
     pub async fn store_output<O: Serialize + StrId>(&self, output: &O) -> Result<(), Status> {
         let serialized = block_in_place(move || {
             let mut serialized: Vec<u8> = Default::default();
-            match serialize_into(&mut serialized, output, true) {
-                Ok(_) => Ok(serialized),
-                Err(e) => {
-                    log::error!("serializing output failed: {:?}", e);
-                    Err(Status::internal("serializing output failed"))
-                }
-            }
+            serialize_into(&mut serialized, output, true)
+                .to_status_message_result(Code::Internal, || {
+                    "serializing output failed".to_string()
+                })
+                .map(|_| serialized)
         })?;
         self.s3_client
             .put_object_bytes(
@@ -84,11 +82,7 @@ where
                 serialized,
             )
             .await
-            .map_err(|e| {
-                log::error!("storing output failed: {:?}", e);
-                Status::internal("storing output failed")
-            })?;
-        Ok(())
+            .to_status_message_result(Code::Internal, || "storing output failed".to_string())
     }
 
     pub async fn retrieve_output<I: AsRef<str>, O: DeserializeOwned>(
@@ -99,9 +93,8 @@ where
         match self.s3_client.get_object_bytes(object_ref.clone()).await {
             Ok(bytes) => {
                 let output: O = block_in_place(move || deserialize_from(Cursor::new(&bytes)))
-                    .map_err(|e| {
-                        log::error!("deserializing output {} failed: {:?}", object_ref, e);
-                        Status::internal(format!("deserializing output {} failed", object_ref))
+                    .to_status_message_result(Code::Internal, || {
+                        format!("deserializing output {} failed", object_ref)
                     })?;
                 Ok(output)
             }
@@ -120,11 +113,10 @@ where
     }
 
     pub async fn load_graph_cache_keys(&self) -> Result<Vec<GraphCacheKey>, Status> {
-        let gcks = self.graph_store.list().await.map_err(|e| {
-            log::error!("loading graph list failed: {:?}", e);
-            Status::internal("loading graph list failed")
-        })?;
-        Ok(gcks)
+        self.graph_store
+            .list()
+            .await
+            .to_status_message_result(Code::Internal, || "loading graph list failed".to_string())
     }
 
     pub async fn load_graph(
@@ -153,10 +145,11 @@ where
         graph_handle: &Option<GraphHandle>,
     ) -> Result<(Arc<PreparedH3EdgeGraph<W>>, GraphCacheKey), Status> {
         if let Some(gh) = graph_handle {
-            let gck: GraphCacheKey = gh.try_into().map_err(|e| {
-                log::warn!("invalid graph handle: {:?}", e);
-                Status::invalid_argument("invalid graph handle")
-            })?;
+            let gck: GraphCacheKey = gh
+                .try_into()
+                .to_status_message_result(Code::InvalidArgument, || {
+                    "invalid graph handle".to_string()
+                })?;
             self.load_graph(&gck).await.map(|graph| (graph, gck))
         } else {
             Err(Status::invalid_argument("graph handle not set"))
@@ -188,10 +181,7 @@ where
             .arrow_loader
             .load_h3_dataset_dataframe(dataset_config, cells, data_h3_resolution)
             .await
-            .map_err(|e| {
-                log::error!("loading from s3 failed: {:?}", e);
-                Status::internal("dataset is inaccessible")
-            })?;
+            .to_status_message_result(Code::Internal, || "dataset is inaccessible".to_string())?;
         if !h3dataframe.dataframe.is_empty() {
             h3dataframe.dataframe.rechunk();
         }
