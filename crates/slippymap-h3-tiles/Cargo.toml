@@ -15,3 +15,6 @@ geo-types = "^0.7"
 git = "https://github.com/nmandery/h3ron.git"
 rev = "02fe461aea15c791d20955167637cd370d2ace3e"
 #path = "/home/nico/CLionProjects/h3ron/h3ron"
+
+[dev-dependencies]
+approx = "0.5"

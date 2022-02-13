@@ -10,11 +10,12 @@
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::f64::consts::PI;
+use std::f64::consts::{E, PI};
 use std::fmt;
 
 use geo::algorithm::bounding_rect::BoundingRect;
 use geo::algorithm::dimensions::HasDimensions;
+use geo::dimensions::Dimensions;
 use geo::prelude::Contains;
 use geo_types::{Coordinate, Rect};
 use h3ron::iter::change_resolution;
@@ -67,19 +68,60 @@ impl fmt::Display for Tile {
 
 impl Tile {
     pub fn area_m2(&self) -> f64 {
-        let wbr = self.webmercator_bounding_rect();
-        wbr.width() * wbr.height()
+        match self.webmercator_bounding_rect() {
+            Ok(wbr) => wbr.width() * wbr.height(),
+            Err(_) => 0.0,
+        }
     }
 
     /// Get the web mercator bounding box of a tile
-    pub fn webmercator_bounding_rect(&self) -> Rect<f64> {
+    pub fn webmercator_bounding_rect(&self) -> Result<Rect<f64>, Error> {
         let tile_size = CE / 2.0f64.powi(self.z as i32);
         let left = (self.x as f64 * tile_size) - (CE / 2.0);
         let top = (CE / 2.0) - (self.y as f64 * tile_size);
-        Rect::new(
+        EXTEND_EPSG_3857.truncate_rect(Rect::new(
             Coordinate::from((left, top)),
             Coordinate::from((left + tile_size, top - tile_size)),
-        )
+        ))
+    }
+
+    #[allow(dead_code)]
+    fn from_cell(cell: H3Cell, z: u8) -> Result<Self, Error> {
+        let coord = EXTEND_EPSG_4326.truncate_coordinate(cell.to_coordinate()?);
+        let z2 = 2.0_f64.powi(z as i32);
+
+        let sinlat = coord.y.to_radians().sin();
+        if sinlat == 1.0 {
+            Err(Error::Failed)
+        } else {
+            let y = 0.5 - 0.25 * ((1.0 + sinlat) / (1.0 - sinlat)).log(E) / PI;
+            let x = coord.x / 360.0 + 0.5;
+
+            let x_tile = if x <= 0.0 {
+                0
+            } else if x >= 1.0 {
+                (z2 as u32).saturating_sub(1)
+            } else {
+                // To address loss of precision in round-tripping between tile
+                // and lng/lat, points within EPSILON of the right side of a tile
+                // are counted in the next tile over.
+                ((x + EPSILON) * z2).floor() as u32
+            };
+
+            let y_tile = if y <= 0.0 {
+                0
+            } else if y >= 1.0 {
+                (z2 as u32).saturating_sub(1)
+            } else {
+                ((y + EPSILON) * z2).floor() as u32
+            };
+
+            Ok(Tile {
+                x: x_tile,
+                y: y_tile,
+                z,
+            })
+        }
     }
 
     /// `remove_excess` removes cells from outside the box bounding_rect, but this brings in additional cpu usage.
@@ -97,44 +139,53 @@ impl Tile {
             let buffer_meters = H3DirectedEdge::edge_length_avg_m(
                 h3_resolution.saturating_sub(h3_resolution_offset),
             )? * 1.8;
-            let wm_bbox = self.webmercator_bounding_rect();
+            let wm_bbox = match self.webmercator_bounding_rect() {
+                Ok(wm_bbox) => wm_bbox,
+                Err(Error::LatLonDomain) => return Ok(Default::default()), // out of coordinate system bounds
+                Err(e) => return Err(e),
+            };
 
-            Rect::new(
-                webmercator_to_lnglat(EXTEND_EPSG_3857.truncate_coordinate(Coordinate::from((
+            match Rect::new(
+                Coordinate::from((
                     wm_bbox.min().x - buffer_meters,
                     wm_bbox.min().y - buffer_meters,
-                )))),
-                webmercator_to_lnglat(EXTEND_EPSG_3857.truncate_coordinate(Coordinate::from((
+                )),
+                Coordinate::from((
                     wm_bbox.max().x + buffer_meters,
                     wm_bbox.max().y + buffer_meters,
-                )))),
+                )),
             )
-        };
-        if buffered_bbox.is_empty() {
-            Ok(Default::default())
-        } else {
-            let buffered =
-                buffered_bbox.to_h3_cells(h3_resolution.saturating_sub(h3_resolution_offset))?;
-            let cells_iter = change_resolution(buffered.iter(), h3_resolution);
-            let mut cells = Vec::with_capacity(cells_iter.size_hint().0);
-            if remove_excess {
-                // remove cells from outside the box bounding_rect, but this brings in additional cpu usage.
-                let latlon_rect = self.bounding_rect();
-
-                for cell in cells_iter {
-                    let cell = cell?;
-                    if latlon_rect.contains(&cell.to_coordinate()?) {
-                        cells.push(cell);
-                    }
+            .webmercator_to_wgs84()
+            {
+                Ok(buffered_bbox) => buffered_bbox,
+                Err(Error::LatLonDomain) => {
+                    // box is empty or just a line
+                    return Ok(Default::default());
                 }
-            } else {
-                for cell in cells_iter {
-                    let cell = cell?;
+                Err(e) => return Err(e),
+            }
+        };
+        let buffered =
+            buffered_bbox.to_h3_cells(h3_resolution.saturating_sub(h3_resolution_offset))?;
+        let cells_iter = change_resolution(buffered.iter(), h3_resolution);
+        let mut cells = Vec::with_capacity(cells_iter.size_hint().0);
+        if remove_excess {
+            // remove cells from outside the box bounding_rect, but this brings in additional cpu usage.
+            let latlon_rect = self.bounding_rect();
+
+            for cell in cells_iter {
+                let cell = cell?;
+                if latlon_rect.contains(&cell.to_coordinate()?) {
                     cells.push(cell);
                 }
-            };
-            Ok(cells)
-        }
+            }
+        } else {
+            for cell in cells_iter {
+                let cell = cell?;
+                cells.push(cell);
+            }
+        };
+        Ok(cells)
     }
 }
 
@@ -187,12 +238,25 @@ impl Extend {
             restrict_between(self.min_y(), self.max_y(), coord.y),
         ))
     }
+
+    pub fn truncate_rect(&self, rect: Rect<f64>) -> Result<Rect<f64>, Error> {
+        let truncated = Rect::new(
+            self.truncate_coordinate(rect.min()),
+            self.truncate_coordinate(rect.max()),
+        );
+        if truncated.dimensions() == Dimensions::TwoDimensional {
+            Ok(truncated)
+        } else {
+            Err(Error::LatLonDomain)
+        }
+    }
 }
 
 const EARTH_RADIUS_EQUATOR: f64 = 6378137.0;
 const R2D: f64 = 180.0 / PI;
 const CE: f64 = 2.0 * PI * EARTH_RADIUS_EQUATOR;
 const HALF_SIZE: f64 = EARTH_RADIUS_EQUATOR * PI;
+const EPSILON: f64 = 1.0e-14;
 
 /// spherical mercator
 pub const EXTEND_EPSG_3857: Extend = Extend([-HALF_SIZE, -HALF_SIZE, HALF_SIZE, HALF_SIZE]);
@@ -211,23 +275,52 @@ fn restrict_between(value_min: f64, value_max: f64, value: f64) -> f64 {
     }
 }
 
-/// Convert longitude and latitude to web mercator
-#[allow(dead_code)]
-fn lnglat_to_webmercator(c: Coordinate<f64>) -> Coordinate<f64> {
-    let c = EXTEND_EPSG_4326.truncate_coordinate(c);
-    Coordinate::from((
-        EARTH_RADIUS_EQUATOR * c.x.to_radians(),
-        EARTH_RADIUS_EQUATOR * PI.mul_add(0.25, 0.5 * c.y.to_radians()).tan().ln(),
-    ))
+trait CoordTransform {
+    /// Convert longitude and latitude to web mercator
+    fn wgs84_to_webmercator(&self) -> Result<Self, Error>
+    where
+        Self: Sized;
+
+    /// Convert web mercator x, y to longitude and latitude
+    fn webmercator_to_wgs84(&self) -> Result<Self, Error>
+    where
+        Self: Sized;
 }
 
-/// Convert web mercator x, y to longitude and latitude
-fn webmercator_to_lnglat(c: Coordinate<f64>) -> Coordinate<f64> {
-    let ll_c = Coordinate::from((
-        c.x * R2D / EARTH_RADIUS_EQUATOR,
-        ((PI * 0.5) - 2.0 * (-1.0 * c.y / EARTH_RADIUS_EQUATOR).exp().atan()) * R2D,
-    ));
-    EXTEND_EPSG_4326.truncate_coordinate(ll_c)
+impl CoordTransform for Coordinate<f64> {
+    fn wgs84_to_webmercator(&self) -> Result<Self, Error> {
+        let c = EXTEND_EPSG_4326.truncate_coordinate(*self);
+        Ok(Coordinate::from((
+            EARTH_RADIUS_EQUATOR * c.x.to_radians(),
+            EARTH_RADIUS_EQUATOR * PI.mul_add(0.25, 0.5 * c.y.to_radians()).tan().ln(),
+        )))
+    }
+
+    fn webmercator_to_wgs84(&self) -> Result<Self, Error> {
+        let ll_c = Coordinate::from((
+            self.x * R2D / EARTH_RADIUS_EQUATOR,
+            ((PI * 0.5) - 2.0 * (-1.0 * self.y / EARTH_RADIUS_EQUATOR).exp().atan()) * R2D,
+        ));
+        Ok(EXTEND_EPSG_4326.truncate_coordinate(ll_c))
+    }
+}
+
+impl CoordTransform for Rect<f64> {
+    fn wgs84_to_webmercator(&self) -> Result<Self, Error> {
+        let rect = Rect::new(
+            self.min().wgs84_to_webmercator()?,
+            self.max().wgs84_to_webmercator()?,
+        );
+        EXTEND_EPSG_3857.truncate_rect(rect)
+    }
+
+    fn webmercator_to_wgs84(&self) -> Result<Self, Error> {
+        let rect = Rect::new(
+            self.min().webmercator_to_wgs84()?,
+            self.max().webmercator_to_wgs84()?,
+        );
+        EXTEND_EPSG_4326.truncate_rect(rect)
+    }
 }
 
 pub struct CellBuilder {
@@ -292,6 +385,11 @@ impl CellBuilder {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_ulps_eq;
+    use geo::prelude::BoundingRect;
+
+    use crate::CoordTransform;
+
     use super::{CellBuilder, Tile};
 
     #[test]
@@ -310,13 +408,53 @@ mod tests {
     #[test]
     fn tiles_ordering() {
         let mut tiles = vec![
-            Tile::new(56, 23, 10),
-            Tile::new(56, 23, 5),
+            Tile::new(22, 23, 10),
+            Tile::new(22, 23, 5),
             Tile::new(10, 23, 5),
         ];
         tiles.sort_unstable();
         assert_eq!(tiles[0], Tile::new(10, 23, 5));
-        assert_eq!(tiles[1], Tile::new(56, 23, 5));
-        assert_eq!(tiles[2], Tile::new(56, 23, 10));
+        assert_eq!(tiles[1], Tile::new(22, 23, 5));
+        assert_eq!(tiles[2], Tile::new(22, 23, 10));
+    }
+
+    #[test]
+    fn cell_tile_roundtrip() {
+        let tile = Tile::new(50, 50, 7);
+
+        let cells = tile.to_h3_cells(5, true).unwrap();
+        assert!(cells.len() > 200);
+        for cell in cells {
+            assert_eq!(Tile::from_cell(cell, tile.z).unwrap(), tile);
+        }
+    }
+
+    #[test]
+    fn tile_box_coordtransform() {
+        let tile = Tile::new(50, 50, 7);
+        let rect_sphericalmercator = tile.webmercator_bounding_rect().unwrap();
+        let rect_sphericalmercator_transformed =
+            tile.bounding_rect().wgs84_to_webmercator().unwrap();
+
+        assert_ulps_eq!(
+            rect_sphericalmercator.min().x,
+            rect_sphericalmercator_transformed.min().x,
+            max_ulps = 8
+        );
+        assert_ulps_eq!(
+            rect_sphericalmercator.min().y,
+            rect_sphericalmercator_transformed.min().y,
+            max_ulps = 8
+        );
+        assert_ulps_eq!(
+            rect_sphericalmercator.max().x,
+            rect_sphericalmercator_transformed.max().x,
+            max_ulps = 8
+        );
+        assert_ulps_eq!(
+            rect_sphericalmercator.max().y,
+            rect_sphericalmercator_transformed.max().y,
+            max_ulps = 8
+        );
     }
 }
