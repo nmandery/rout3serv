@@ -178,7 +178,6 @@ where
                     origin_cell_vec.push(origin_cell.h3index() as u64);
                     destination_cell_vec
                         .push(path_summary.destination_cell.map(|c| c.h3index() as u64));
-                    //path_cell_length_m_vec.push(Some(path_length_dm.into_inner()));
                     path_cell_length_m_vec.push(Some(path_summary.path_length_m.into_inner()));
                     travel_duration_secs_vec.push(Some(
                         path_summary.cost.travel_duration().get::<second>() as f32,
@@ -227,25 +226,24 @@ where
     E: Debug + Send + 'static,
     F: FnMut(Path<CustomizedWeight<W>>) -> Result<R, E> + Send + 'static,
 {
-    let routes = spawn_blocking_status(move || {
-        match parameters.graph.shortest_path_many_to_many(
-            &parameters.origin_cells,
-            &parameters.destination_cells,
-            &parameters.options,
-        ) {
-            Ok(mut pathmap) => pathmap
-                .drain()
-                .flat_map(|(_k, v)| v)
-                .map(transformer)
-                .collect::<Result<Vec<_>, _>>()
-                .to_status_message_result(Code::Internal, || {
-                    "transforming routes failed".to_string()
-                }),
-            Err(e) => {
-                log::error!("calculating h3 shortest path failed: {:?}", e);
-                Err(Status::internal("calculating h3 shortest path failed"))
-            }
-        }
+    let routes = spawn_h3_shortest_path(move || {
+        parameters
+            .graph
+            .shortest_path_many_to_many(
+                &parameters.origin_cells,
+                &parameters.destination_cells,
+                &parameters.options,
+            )
+            .map(|mut pathmap| {
+                pathmap
+                    .drain()
+                    .flat_map(|(_k, v)| v)
+                    .map(transformer)
+                    .collect::<Result<Vec<_>, _>>()
+                    .to_status_message_result(Code::Internal, || {
+                        "transforming routes failed".to_string()
+                    })
+            })
     })
     .await??;
     stream_routes(routes).await

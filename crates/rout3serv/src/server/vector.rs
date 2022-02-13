@@ -58,8 +58,8 @@ pub fn buffer_meters(geom: &Geometry, meters: f64) -> Result<Geometry, Status> {
 
 /// mainly used for debugging
 #[allow(dead_code)]
-pub fn to_geojson(geom: GTGeometry<f64>) -> eyre::Result<String> {
-    Ok(geom.to_gdal()?.json()?)
+pub fn to_geojson(geom: GTGeometry<f64>) -> gdal::errors::Result<String> {
+    geom.to_gdal()?.json()
 }
 
 fn buffer_meters_internal(geom: &Geometry, meters: f64) -> gdal::errors::Result<Geometry> {
