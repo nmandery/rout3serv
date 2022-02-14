@@ -19,7 +19,7 @@ use geo::dimensions::Dimensions;
 use geo::prelude::Contains;
 use geo_types::{Coordinate, Rect};
 use h3ron::iter::change_resolution;
-use h3ron::{Error, H3Cell, H3DirectedEdge, ToCoordinate, ToH3Cells, H3_MAX_RESOLUTION};
+use h3ron::{Error, H3Cell, H3DirectedEdge, ToCoordinate, ToH3Cells, ToPolygon, H3_MAX_RESOLUTION};
 
 /// parts of this file have been ported from
 /// <https://github.com/mapbox/mercantile/blob/fe3762d14001ca400caf7462f59433b906fc25bd/mercantile/__init__.py#L200>
@@ -85,9 +85,10 @@ impl Tile {
         ))
     }
 
+    /// find the tile the coordinate is located in
     #[allow(dead_code)]
-    fn from_cell(cell: H3Cell, z: u8) -> Result<Self, Error> {
-        let coord = EXTEND_EPSG_4326.truncate_coordinate(cell.to_coordinate()?);
+    fn from_wgs84_coordinate(coord: Coordinate<f64>, z: u8) -> Result<Self, Error> {
+        let coord = EXTEND_EPSG_4326.truncate_coordinate(coord);
         let z2 = 2.0_f64.powi(z as i32);
 
         let sinlat = coord.y.to_radians().sin();
@@ -122,6 +123,28 @@ impl Tile {
                 z,
             })
         }
+    }
+
+    /// find the tile the centroid of cell is located in.
+    #[allow(dead_code)]
+    fn from_cell(cell: H3Cell, z: u8) -> Result<Self, Error> {
+        Self::from_wgs84_coordinate(cell.to_coordinate()?, z)
+    }
+
+    /// find all tiles parts of the given cell are located in
+    #[allow(dead_code)]
+    fn all_intersecting_with_cell(cell: H3Cell, z: u8) -> Result<Vec<Self>, Error> {
+        let cell_bounds = cell.to_polygon()?.bounding_rect().ok_or(Error::Failed)?;
+        let tile_min = Self::from_wgs84_coordinate(cell_bounds.min(), z)?;
+        let tile_max = Self::from_wgs84_coordinate(cell_bounds.max(), z)?;
+
+        let mut tiles = vec![];
+        for x in tile_min.x..=tile_max.x {
+            for y in tile_max.y..=tile_min.y {
+                tiles.push(Tile { x, y, z })
+            }
+        }
+        Ok(tiles)
     }
 
     /// `remove_excess` removes cells from outside the box bounding_rect, but this brings in additional cpu usage.
@@ -387,6 +410,8 @@ impl CellBuilder {
 mod tests {
     use approx::assert_ulps_eq;
     use geo::prelude::BoundingRect;
+    use geo_types::Coordinate;
+    use h3ron::H3Cell;
 
     use crate::CoordTransform;
 
@@ -456,5 +481,27 @@ mod tests {
             rect_sphericalmercator_transformed.max().y,
             max_ulps = 8
         );
+    }
+
+    #[test]
+    fn test_tiles_intersecting_cell_many_tiles() {
+        let cell = H3Cell::from_coordinate(Coordinate::from((20.0, 30.0)), 5).unwrap();
+        let tile_z = 12;
+        let main_tile = Tile::from_cell(cell, tile_z).unwrap();
+
+        let tiles_touched = Tile::all_intersecting_with_cell(cell, tile_z).unwrap();
+        assert!(tiles_touched.len() > 3);
+        assert!(tiles_touched.contains(&main_tile));
+    }
+
+    #[test]
+    fn test_all_intersecting_cell_single_tile() {
+        let cell = H3Cell::from_coordinate(Coordinate::from((20.0, 30.0)), 5).unwrap();
+        let tile_z = 5;
+        let main_tile = Tile::from_cell(cell, tile_z).unwrap();
+
+        let tiles_touched = Tile::all_intersecting_with_cell(cell, tile_z).unwrap();
+        assert_eq!(tiles_touched.len(), 1);
+        assert!(tiles_touched.contains(&main_tile));
     }
 }
