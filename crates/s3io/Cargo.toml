@@ -19,15 +19,21 @@ indexmap = "^1.7"
 async-trait = "0.1"
 
 [dependencies.polars-core]
-version = "0.19"
+#version = "0.19"
+git = "https://github.com/pola-rs/polars.git"
+rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
 features = ["serde"]
 
 [dependencies.polars-io]
-version = "0.19"
+git = "https://github.com/pola-rs/polars.git"
+rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
+#version = "0.19"
 features = [
     "ipc",
     "parquet",
     "csv-file",
+    "csv-core",
+    "json",
 ]
 
 [dependencies.serde]

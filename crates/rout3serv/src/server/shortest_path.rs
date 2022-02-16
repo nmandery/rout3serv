@@ -8,16 +8,16 @@ use h3ron_graph::algorithm::shortest_path::ShortestPathOptions;
 use h3ron_graph::algorithm::ShortestPathManyToMany;
 use num_traits::Zero;
 use ordered_float::OrderedFloat;
-use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Code, Response, Status};
 use uom::si::time::second;
 
-use crate::customization::{CustomizedGraph, CustomizedWeight};
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
+use s3io::polars_core::prelude::{DataFrame, NamedFrom, Series};
 
+use crate::customization::{CustomizedGraph, CustomizedWeight};
 use crate::server::api::Route;
 use crate::server::error::ToStatusResult;
 use crate::server::names;

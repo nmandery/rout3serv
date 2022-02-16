@@ -4,9 +4,9 @@ use axum::http::StatusCode;
 use axum::http::{header, HeaderValue};
 use axum::response::{IntoResponse, Response};
 use h3ron::{FromH3Index, H3Cell};
-use polars_core::prelude::{DataFrame, Utf8Chunked};
-use polars_io::json::JsonFormat;
-use polars_io::SerWriter;
+use s3io::polars_core::prelude::{DataFrame, Utf8Chunked};
+use s3io::polars_io::json::JsonFormat;
+use s3io::polars_io::SerWriter;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum OutputFormat {
@@ -101,30 +101,30 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>>
 
         match &outdf.output_format {
             OutputFormat::JsonLines => {
-                let writer = polars_io::json::JsonWriter::with_json_format(
-                    polars_io::json::JsonWriter::new(&mut bytes),
+                let writer = s3io::polars_io::json::JsonWriter::with_json_format(
+                    s3io::polars_io::json::JsonWriter::new(&mut bytes),
                     JsonFormat::JsonLines,
                 );
-                writer.finish(&outdf.dataframe)?;
+                writer.finish(&mut outdf.dataframe)?;
             }
             OutputFormat::Json => {
-                let writer = polars_io::json::JsonWriter::with_json_format(
-                    polars_io::json::JsonWriter::new(&mut bytes),
+                let writer = s3io::polars_io::json::JsonWriter::with_json_format(
+                    s3io::polars_io::json::JsonWriter::new(&mut bytes),
                     JsonFormat::Json,
                 );
-                writer.finish(&outdf.dataframe)?;
+                writer.finish(&mut outdf.dataframe)?;
             }
             OutputFormat::ArrowIPC => {
-                let writer = polars_io::ipc::IpcWriter::new(&mut bytes);
-                writer.finish(&outdf.dataframe)?;
+                let writer = s3io::polars_io::ipc::IpcWriter::new(&mut bytes);
+                writer.finish(&mut outdf.dataframe)?;
             }
             OutputFormat::Parquet => {
-                let writer = polars_io::parquet::ParquetWriter::new(&mut bytes);
+                let writer = s3io::polars_io::parquet::ParquetWriter::new(&mut bytes);
                 writer.finish(&outdf.dataframe)?;
             }
             OutputFormat::Csv => {
-                let writer = polars_io::csv::CsvWriter::new(&mut bytes);
-                writer.finish(&outdf.dataframe)?;
+                let writer = s3io::polars_io::csv::CsvWriter::new(&mut bytes);
+                writer.finish(&mut outdf.dataframe)?;
             }
         };
 

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::Error;
 
 /// serialize a [`DataFrame`] into arrow IPC format
-pub fn dataframe_to_bytes(dataframe: &DataFrame) -> Result<Vec<u8>, Error> {
+pub fn dataframe_to_bytes(dataframe: &mut DataFrame) -> Result<Vec<u8>, Error> {
     let mut buf: Vec<u8> = vec![];
     IpcWriter::new(&mut buf).finish(dataframe)?;
     Ok(buf)

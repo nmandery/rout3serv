@@ -7,7 +7,6 @@ use h3ron::collections::H3CellSet;
 use h3ron::iter::change_resolution;
 use h3ron::H3Cell;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
-use polars_core::prelude::DataFrame;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::task::block_in_place;
@@ -15,6 +14,7 @@ use tonic::{Code, Status};
 
 use s3io::dataframe::H3DataFrame;
 use s3io::fetch::FetchError;
+use s3io::polars_core::prelude::DataFrame;
 use s3io::s3::{ObjectRef, S3ArrowLoader, S3Client};
 use s3io::ser_and_de::{deserialize_from, serialize_into};
 

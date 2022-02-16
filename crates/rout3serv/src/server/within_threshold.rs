@@ -4,17 +4,17 @@ use std::sync::Arc;
 use h3ron::{H3Cell, HasH3Resolution, Index};
 use h3ron_graph::algorithm::WithinWeightThresholdMany;
 use num_traits::Zero;
-use polars_core::prelude::{DataFrame, NamedFrom, Series};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tonic::{Code, Response, Status};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
+use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
+use s3io::polars_core::prelude::{DataFrame, NamedFrom, Series};
+
 use crate::customization::{CustomizedGraph, CustomizedWeight};
 use crate::server::error::ToStatusResult;
-use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
-
 use crate::server::storage::S3Storage;
 use crate::server::util::{spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream};
 use crate::weight::Weight;

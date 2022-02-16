@@ -42,13 +42,13 @@ rev = "02fe461aea15c791d20955167637cd370d2ace3e"
 version = "1"
 features = ["derive"]
 
-[dependencies.polars-core]
-version = "0.19"
-features = ["serde"]
+#[dependencies.polars-core]
+#version = "0.19"
+#features = ["serde"]
 
-[dependencies.polars-io]
-version = "0.19"
-features = ["ipc", "json", "parquet", "csv-file", "csv-core"]
+#[dependencies.polars-io]
+#version = "0.19"
+#features = ["ipc", "json", "parquet", "csv-file", "csv-core"]
 
 [dependencies.tower-http]
 version = "^0.2"

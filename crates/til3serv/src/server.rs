@@ -6,12 +6,12 @@ use axum::routing::get;
 use axum::{AddExtensionLayer, Json, Router};
 use eyre::Result;
 use h3ron::{H3Cell, Index};
-use polars_core::prelude::{DataFrame, JoinType, NamedFrom, Series};
 use tokio::task::spawn_blocking;
 use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
 
 use s3io::dataframe::H3DataFrame;
+use s3io::polars_core::prelude::{DataFrame, JoinType, NamedFrom, Series};
 use slippymap_h3_tiles::Tile;
 
 use crate::config::ServerConfig;

@@ -35,9 +35,9 @@ path = "../s3io"
 version = "0.32"
 features = ["use_serde"]
 
-[dependencies.polars-core]
-version = "0.19"
-features = ["serde"]
+#[dependencies.polars-core]
+#version = "0.19"
+#features = ["serde"]
 
 [dependencies.mimalloc]
 version = "0.1"

@@ -10,12 +10,13 @@ use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPat
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
-use polars_core::prelude::{DataFrame, JoinType, NamedFrom, Series};
-use s3io::dataframe::H3DataFrame;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tonic::{Code, Status};
 use uom::si::time::second;
+
+use s3io::dataframe::H3DataFrame;
+use s3io::polars_core::prelude::{DataFrame, JoinType, NamedFrom, Series};
 
 use crate::io::graph_store::GraphCacheKey;
 use crate::server::api::generated::{
