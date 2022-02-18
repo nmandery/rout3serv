@@ -16,7 +16,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 use eyre::Result;
 use h3ron::io::{deserialize_from, serialize_into};
 use h3ron::H3DirectedEdge;
@@ -54,20 +54,20 @@ fn main() -> Result<()> {
         crate::build_info::build_timestamp()
     );
 
-    let app = App::new(env!("CARGO_PKG_NAME"))
+    let app = Command::new(env!("CARGO_PKG_NAME"))
         .version(crate::build_info::version())
         .long_version(long_version.as_str())
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
-            App::new("graph")
+            Command::new("graph")
                 .about("Commands related to graph creation and export")
                 .subcommand(
-                    App::new("stats")
+                    Command::new("stats")
                         .about("Load a graph and print some basic stats")
                         .arg(Arg::new("GRAPH").help("graph").required(true)),
                 )
                 .subcommand(
-                    App::new("covered-area")
+                    Command::new("covered-area")
                         .about("Extract the area covered by the graph as geojson")
                         .arg(Arg::new("GRAPH").help("graph").required(true))
                         .arg(
@@ -77,7 +77,7 @@ fn main() -> Result<()> {
                         ),
                 )
                 .subcommand(
-                    App::new("to-ogr")
+                    Command::new("to-ogr")
                         .about("Export the input graph to an OGR vector dataset")
                         .arg(Arg::new("GRAPH").help("graph").required(true))
                         .arg(
@@ -99,7 +99,7 @@ fn main() -> Result<()> {
                         ),
                 )
                 .subcommand(
-                    App::new("from-osm-pbf")
+                    Command::new("from-osm-pbf")
                         .about("Build a routing graph from an OSM PBF file")
                         .arg(
                             Arg::new("h3_resolution")
@@ -121,7 +121,7 @@ fn main() -> Result<()> {
                 ),
         )
         .subcommand(
-            App::new("server").about("Start the GRPC server").arg(
+            Command::new("server").about("Start the GRPC server").arg(
                 Arg::new("CONFIG-FILE")
                     .help("server configuration file")
                     .required(true),

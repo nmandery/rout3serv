@@ -8,7 +8,7 @@
     nonstandard_style
 )]
 
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 use eyre::Result;
 
 use crate::config::ServerConfig;
@@ -35,12 +35,12 @@ fn main() -> Result<()> {
         crate::build_info::build_timestamp()
     );
 
-    let app = App::new(crate::build_info::app_name())
+    let app = Command::new(crate::build_info::app_name())
         .version(crate::build_info::version())
         .long_version(long_version.as_str())
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
-            App::new("server").about("Start the HTTP server").arg(
+            Command::new("server").about("Start the HTTP server").arg(
                 Arg::new("CONFIG-FILE")
                     .help("server configuration file")
                     .required(true),
