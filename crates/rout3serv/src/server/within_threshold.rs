@@ -87,7 +87,7 @@ where
         uuid::Uuid::new_v4().to_string(),
         spawn_blocking_status(move || within_threshold_internal(parameters))
             .await?
-            .to_status_message_result(Code::Internal, || {
+            .to_status_result_with_message(Code::Internal, || {
                 "calculating within threshold failed".to_string()
             })?,
     )

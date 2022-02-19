@@ -11,7 +11,7 @@ use ordered_float::OrderedFloat;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio_stream::wrappers::ReceiverStream;
-use tonic::{Code, Response, Status};
+use tonic::{Response, Status};
 use uom::si::time::second;
 
 use s3io::dataframe::{inner_join_h3dataframe, H3DataFrame};
@@ -19,7 +19,7 @@ use s3io::polars_core::prelude::{DataFrame, NamedFrom, Series};
 
 use crate::customization::{CustomizedGraph, CustomizedWeight};
 use crate::server::api::Route;
-use crate::server::error::ToStatusResult;
+use crate::server::error::{StatusCodeAndMessage, ToStatusResult};
 use crate::server::names;
 use crate::server::storage::S3Storage;
 use crate::server::util::{
@@ -88,14 +88,10 @@ where
 async fn spawn_h3_shortest_path<F, R, E>(func: F) -> Result<R, Status>
 where
     F: FnOnce() -> Result<R, E> + Send + 'static,
-    E: Debug + Send + 'static,
+    E: Debug + Send + 'static + StatusCodeAndMessage,
     R: Send + 'static,
 {
-    spawn_blocking_status(func)
-        .await?
-        .to_status_message_result(Code::Internal, || {
-            "calculating h3 shortest path failed".to_string()
-        })
+    spawn_blocking_status(func).await?.to_status_result()
 }
 
 pub async fn h3_shortest_path<W: 'static + Send + Sync>(
@@ -223,7 +219,7 @@ pub async fn h3_shortest_path_routes<W: 'static + Send + Sync, R, F, E>(
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
     R: Route + Send + 'static,
-    E: Debug + Send + 'static,
+    E: Debug + Send + 'static + StatusCodeAndMessage,
     F: FnMut(Path<CustomizedWeight<W>>) -> Result<R, E> + Send + 'static,
 {
     let routes = spawn_h3_shortest_path(move || {
@@ -240,9 +236,7 @@ where
                     .flat_map(|(_k, v)| v)
                     .map(transformer)
                     .collect::<Result<Vec<_>, _>>()
-                    .to_status_message_result(Code::Internal, || {
-                        "transforming routes failed".to_string()
-                    })
+                    .to_status_result()
             })
     })
     .await??;

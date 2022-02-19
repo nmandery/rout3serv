@@ -23,11 +23,7 @@ where
     F: FnOnce() -> R + Send + 'static,
     R: Send + 'static,
 {
-    tokio::task::spawn_blocking(f)
-        .await
-        .to_status_message_result(Code::Internal, || {
-            "joining blocking task failed".to_string()
-        })
+    tokio::task::spawn_blocking(f).await.to_status_result()
 }
 
 pub trait StrId {
@@ -63,7 +59,7 @@ where
 {
     h3dataframe
         .index_collection()
-        .to_status_message_result(Code::InvalidArgument, || {
+        .to_status_result_with_message(Code::InvalidArgument, || {
             format!(
                 "extracting {} from column {} failed",
                 std::any::type_name::<I>(),
@@ -78,7 +74,7 @@ pub fn change_cell_resolution_dedup(
 ) -> Result<Vec<H3Cell>, Status> {
     let mut out_cells = change_resolution(cells, h3_resolution)
         .collect::<Result<Vec<_>, _>>()
-        .to_status_result(Code::Internal)?;
+        .to_status_result()?;
     out_cells.sort_unstable();
     out_cells.dedup();
     Ok(out_cells)
@@ -124,7 +120,7 @@ pub async fn stream_dataframe_with_max_rows(
     tokio::spawn(async move {
         for mut df_part in dataframe_parts.drain(..) {
             let serialization_result = dataframe_to_bytes(&mut df_part)
-                .to_status_message_result(Code::Internal, || {
+                .to_status_result_with_message(Code::Internal, || {
                     "serializing dataframe failed".to_string()
                 })
                 .map(|ipc_bytes| ArrowIpcChunk {

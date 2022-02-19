@@ -37,7 +37,7 @@ where
     T: Weight,
 {
     path.length_m()
-        .to_status_message_result(Code::Internal, || {
+        .to_status_result_with_message(Code::Internal, || {
             "can not determinate path length".to_string()
         })
 }
@@ -51,7 +51,7 @@ impl RouteWkb {
     {
         let mut linestring = path
             .to_linestring()
-            .to_status_message_result(Code::Internal, || {
+            .to_status_result_with_message(Code::Internal, || {
                 "can not build linestring from path".to_string()
             })?;
 
@@ -90,7 +90,7 @@ impl RouteH3Indexes {
         let h3indexes = match kind {
             RouteH3IndexesKind::Cells => path
                 .cells()
-                .to_status_message_result(Code::Internal, || {
+                .to_status_result_with_message(Code::Internal, || {
                     "can not extract cells from path".to_string()
                 })?
                 .iter()

@@ -136,7 +136,7 @@ fn destination_cells(
         .iter()
         .map(|pt| H3Cell::from_coordinate(Coordinate::from((pt.x, pt.y)), h3_resolution))
         .collect::<Result<Vec<_>, _>>()
-        .to_status_message_result(Code::Internal, || {
+        .to_status_result_with_message(Code::Internal, || {
             "can not convert the target points to h3".to_string()
         })?;
     destination_cells.sort_unstable();
@@ -209,7 +209,7 @@ where
             let disturbance_ds: H3Treemap<_> = H3Treemap::from_result_iter_with_sort(
                 change_resolution(input.disturbance.iter(), downsampled_graph.h3_resolution()),
             )
-            .to_status_result(Code::Internal)?;
+            .to_status_result()?;
 
             let diff_ds = downsampled_graph.differential_shortest_path_map(
                 &origin_cells_ds,
@@ -406,7 +406,7 @@ pub fn disturbance_statistics<W: Send + Sync>(output: &DspOutput<W>) -> Result<D
 where
     W: Weight,
 {
-    disturbance_statistics_internal(output).to_status_message_result(Code::Internal, || {
+    disturbance_statistics_internal(output).to_status_result_with_message(Code::Internal, || {
         "calculating population movement stats failed".to_string()
     })
 }

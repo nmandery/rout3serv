@@ -68,9 +68,7 @@ where
         let serialized = block_in_place(move || {
             let mut serialized: Vec<u8> = Default::default();
             serialize_into(&mut serialized, output, true)
-                .to_status_message_result(Code::Internal, || {
-                    "serializing output failed".to_string()
-                })
+                .to_status_result()
                 .map(|_| serialized)
         })?;
         self.s3_client
@@ -82,7 +80,7 @@ where
                 serialized,
             )
             .await
-            .to_status_message_result(Code::Internal, || "storing output failed".to_string())
+            .to_status_result_with_message(Code::Internal, || "storing output failed".to_string())
     }
 
     pub async fn retrieve_output<I: AsRef<str>, O: DeserializeOwned>(
@@ -93,7 +91,7 @@ where
         match self.s3_client.get_object_bytes(object_ref.clone()).await {
             Ok(bytes) => {
                 let output: O = block_in_place(move || deserialize_from(Cursor::new(&bytes)))
-                    .to_status_message_result(Code::Internal, || {
+                    .to_status_result_with_message(Code::Internal, || {
                         format!("deserializing output {} failed", object_ref)
                     })?;
                 Ok(output)
@@ -113,10 +111,7 @@ where
     }
 
     pub async fn load_graph_cache_keys(&self) -> Result<Vec<GraphCacheKey>, Status> {
-        self.graph_store
-            .list()
-            .await
-            .to_status_message_result(Code::Internal, || "loading graph list failed".to_string())
+        self.graph_store.list().await.to_status_result()
     }
 
     pub async fn load_graph(
@@ -147,7 +142,7 @@ where
         if let Some(gh) = graph_handle {
             let gck: GraphCacheKey = gh
                 .try_into()
-                .to_status_message_result(Code::InvalidArgument, || {
+                .to_status_result_with_message(Code::InvalidArgument, || {
                     "invalid graph handle".to_string()
                 })?;
             self.load_graph(&gck).await.map(|graph| (graph, gck))
@@ -181,7 +176,7 @@ where
             .arrow_loader
             .load_h3_dataset_dataframe(dataset_config, cells, data_h3_resolution)
             .await
-            .to_status_message_result(Code::Internal, || "dataset is inaccessible".to_string())?;
+            .to_status_result()?;
         if !h3dataframe.dataframe.is_empty() {
             h3dataframe.dataframe.rechunk();
         }
@@ -220,7 +215,7 @@ where
             h3_resolution,
         )
         .collect::<Result<Vec<_>, _>>()
-        .to_status_message_result(Code::Internal, || {
+        .to_status_result_with_message(Code::Internal, || {
             "transforming input cell selection resolution failed".to_string()
         })?;
         cells.sort_unstable();
@@ -239,9 +234,7 @@ where
 
             let reduced_cells =
                 filter_cells_by_dataframe_contents(&df.dataframe, cells, &df.h3index_column_name)
-                    .to_status_message_result(Code::Internal, || {
-                    "reducing input cell selection failed: {:?}".to_string()
-                })?;
+                    .to_status_result()?;
             Ok((reduced_cells, Some(df)))
         }
     }

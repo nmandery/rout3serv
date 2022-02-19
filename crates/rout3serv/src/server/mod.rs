@@ -6,7 +6,7 @@ use h3ron::H3Cell;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::transport::Server;
-use tonic::{Code, Request, Response, Status};
+use tonic::{Request, Response, Status};
 use tower_http::trace::TraceLayer;
 
 use crate::config::ServerConfig;
@@ -171,7 +171,7 @@ impl Rout3Serv for ServerImpl {
         let do_store_output = input.store_output;
         let output = spawn_blocking_status(move || differential_shortest_path::calculate(input))
             .await?
-            .to_status_message_result(Code::Internal, || "calculating routes failed".to_string())?;
+            .to_status_result()?;
 
         let response_fut = stream_dataframe(
             output.object_id.clone(),
