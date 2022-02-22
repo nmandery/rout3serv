@@ -216,7 +216,7 @@ where
                 &destinations_ds,
                 &disturbance_ds,
                 &input.options,
-                |path| Ok((*path.cost(), path.len())),
+                |path| Ok((path.cost, path.len())),
             )?;
 
             // determinate the size of the k-ring to use to include enough full-resolution
@@ -292,7 +292,7 @@ where
             Some(
                 paths
                     .iter()
-                    .map(|p| p.cost().travel_duration().get::<second>() as f64)
+                    .map(|p| p.cost.travel_duration().get::<second>() as f64)
                     .sum::<f64>()
                     / paths.len() as f64,
             )
@@ -306,7 +306,7 @@ where
             Some(
                 paths
                     .iter()
-                    .map(|p| p.cost().edge_preference() as f64)
+                    .map(|p| p.cost.edge_preference() as f64)
                     .sum::<f64>()
                     / paths.len() as f64,
             )
@@ -314,10 +314,7 @@ where
     };
 
     let preferred_destination = |paths: &[Path<W>]| -> Option<u64> {
-        paths
-            .first()
-            .and_then(|p| p.destination_cell().ok())
-            .map(|cell| cell.h3index() as u64)
+        paths.first().map(|p| p.destination_cell.h3index() as u64)
     };
 
     let mut cell_h3indexes = Vec::with_capacity(output.differential_shortest_paths.len());

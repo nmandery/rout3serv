@@ -111,7 +111,7 @@ where
 struct PathSummary<W> {
     cost: W,
     path_length_m: OrderedFloat<f64>,
-    destination_cell: Option<H3Cell>, // TODO: should this not be always set?
+    destination_cell: H3Cell,
 }
 
 impl<W> TryFrom<Path<W>> for PathSummary<W>
@@ -122,13 +122,13 @@ where
 
     fn try_from(path: Path<W>) -> Result<Self, Self::Error> {
         let mut path_length_m = 0.0;
-        for edge in path.edges() {
+        for edge in path.directed_edge_path.edges() {
             path_length_m += edge.exact_length_m()?;
         }
         Ok(Self {
-            cost: *(path.cost()),
+            cost: path.cost,
             path_length_m: path_length_m.into(),
-            destination_cell: path.destination_cell().ok(),
+            destination_cell: path.destination_cell,
         })
     }
 }
@@ -172,8 +172,7 @@ where
             } else {
                 for path_summary in paths.iter() {
                     origin_cell_vec.push(origin_cell.h3index() as u64);
-                    destination_cell_vec
-                        .push(path_summary.destination_cell.map(|c| c.h3index() as u64));
+                    destination_cell_vec.push(Some(path_summary.destination_cell.h3index() as u64));
                     path_cell_length_m_vec.push(Some(path_summary.path_length_m.into_inner()));
                     travel_duration_secs_vec.push(Some(
                         path_summary.cost.travel_duration().get::<second>() as f32,

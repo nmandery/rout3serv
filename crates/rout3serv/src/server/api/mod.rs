@@ -4,7 +4,7 @@ use eyre::Report;
 use geo::chaikin_smoothing::ChaikinSmoothing;
 use geo::simplify::Simplify;
 use geo_types::Geometry;
-use h3ron::{H3Cell, Index};
+use h3ron::Index;
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::algorithm::shortest_path;
 use tonic::{Code, Status};
@@ -27,16 +27,12 @@ impl Route for RouteWkb {}
 impl Route for RouteH3Indexes {}
 
 #[inline(always)]
-fn cell_h3index(cell_result: Result<H3Cell, h3ron_graph::error::Error>) -> u64 {
-    cell_result.map(|c| c.h3index()).unwrap_or(0)
-}
-
-#[inline(always)]
 fn path_length_m<T>(path: &Path<T>) -> Result<f64, Status>
 where
     T: Weight,
 {
-    path.length_m()
+    path.directed_edge_path
+        .length_m()
         .to_status_result_with_message(Code::Internal, || {
             "can not determinate path length".to_string()
         })
@@ -50,6 +46,7 @@ impl RouteWkb {
         T: Weight,
     {
         let mut linestring = path
+            .directed_edge_path
             .to_linestring()
             .to_status_result_with_message(Code::Internal, || {
                 "can not build linestring from path".to_string()
@@ -66,10 +63,10 @@ impl RouteWkb {
 
         let wkb_bytes = to_wkb(&Geometry::LineString(linestring))?;
         Ok(Self {
-            origin_cell: cell_h3index(path.origin_cell()),
-            destination_cell: cell_h3index(path.destination_cell()),
-            travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
-            edge_preference: path.cost().edge_preference() as f64,
+            origin_cell: path.origin_cell.h3index(),
+            destination_cell: path.destination_cell.h3index(),
+            travel_duration_secs: path.cost.travel_duration().get::<second>() as f64,
+            edge_preference: path.cost.edge_preference() as f64,
             wkb: wkb_bytes,
             path_length_m: path_length_m(path)?,
         })
@@ -89,6 +86,7 @@ impl RouteH3Indexes {
     {
         let h3indexes = match kind {
             RouteH3IndexesKind::Cells => path
+                .directed_edge_path
                 .cells()
                 .to_status_result_with_message(Code::Internal, || {
                     "can not extract cells from path".to_string()
@@ -97,16 +95,17 @@ impl RouteH3Indexes {
                 .map(|cell| cell.h3index() as u64)
                 .collect(),
             RouteH3IndexesKind::Edges => path
+                .directed_edge_path
                 .edges()
                 .iter()
                 .map(|edge| edge.h3index() as u64)
                 .collect(),
         };
         Ok(Self {
-            origin_cell: cell_h3index(path.origin_cell()),
-            destination_cell: cell_h3index(path.destination_cell()),
-            travel_duration_secs: path.cost().travel_duration().get::<second>() as f64,
-            edge_preference: path.cost().edge_preference() as f64,
+            origin_cell: path.origin_cell.h3index(),
+            destination_cell: path.destination_cell.h3index(),
+            travel_duration_secs: path.cost.travel_duration().get::<second>() as f64,
+            edge_preference: path.cost.edge_preference() as f64,
             h3indexes,
             path_length_m: path_length_m(path)?,
         })
@@ -153,7 +152,7 @@ impl TryFrom<&GraphHandle> for GraphCacheKey {
 }
 
 impl shortest_path::ShortestPathOptions for ShortestPathOptions {
-    fn num_gap_cells_to_graph(&self) -> u32 {
+    fn max_distance_to_graph(&self) -> u32 {
         self.num_gap_cells_to_graph
     }
 

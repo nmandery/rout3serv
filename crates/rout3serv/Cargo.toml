@@ -46,14 +46,14 @@ default_features = false
 [dependencies.h3ron]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "02fe461aea15c791d20955167637cd370d2ace3e"
+rev = "a2141b2185583e534e61a920bdbd241191338414"
 #path = "/home/nico/CLionProjects/h3ron/h3ron"
 features = ["io", "use-rayon", "roaring", "use-serde", "compression"]
 
 [dependencies.h3ron-graph]
 #version = "0.3"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "02fe461aea15c791d20955167637cd370d2ace3e"
+rev = "a2141b2185583e534e61a920bdbd241191338414"
 #path = "/home/nico/CLionProjects/h3ron/h3ron-graph"
 features = ["use-gdal", "osm"]
 
