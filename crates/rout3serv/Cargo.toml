@@ -24,9 +24,7 @@ serde_yaml = "0.8"
 tokio-stream = "0.1"
 
 [dependencies.geo]
-# version = "0.18"
-git = "https://github.com/georust/geo.git"
-rev = "75b17e5a74ce279eb06c715d7d9e03b53b68364c" # for chaikin smoothing
+version = "0.19"
 
 [dependencies.s3io]
 path = "../s3io"
