@@ -151,7 +151,7 @@ where
             * parameters
                 .options
                 .num_destinations_to_reach()
-                .unwrap_or_else(|| parameters.destination_cells.len());
+                .unwrap_or(parameters.destination_cells.len());
 
         let mut origin_cell_vec = Vec::with_capacity(capacity);
         let mut destination_cell_vec = Vec::with_capacity(capacity);

@@ -123,14 +123,13 @@ impl PartialOrd for RoadWeight {
         self.travel_duration
             .value
             .partial_cmp(&other.travel_duration.value)
-            .map(|ordering| {
+            .and_then(|ordering| {
                 if ordering == Ordering::Equal {
                     self.edge_preference.partial_cmp(&other.edge_preference)
                 } else {
                     Some(ordering)
                 }
             })
-            .flatten()
     }
 }
 
