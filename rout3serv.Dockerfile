@@ -3,7 +3,17 @@ FROM nmandery/gdal-minimal:3-bullseye as basesystem
 
 FROM basesystem as builder
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y cmake curl make clang git python3-toml pkg-config libssl-dev
+    apt-get install --no-install-recommends -y curl make clang git python3-toml pkg-config libssl-dev
+
+# cmake >3.20 is required, so we install from source
+RUN cd /tmp && \
+    curl -L -o cmake.tgz https://github.com/Kitware/CMake/releases/download/v3.22.2/cmake-3.22.2.tar.gz && \
+    tar xf cmake.tgz && \
+    cd cmake-3.22.2 && \
+    ./bootstrap && \
+    make -j3 && \
+    make install
+
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
         --profile minimal \
         --default-toolchain stable

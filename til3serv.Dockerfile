@@ -1,7 +1,16 @@
 FROM rust:1-bullseye as builder
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y wget xz-utils python3-toml cmake git clang libssl-dev
+    apt-get install --no-install-recommends -y wget xz-utils python3-toml git clang libssl-dev
+
+# cmake >3.20 is required, so we install from source
+RUN cd /tmp && \
+    curl -L -o cmake.tgz https://github.com/Kitware/CMake/releases/download/v3.22.2/cmake-3.22.2.tar.gz && \
+    tar xf cmake.tgz && \
+    cd cmake-3.22.2 && \
+    ./bootstrap && \
+    make -j3 && \
+    make install
 
 ENV NODE_VERSION=16.13.0
 RUN cd /tmp/ && \
