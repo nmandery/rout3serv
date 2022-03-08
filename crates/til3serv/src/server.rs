@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::extract::{Extension, Path};
 use axum::http::StatusCode;
 use axum::routing::get;
-use axum::{AddExtensionLayer, Json, Router};
+use axum::{Json, Router};
 use eyre::Result;
 use h3ron::{H3Cell, Index};
 use tokio::task::spawn_blocking;
@@ -167,7 +167,7 @@ pub async fn run_server(server_config: ServerConfig) -> Result<()> {
     }
     app = app
         .layer(TraceLayer::new_for_http())
-        .layer(AddExtensionLayer::new(registry))
+        .layer(Extension(registry))
         .layer(CompressionLayer::new());
 
     // run it with hyper

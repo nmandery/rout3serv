@@ -18,7 +18,7 @@ regex = "1.5"
 serde_yaml = "^0.8"
 
 [dependencies.minijinja]
-version = "^0.13"
+version = "^0.14"
 features = ["builtins", "json"]
 
 [dependencies.tokio]
