@@ -19,15 +19,15 @@ indexmap = "^1.7"
 async-trait = "0.1"
 
 [dependencies.polars-core]
-#version = "0.19"
-git = "https://github.com/pola-rs/polars.git"
-rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
+version = "0.20"
+#git = "https://github.com/pola-rs/polars.git"
+#rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
 features = ["serde"]
 
 [dependencies.polars-io]
-git = "https://github.com/pola-rs/polars.git"
-rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
-#version = "0.19"
+#git = "https://github.com/pola-rs/polars.git"
+#rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
+version = "0.20"
 features = [
     "ipc",
     "parquet",
@@ -43,9 +43,9 @@ features = ["derive"]
 [dependencies.h3ron]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "a448d6c0d1d19da0ccd08223a62784a590a02c52"
-#path = "/home/nico/CLionProjects/h3ron/h3ron"
-features = ["io", "rayon", "roaring", "compression", "use-serde"]
+rev = "1b7d3bb404815042ab24269620f2e7d8bd99b498"
+# path = "/home/nico/CLionProjects/h3ron/h3ron"
+features = ["io", "use-rayon", "roaring", "compression", "use-serde"]
 
 [dependencies.hyper-tls]
 version = "0.5.0"

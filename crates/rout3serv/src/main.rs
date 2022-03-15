@@ -11,7 +11,7 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
@@ -209,7 +209,7 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
     let graph = builder.build_graph()?;
 
     log::info!("Preparing graph");
-    let prepared_graph: PreparedH3EdgeGraph<_> = graph.try_into()?;
+    let prepared_graph = PreparedH3EdgeGraph::from_h3edge_graph(graph, 5)?;
 
     let stats = prepared_graph.get_stats()?;
     log::info!(

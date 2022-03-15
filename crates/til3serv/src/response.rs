@@ -120,7 +120,7 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>>
             }
             OutputFormat::Parquet => {
                 let writer = s3io::polars_io::parquet::ParquetWriter::new(&mut bytes);
-                writer.finish(&outdf.dataframe)?;
+                writer.finish(&mut outdf.dataframe)?;
             }
             OutputFormat::Csv => {
                 let writer = s3io::polars_io::csv::CsvWriter::new(&mut bytes);

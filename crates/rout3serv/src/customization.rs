@@ -5,7 +5,8 @@ use std::sync::Arc;
 use crate::config::{NonZeroPositiveFactor, RoutingMode};
 use h3ron::{H3Cell, H3DirectedEdge, HasH3Resolution};
 use h3ron_graph::graph::node::NodeType;
-use h3ron_graph::graph::{EdgeWeight, GetCellNode, GetEdge, PreparedH3EdgeGraph};
+use h3ron_graph::graph::{EdgeWeight, GetCellEdges, GetCellNode, PreparedH3EdgeGraph};
+use h3ron_graph::Error;
 use num_traits::Zero;
 use uom::si::f32::Time;
 
@@ -136,18 +137,18 @@ impl<W: Weight> Ord for CustomizedWeight<W> {
 }
 
 /// A prepared graph with customized weight comparisons
-pub struct CustomizedGraph<W: Sync + Send> {
+pub struct CustomizedGraph<W> {
     inner_graph: Arc<PreparedH3EdgeGraph<W>>,
     routing_mode: RoutingMode,
 }
 
-impl<W: Sync + Send> CustomizedGraph<W> {
+impl<W> CustomizedGraph<W> {
     pub fn set_routing_mode(&mut self, routing_mode: RoutingMode) {
         self.routing_mode = routing_mode;
     }
 }
 
-impl<W: Sync + Send> From<Arc<PreparedH3EdgeGraph<W>>> for CustomizedGraph<W> {
+impl<W> From<Arc<PreparedH3EdgeGraph<W>>> for CustomizedGraph<W> {
     fn from(inner_graph: Arc<PreparedH3EdgeGraph<W>>) -> Self {
         CustomizedGraph {
             inner_graph,
@@ -156,45 +157,54 @@ impl<W: Sync + Send> From<Arc<PreparedH3EdgeGraph<W>>> for CustomizedGraph<W> {
     }
 }
 
-impl<W: Sync + Send> GetCellNode for CustomizedGraph<W> {
+impl<W> GetCellNode for CustomizedGraph<W> {
     fn get_cell_node(&self, cell: &H3Cell) -> Option<NodeType> {
         self.inner_graph.get_cell_node(cell)
     }
 }
 
-impl<W: Sync + Send> GetEdge for CustomizedGraph<W>
+impl<W> GetCellEdges for CustomizedGraph<W>
 where
     W: Weight + Copy + Zero,
 {
     type EdgeWeightType = CustomizedWeight<W>;
 
-    fn get_edge(
+    fn get_edges_originating_from(
         &self,
-        edge: &H3DirectedEdge,
-    ) -> Result<Option<EdgeWeight<Self::EdgeWeightType>>, h3ron_graph::Error> {
-        let ew = self
+        cell: &H3Cell,
+    ) -> Result<Vec<(H3DirectedEdge, EdgeWeight<Self::EdgeWeightType>)>, Error> {
+        let customized = self
             .inner_graph
-            .get_edge(edge)?
-            .map(|edge_weight| EdgeWeight {
-                weight: CustomizedWeight {
-                    weight: edge_weight.weight,
-                    edge_preference_factor: self.routing_mode.edge_preference_factor,
-                },
-                longedge: edge_weight.longedge.map(|(longedge, road_weight)| {
-                    (
-                        longedge,
-                        CustomizedWeight {
-                            weight: road_weight,
+            .get_edges_originating_from(cell)?
+            .drain(..)
+            .map(|(edge, edge_weight)| {
+                (
+                    edge,
+                    EdgeWeight {
+                        weight: CustomizedWeight {
+                            weight: edge_weight.weight,
                             edge_preference_factor: self.routing_mode.edge_preference_factor,
                         },
-                    )
-                }),
-            });
-        Ok(ew)
+                        longedge: edge_weight.longedge.map(|(longedge, road_weight)| {
+                            (
+                                longedge,
+                                CustomizedWeight {
+                                    weight: road_weight,
+                                    edge_preference_factor: self
+                                        .routing_mode
+                                        .edge_preference_factor,
+                                },
+                            )
+                        }),
+                    },
+                )
+            })
+            .collect();
+        Ok(customized)
     }
 }
 
-impl<W: Sync + Send> HasH3Resolution for CustomizedGraph<W> {
+impl<W> HasH3Resolution for CustomizedGraph<W> {
     fn h3_resolution(&self) -> u8 {
         self.inner_graph.h3_resolution()
     }

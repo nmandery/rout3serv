@@ -13,7 +13,7 @@ geo-types = "^0.7"
 [dependencies.h3ron]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "a448d6c0d1d19da0ccd08223a62784a590a02c52"
+rev = "1b7d3bb404815042ab24269620f2e7d8bd99b498"
 #path = "/home/nico/CLionProjects/h3ron/h3ron"
 
 [dev-dependencies]
