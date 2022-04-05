@@ -17,7 +17,7 @@ lazy_static = "1.4"
 log = "0.4"
 num-traits = "0.2"
 ordered-float = "2.8.0"
-prost = "0.9"
+prost = "0.10"
 rayon = "^1.5"
 regex = "1.5"
 serde_yaml = "0.8"
@@ -64,7 +64,7 @@ features = [
 ]
 
 [dependencies.tonic]
-version = "0.6"
+version = "0.7"
 features = ["compression"]
 
 [dependencies.serde]
@@ -87,5 +87,5 @@ features = ["trace"]
 float-cmp = "0.9"
 
 [build-dependencies]
-tonic-build = { version = "0.6", features = ["compression"] }
+tonic-build = { version = "0.7", features = ["compression"] }
 vergen = { version = "7", features = ["rustc", "build"] }

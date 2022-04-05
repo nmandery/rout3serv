@@ -8,9 +8,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=proto/rout3serv.proto");
     tonic_build::configure()
         .build_client(false)
-        // do not format, as we need to move the output first to make the module name
-        // match. All for proper IDE support to avoid including the output.
-        .format(false)
         .build_server(true)
         .out_dir("src/server/api/")
         .compile(&["proto/rout3serv.proto"], &["proto"])?;

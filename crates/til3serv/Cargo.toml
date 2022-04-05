@@ -6,7 +6,7 @@ authors = ["Nico Mandery <nico@nmandery.net>"]
 publish = false
 
 [dependencies]
-axum = "^0.4"
+axum = "^0.5"
 clap = "^3"
 env_logger = "0.9"
 eyre = "0.6"
@@ -41,14 +41,6 @@ rev = "1b7d3bb404815042ab24269620f2e7d8bd99b498"
 [dependencies.serde]
 version = "1"
 features = ["derive"]
-
-#[dependencies.polars-core]
-#version = "0.19"
-#features = ["serde"]
-
-#[dependencies.polars-io]
-#version = "0.19"
-#features = ["ipc", "json", "parquet", "csv-file", "csv-core"]
 
 [dependencies.tower-http]
 version = "^0.2"
