@@ -43,7 +43,7 @@ features = ["derive"]
 [dependencies.h3ron]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "1b7d3bb404815042ab24269620f2e7d8bd99b498"
+rev = "7c1a9ac56d413ebb0960d2ffd6f28988f6178a78"
 # path = "/home/nico/CLionProjects/h3ron/h3ron"
 features = ["io", "use-rayon", "roaring", "compression", "use-serde"]
 

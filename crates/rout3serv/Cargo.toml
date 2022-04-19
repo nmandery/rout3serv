@@ -24,7 +24,7 @@ serde_yaml = "0.8"
 tokio-stream = "0.1"
 
 [dependencies.geo]
-version = "0.19"
+version = "0.20"
 
 [dependencies.s3io]
 path = "../s3io"
@@ -40,14 +40,14 @@ default_features = false
 [dependencies.h3ron]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "1b7d3bb404815042ab24269620f2e7d8bd99b498"
+rev = "7c1a9ac56d413ebb0960d2ffd6f28988f6178a78"
 #path = "/home/nico/CLionProjects/h3ron/h3ron"
 features = ["io", "use-rayon", "roaring", "use-serde", "compression"]
 
 [dependencies.h3ron-graph]
 #version = "0.3"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "1b7d3bb404815042ab24269620f2e7d8bd99b498"
+rev = "7c1a9ac56d413ebb0960d2ffd6f28988f6178a78"
 #path = "/home/nico/CLionProjects/h3ron/h3ron-graph"
 features = ["use-gdal", "osm"]
 
