@@ -11,15 +11,15 @@ futures = "0.3"
 lazy_static = "1.4"
 log = "0.4"
 regex = "1.5"
-rusoto_core = { version = "0.47" }
-rusoto_s3 = { version = "0.47" }
+rusoto_core = { version = "0.48" }
+rusoto_s3 = { version = "0.48" }
 thiserror = "1"
 itertools = "0.10"
 indexmap = "^1.7"
 async-trait = "0.1"
 
 [dependencies.polars-core]
-version = "0.20"
+version = "0.21"
 #git = "https://github.com/pola-rs/polars.git"
 #rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
 features = ["serde"]
@@ -27,7 +27,7 @@ features = ["serde"]
 [dependencies.polars-io]
 #git = "https://github.com/pola-rs/polars.git"
 #rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
-version = "0.20"
+version = "0.21"
 features = [
     "ipc",
     "parquet",

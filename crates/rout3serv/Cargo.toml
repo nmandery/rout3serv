@@ -52,7 +52,7 @@ rev = "7c1a9ac56d413ebb0960d2ffd6f28988f6178a78"
 features = ["use-gdal", "osm"]
 
 [dependencies.uuid]
-version = "0.8"
+version = "1"
 features = ["v4"]
 
 [dependencies.tokio]
@@ -80,7 +80,7 @@ version = "0.12"
 features = ["bindgen"]
 
 [dependencies.tower-http]
-version = "^0.2"
+version = "^0.3"
 features = ["trace"]
 
 [dev-dependencies]
