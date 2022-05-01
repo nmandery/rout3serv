@@ -8,9 +8,6 @@
     nonstandard_style
 )]
 
-#[macro_use]
-extern crate lazy_static;
-
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};

@@ -6,6 +6,7 @@ use axum::http::header::CONTENT_TYPE;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use minijinja::filters::{safe, tojson};
 use minijinja::Environment;
+use once_cell::sync::Lazy;
 use s3io::s3::S3H3Dataset;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -17,17 +18,18 @@ const COUNTRIES_GEOJSON: &[u8] = include_bytes!("../data/countries.geojson");
 /// js bundle of the view
 const VIEWER_JS: &[u8] = include_bytes!("../dist/viewer.js");
 
-lazy_static::lazy_static! {
-    static ref MJ_ENV: Environment<'static> = {
-        let mut env = Environment::new();
-        env.add_template("base.html", include_str!("../templates/base.html")).unwrap();
-        env.add_template("viewer.html", include_str!("../templates/viewer.html")).unwrap();
-        env.add_template("main.html", include_str!("../templates/main.html")).unwrap();
-        env.add_filter("tojson", tojson);
-        env.add_filter("safe", safe);
-        env
-    };
-}
+static MJ_ENV: Lazy<Environment<'static>> = Lazy::new(|| {
+    let mut env = Environment::new();
+    env.add_template("base.html", include_str!("../templates/base.html"))
+        .unwrap();
+    env.add_template("viewer.html", include_str!("../templates/viewer.html"))
+        .unwrap();
+    env.add_template("main.html", include_str!("../templates/main.html"))
+        .unwrap();
+    env.add_filter("tojson", tojson);
+    env.add_filter("safe", safe);
+    env
+});
 
 fn render_template<S: Serialize>(template_name: &str, context: &S) -> eyre::Result<String> {
     let template = MJ_ENV.get_template(template_name)?;

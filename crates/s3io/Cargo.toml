@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 bytesize = "1"
 futures = "0.3"
-lazy_static = "1.4"
+once_cell = "1"
 log = "0.4"
 regex = "1.5"
 rusoto_core = { version = "0.48" }

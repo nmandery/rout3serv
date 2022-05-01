@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use h3ron_graph::graph::PreparedH3EdgeGraph;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use s3io::ser_and_de::deserialize_from;
 use serde::de::DeserializeOwned;
@@ -16,15 +17,14 @@ use crate::config::GraphStoreConfig;
 
 const GRAPH_SUFFIX: &str = ".bincode.lz";
 
-lazy_static! {
-    static ref RE_GRAPH_FILE: Regex = {
-        let graph_re_string: String = format!(
-            "(?P<name>[a-zA-Z0-9\\-_]+)_(?P<h3_res>[0-9]?[0-9]){}$",
-            regex::escape(GRAPH_SUFFIX)
-        );
-        Regex::new(&graph_re_string).unwrap()
-    };
-}
+static RE_GRAPH_FILE: Lazy<Regex> = Lazy::new(|| {
+    let graph_re_string: String = format!(
+        "(?P<name>[a-zA-Z0-9\\-_]+)_(?P<h3_res>[0-9]?[0-9]){}$",
+        regex::escape(GRAPH_SUFFIX)
+    );
+    Regex::new(&graph_re_string).unwrap()
+});
+
 #[derive(Hash, Debug, PartialEq, Eq, Clone)]
 pub struct GraphCacheKey {
     pub name: String,

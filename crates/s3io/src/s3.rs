@@ -12,6 +12,7 @@ use h3ron::H3Cell;
 use hyper::client::HttpConnector;
 use hyper_tls::HttpsConnector;
 use native_tls::TlsConnector;
+use once_cell::sync::Lazy;
 use polars_core::prelude::DataFrame;
 use polars_core::utils::concat_df;
 use regex::Regex;
@@ -284,13 +285,11 @@ pub trait S3H3Dataset {
     }
 }
 
-lazy_static! {
-    static ref RE_S3KEY_DATA_H3_RESOLUTION: Regex =
-        Regex::new(r"\{\s*data_h3_resolution\s*\}").unwrap();
-    static ref RE_S3KEY_FILE_H3_RESOLUTION: Regex =
-        Regex::new(r"\{\s*file_h3_resolution\s*\}").unwrap();
-    static ref RE_S3KEY_H3_CELL: Regex = Regex::new(r"\{\s*h3cell\s*\}").unwrap();
-}
+static RE_S3KEY_DATA_H3_RESOLUTION: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\{\s*data_h3_resolution\s*\}").unwrap());
+static RE_S3KEY_FILE_H3_RESOLUTION: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\{\s*file_h3_resolution\s*\}").unwrap());
+static RE_S3KEY_H3_CELL: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{\s*h3cell\s*\}").unwrap());
 
 fn build_h3_key<D>(dataset: &D, cell: &H3Cell, data_h3_resolution: u8) -> Result<String, Error>
 where

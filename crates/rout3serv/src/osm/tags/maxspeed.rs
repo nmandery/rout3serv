@@ -1,3 +1,4 @@
+use once_cell::sync::Lazy;
 use std::convert::Infallible;
 use std::str::FromStr;
 
@@ -83,11 +84,10 @@ pub fn infer_maxspeed(tags: &Tags, highway_class: &str) -> MaxSpeed {
         })
 }
 
-lazy_static! {
-    static ref RE_MAXSPEED: Regex =
-        Regex::new(r"^([A-Za-z\-]+:(zone:?)?)?(?P<value>[1-9][0-9]*)(\s*(?P<units>[a-zA-Z/]+))?")
-            .unwrap();
-}
+static RE_MAXSPEED: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^([A-Za-z\-]+:(zone:?)?)?(?P<value>[1-9][0-9]*)(\s*(?P<units>[a-zA-Z/]+))?")
+        .unwrap()
+});
 
 impl FromStr for MaxSpeed {
     type Err = Infallible;
