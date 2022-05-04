@@ -22,6 +22,7 @@ COPY . /build
 RUN cd /build && \
     python3 docker-cargo-profile.py && \
     cd /build/crates/til3serv && \
+    export RUSTFLAGS='-C target-feature=+fxsr,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma' && \
     cargo install --path . --root /usr/local
 
 run strip /usr/local/bin/til3serv
