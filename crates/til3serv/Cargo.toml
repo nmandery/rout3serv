@@ -43,7 +43,7 @@ version = "1"
 features = ["derive"]
 
 [dependencies.tower-http]
-version = "^0.2"
+version = "^0.3"
 features = ["compression-full", "trace"]
 
 [dependencies.s3io]
