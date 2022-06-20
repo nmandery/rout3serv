@@ -15,13 +15,13 @@ use std::path::Path;
 
 use clap::{Arg, ArgMatches, Command};
 use eyre::Result;
-use h3ron::io::{deserialize_from, serialize_into};
 use h3ron::H3DirectedEdge;
 use h3ron_graph::algorithm::covered_area::CoveredArea;
-use h3ron_graph::formats::osm::OsmPbfH3EdgeGraphBuilder;
 use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
 use h3ron_graph::io::gdal::OgrWrite;
+use h3ron_graph::io::osm::OsmPbfH3EdgeGraphBuilder;
 use mimalloc::MiMalloc;
+use s3io::ser_and_de::{deserialize_from, serialize_into};
 use uom::si::f32::Length;
 use uom::si::length::meter;
 

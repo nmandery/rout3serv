@@ -101,21 +101,21 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>>
 
         match &outdf.output_format {
             OutputFormat::JsonLines => {
-                let writer = s3io::polars_io::json::JsonWriter::with_json_format(
+                let mut writer = s3io::polars_io::json::JsonWriter::with_json_format(
                     s3io::polars_io::json::JsonWriter::new(&mut bytes),
                     JsonFormat::JsonLines,
                 );
                 writer.finish(&mut outdf.dataframe)?;
             }
             OutputFormat::Json => {
-                let writer = s3io::polars_io::json::JsonWriter::with_json_format(
+                let mut writer = s3io::polars_io::json::JsonWriter::with_json_format(
                     s3io::polars_io::json::JsonWriter::new(&mut bytes),
                     JsonFormat::Json,
                 );
                 writer.finish(&mut outdf.dataframe)?;
             }
             OutputFormat::ArrowIPC => {
-                let writer = s3io::polars_io::ipc::IpcWriter::new(&mut bytes);
+                let mut writer = s3io::polars_io::ipc::IpcWriter::new(&mut bytes);
                 writer.finish(&mut outdf.dataframe)?;
             }
             OutputFormat::Parquet => {
@@ -123,7 +123,7 @@ fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>>
                 writer.finish(&mut outdf.dataframe)?;
             }
             OutputFormat::Csv => {
-                let writer = s3io::polars_io::csv::CsvWriter::new(&mut bytes);
+                let mut writer = s3io::polars_io::csv::CsvWriter::new(&mut bytes);
                 writer.finish(&mut outdf.dataframe)?;
             }
         };

@@ -7,8 +7,8 @@
 //!   along edges. This could also be of use for other models.
 //!
 use h3ron::H3DirectedEdge;
-use h3ron_graph::formats::osm::osmpbfreader::Tags;
-use h3ron_graph::formats::osm::{EdgeProperties, WayAnalyzer};
+use h3ron_graph::io::osm::osmpbfreader::Tags;
+use h3ron_graph::io::osm::{EdgeProperties, WayAnalyzer};
 use uom::si::f32::Length;
 use uom::si::length::meter;
 
