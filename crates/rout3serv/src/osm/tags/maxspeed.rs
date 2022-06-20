@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use std::str::FromStr;
 
 use crate::osm::WALKING_SPEED;
-use h3ron_graph::formats::osm::osmpbfreader::Tags;
+use h3ron_graph::io::osm::osmpbfreader::Tags;
 use regex::{Captures, Regex};
 use uom::si::f32::Velocity;
 use uom::si::velocity::{kilometer_per_hour, knot, meter_per_second, mile_per_hour};

@@ -10,7 +10,7 @@ axum = "^0.5"
 clap = "^3"
 env_logger = "0.9"
 eyre = "0.6"
-geo = "0.20"
+geo = "0.21"
 geo-types = "^0.7"
 once_cell = "1"
 log = "0.4"
@@ -18,7 +18,7 @@ regex = "1.5"
 serde_yaml = "^0.8"
 
 [dependencies.minijinja]
-version = "^0.15"
+version = "^0.16"
 features = ["builtins", "json"]
 
 [dependencies.tokio]
@@ -35,7 +35,7 @@ path = "../slippymap-h3-tiles"
 [dependencies.h3ron]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "7c1a9ac56d413ebb0960d2ffd6f28988f6178a78"
+rev = "527ca333d3f506121018270763ac841ba08516d2"
 #path = "/home/nico/CLionProjects/h3ron/h3ron"
 
 [dependencies.serde]

@@ -5,6 +5,9 @@ pub enum Error {
     #[error("h3ron error: {0}")]
     H3ron(#[from] h3ron::Error),
 
+    #[error("h3ron-graph error: {0}")]
+    H3ronGraph(#[from] h3ron_graph::Error),
+
     #[error("polars error: {0}")]
     Polars(#[from] polars_core::error::PolarsError),
 
