@@ -1,7 +1,7 @@
-FROM rust:1-bullseye as builder
+FROM debian:bullseye-slim as builder
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y wget xz-utils python3-toml git clang libssl-dev
+    apt-get install --no-install-recommends -y curl xz-utils python3-toml git clang libssl-dev ca-certificates build-essential
 
 # cmake >3.20 is required, so we install from source
 RUN cd /tmp && \
@@ -12,10 +12,14 @@ RUN cd /tmp && \
     make -j3 && \
     make install
 
-ENV NODE_VERSION=16.13.0
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
+        --profile minimal \
+        --default-toolchain stable
+
+ENV NODE_VERSION=18.4.0
 RUN cd /tmp/ && \
-    wget https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz &&\
-    tar xf node-v$NODE_VERSION-linux-x64.tar.xz && \
+    curl -L -o node.tar.xz https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz &&\
+    tar xf node.tar.xz && \
     cp -r node-v$NODE_VERSION-linux-x64/* /
 
 COPY . /build
@@ -23,9 +27,8 @@ RUN cd /build && \
     python3 docker-cargo-profile.py && \
     cd /build/crates/til3serv && \
     export RUSTFLAGS='-C target-feature=+fxsr,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma' && \
-    cargo install --path . --root /usr/local
-
-run strip /usr/local/bin/til3serv
+    PATH=$PATH:$HOME/.cargo/bin cargo install --path . --root /usr/local && \
+    strip /usr/local/bin/til3serv
 
 FROM debian:bullseye-slim
 ENV RUST_BACKTRACE=1

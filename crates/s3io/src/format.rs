@@ -8,7 +8,7 @@ use polars_io::SerReader;
 
 use crate::Error;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum FileFormat {
     ArrowIPC,
     Parquet,

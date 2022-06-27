@@ -10,3 +10,4 @@
 **/node_modules
 **/package-lock.json
 /crates/til3serv/dist/*
+*.tgz
