@@ -8,15 +8,21 @@
     nonstandard_style
 )]
 
+pub mod webmercator;
+
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::f64::consts::{E, PI};
 use std::fmt;
 
+use crate::webmercator::{
+    WebmercatorToWgs84InPlace, CE, EPSILON, EXTEND_EPSG_3857, EXTEND_EPSG_4326,
+};
 use geo::algorithm::bounding_rect::BoundingRect;
 use geo::algorithm::dimensions::HasDimensions;
 use geo::dimensions::Dimensions;
 use geo::prelude::Contains;
+use geo::Area;
 use geo_types::{Coordinate, Rect};
 use h3ron::iter::change_resolution;
 use h3ron::{Error, H3Cell, H3DirectedEdge, ToCoordinate, ToH3Cells, ToPolygon, H3_MAX_RESOLUTION};
@@ -79,7 +85,7 @@ impl Tile {
         let tile_size = CE / 2.0f64.powi(self.z as i32);
         let left = (self.x as f64 * tile_size) - (CE / 2.0);
         let top = (CE / 2.0) - (self.y as f64 * tile_size);
-        EXTEND_EPSG_3857.truncate_rect(Rect::new(
+        EXTEND_EPSG_3857.clamp_rect(Rect::new(
             Coordinate::from((left, top)),
             Coordinate::from((left + tile_size, top - tile_size)),
         ))
@@ -88,7 +94,7 @@ impl Tile {
     /// find the tile the coordinate is located in
     #[allow(dead_code)]
     fn from_wgs84_coordinate(coord: Coordinate<f64>, z: u8) -> Result<Self, Error> {
-        let coord = EXTEND_EPSG_4326.truncate_coordinate(coord);
+        let coord = EXTEND_EPSG_4326.clamp_coordinate(coord);
         let z2 = 2.0_f64.powi(z as i32);
 
         let sinlat = coord.y.to_radians().sin();
@@ -168,7 +174,7 @@ impl Tile {
                 Err(e) => return Err(e),
             };
 
-            match Rect::new(
+            let mut buffered_bbox = Rect::new(
                 Coordinate::from((
                     wm_bbox.min().x - buffer_meters,
                     wm_bbox.min().y - buffer_meters,
@@ -177,15 +183,13 @@ impl Tile {
                     wm_bbox.max().x + buffer_meters,
                     wm_bbox.max().y + buffer_meters,
                 )),
-            )
-            .webmercator_to_wgs84()
-            {
-                Ok(buffered_bbox) => buffered_bbox,
-                Err(Error::LatLonDomain) => {
-                    // box is empty or just a line
-                    return Ok(Default::default());
-                }
-                Err(e) => return Err(e),
+            );
+            buffered_bbox.webmercator_to_wgs84_in_place();
+            if buffered_bbox.unsigned_area() == 0.0 {
+                // box is empty or just a line
+                return Ok(Default::default());
+            } else {
+                buffered_bbox
             }
         };
         let buffered =
@@ -236,9 +240,9 @@ impl BoundingRect<f64> for Tile {
     }
 }
 
-pub struct Extend([f64; 4]);
+pub struct BoundingBox([f64; 4]);
 
-impl Extend {
+impl BoundingBox {
     pub const fn min_x(&self) -> f64 {
         self.0[0]
     }
@@ -255,94 +259,23 @@ impl Extend {
         self.0[3]
     }
 
-    pub fn truncate_coordinate(&self, coord: Coordinate<f64>) -> Coordinate<f64> {
+    pub fn clamp_coordinate(&self, coord: Coordinate<f64>) -> Coordinate<f64> {
         Coordinate::from((
-            restrict_between(self.min_x(), self.max_x(), coord.x),
-            restrict_between(self.min_y(), self.max_y(), coord.y),
+            coord.x.clamp(self.min_x(), self.max_x()),
+            coord.y.clamp(self.min_y(), self.max_y()),
         ))
     }
 
-    pub fn truncate_rect(&self, rect: Rect<f64>) -> Result<Rect<f64>, Error> {
+    pub fn clamp_rect(&self, rect: Rect<f64>) -> Result<Rect<f64>, Error> {
         let truncated = Rect::new(
-            self.truncate_coordinate(rect.min()),
-            self.truncate_coordinate(rect.max()),
+            self.clamp_coordinate(rect.min()),
+            self.clamp_coordinate(rect.max()),
         );
         if truncated.dimensions() == Dimensions::TwoDimensional {
             Ok(truncated)
         } else {
             Err(Error::LatLonDomain)
         }
-    }
-}
-
-const EARTH_RADIUS_EQUATOR: f64 = 6378137.0;
-const R2D: f64 = 180.0 / PI;
-const CE: f64 = 2.0 * PI * EARTH_RADIUS_EQUATOR;
-const HALF_SIZE: f64 = EARTH_RADIUS_EQUATOR * PI;
-const EPSILON: f64 = 1.0e-14;
-
-/// spherical mercator
-pub const EXTEND_EPSG_3857: Extend = Extend([-HALF_SIZE, -HALF_SIZE, HALF_SIZE, HALF_SIZE]);
-
-/// bounds of spherical mercator in WGS84 coordinates
-pub const EXTEND_EPSG_4326: Extend = Extend([-180.0, -85.0, 180.0, 85.0]);
-
-#[inline(always)]
-fn restrict_between(value_min: f64, value_max: f64, value: f64) -> f64 {
-    if value > value_max {
-        value_max
-    } else if value < value_min {
-        value_min
-    } else {
-        value
-    }
-}
-
-trait CoordTransform {
-    /// Convert longitude and latitude to web mercator
-    fn wgs84_to_webmercator(&self) -> Result<Self, Error>
-    where
-        Self: Sized;
-
-    /// Convert web mercator x, y to longitude and latitude
-    fn webmercator_to_wgs84(&self) -> Result<Self, Error>
-    where
-        Self: Sized;
-}
-
-impl CoordTransform for Coordinate<f64> {
-    fn wgs84_to_webmercator(&self) -> Result<Self, Error> {
-        let c = EXTEND_EPSG_4326.truncate_coordinate(*self);
-        Ok(Coordinate::from((
-            EARTH_RADIUS_EQUATOR * c.x.to_radians(),
-            EARTH_RADIUS_EQUATOR * PI.mul_add(0.25, 0.5 * c.y.to_radians()).tan().ln(),
-        )))
-    }
-
-    fn webmercator_to_wgs84(&self) -> Result<Self, Error> {
-        let ll_c = Coordinate::from((
-            self.x * R2D / EARTH_RADIUS_EQUATOR,
-            ((PI * 0.5) - 2.0 * (-1.0 * self.y / EARTH_RADIUS_EQUATOR).exp().atan()) * R2D,
-        ));
-        Ok(EXTEND_EPSG_4326.truncate_coordinate(ll_c))
-    }
-}
-
-impl CoordTransform for Rect<f64> {
-    fn wgs84_to_webmercator(&self) -> Result<Self, Error> {
-        let rect = Rect::new(
-            self.min().wgs84_to_webmercator()?,
-            self.max().wgs84_to_webmercator()?,
-        );
-        EXTEND_EPSG_3857.truncate_rect(rect)
-    }
-
-    fn webmercator_to_wgs84(&self) -> Result<Self, Error> {
-        let rect = Rect::new(
-            self.min().webmercator_to_wgs84()?,
-            self.max().webmercator_to_wgs84()?,
-        );
-        EXTEND_EPSG_4326.truncate_rect(rect)
     }
 }
 
@@ -408,12 +341,11 @@ impl CellBuilder {
 
 #[cfg(test)]
 mod tests {
+    use crate::webmercator::Wgs84ToWebmercator;
     use approx::assert_ulps_eq;
     use geo::prelude::BoundingRect;
     use geo_types::Coordinate;
     use h3ron::H3Cell;
-
-    use crate::CoordTransform;
 
     use super::{CellBuilder, Tile};
 
@@ -458,8 +390,7 @@ mod tests {
     fn tile_box_coordtransform() {
         let tile = Tile::new(50, 50, 7);
         let rect_sphericalmercator = tile.webmercator_bounding_rect().unwrap();
-        let rect_sphericalmercator_transformed =
-            tile.bounding_rect().wgs84_to_webmercator().unwrap();
+        let rect_sphericalmercator_transformed = tile.bounding_rect().wgs84_to_webmercator();
 
         assert_ulps_eq!(
             rect_sphericalmercator.min().x,
