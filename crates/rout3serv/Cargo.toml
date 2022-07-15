@@ -24,13 +24,13 @@ serde_yaml = "0.8"
 tokio-stream = "0.1"
 
 [dependencies.geo]
-version = "0.21"
+version = "0.22"
 
 [dependencies.s3io]
 path = "../s3io"
 
 [dependencies.uom]
-version = "0.32"
+version = "0.33"
 features = ["use_serde"]
 
 [dependencies.mimalloc]

@@ -10,7 +10,7 @@ axum = "^0.5"
 clap = "^3"
 env_logger = "0.9"
 eyre = "0.6"
-geo = "0.21"
+geo = "0.22"
 geo-types = "^0.7"
 once_cell = "1"
 log = "0.4"
@@ -18,7 +18,7 @@ regex = "1.5"
 serde_yaml = "^0.8"
 
 [dependencies.minijinja]
-version = "^0.16"
+version = "^0.17"
 features = ["builtins", "json"]
 
 [dependencies.tokio]
