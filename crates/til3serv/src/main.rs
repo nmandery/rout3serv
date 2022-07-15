@@ -1,13 +1,3 @@
-#![warn(
-    clippy::all,
-    clippy::correctness,
-    clippy::suspicious,
-    clippy::style,
-    clippy::complexity,
-    clippy::perf,
-    nonstandard_style
-)]
-
 use clap::{Arg, ArgMatches, Command};
 use eyre::Result;
 

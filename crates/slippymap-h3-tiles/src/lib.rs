@@ -1,13 +1,3 @@
-#![warn(
-    clippy::all,
-    clippy::correctness,
-    clippy::suspicious,
-    clippy::style,
-    clippy::complexity,
-    clippy::perf,
-    nonstandard_style
-)]
-
 pub mod webmercator;
 
 use std::borrow::Borrow;

@@ -1,13 +1,3 @@
-#![warn(
-    clippy::all,
-    clippy::correctness,
-    clippy::suspicious,
-    clippy::style,
-    clippy::complexity,
-    clippy::perf,
-    nonstandard_style
-)]
-
 // allow downstream crates to use the same polars version
 pub use polars_core;
 pub use polars_io;

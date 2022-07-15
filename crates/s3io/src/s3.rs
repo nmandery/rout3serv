@@ -179,7 +179,7 @@ impl S3Client {
 
         let data_bytes = Bytes::from(data);
 
-        let ob = backoff::future::retry(
+        Ok(backoff::future::retry(
             backoff::ExponentialBackoff {
                 max_elapsed_time: Some(self.retry_duration),
                 ..Default::default()
@@ -206,8 +206,7 @@ impl S3Client {
                 }
             },
         )
-        .await?;
-        Ok(ob)
+        .await?)
     }
 
     pub async fn list_object_keys(
