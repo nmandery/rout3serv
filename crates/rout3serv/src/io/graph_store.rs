@@ -111,7 +111,7 @@ where
             )
             .await?
             .drain(..)
-            .filter_map(|key| filename_to_gck(&*prefix_re.replace_all(&key, "")))
+            .filter_map(|key| filename_to_gck(prefix_re.replace_all(&key, "").as_ref()))
             .collect();
         Ok(keys)
     }

@@ -737,16 +737,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eyre"
-version = "0.6.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c2b6b5a29c02cdc822728b7d7b8ae1bab3e3b05d44522770ddd49722eeac7eb"
-dependencies = [
- "indenter",
- "once_cell",
-]
-
-[[package]]
 name = "fallible-streaming-iterator"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1326,12 +1316,6 @@ dependencies = [
  "unicode-bidi",
  "unicode-normalization",
 ]
-
-[[package]]
-name = "indenter"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexmap"
@@ -2469,10 +2453,10 @@ checksum = "e5864e7ef1a6b7bcf1d6ca3f655e65e724ed3b52546a0d0a663c991522f552ea"
 name = "rout3serv"
 version = "0.5.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "clap 3.2.12",
  "env_logger",
- "eyre",
  "float-cmp",
  "gdal",
  "geo 0.22.1",
@@ -3018,10 +3002,10 @@ dependencies = [
 name = "til3serv"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "clap 3.2.12",
  "env_logger",
- "eyre",
  "geo 0.22.1",
  "geo-types",
  "h3ron",

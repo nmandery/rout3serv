@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
+use anyhow::Result;
 use axum::extract::{Extension, Path};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
-use eyre::Result;
 use h3ron::{H3Cell, Index};
 use tokio::task::spawn_blocking;
 use tower_http::compression::CompressionLayer;
@@ -115,7 +115,7 @@ async fn build_tile(
 fn condense_response_dataframe(
     loaded_dataframe: H3DataFrame,
     selected_cells: &[H3Cell],
-) -> eyre::Result<DataFrame> {
+) -> Result<DataFrame> {
     if loaded_dataframe.dataframe.is_empty() {
         return Ok(Default::default());
     }

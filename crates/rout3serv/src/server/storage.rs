@@ -42,7 +42,7 @@ impl<W: Send + Sync> S3Storage<W>
 where
     W: Serialize + DeserializeOwned,
 {
-    pub fn from_config(config: Arc<ServerConfig>) -> eyre::Result<Self> {
+    pub fn from_config(config: Arc<ServerConfig>) -> anyhow::Result<Self> {
         let s3_client = Arc::new(S3Client::from_config(&config.s3)?);
         let graph_store = GraphStore::new(s3_client.clone(), config.graph_store.clone());
         let arrow_loader = S3ArrowLoader::new(s3_client.clone(), 10);
@@ -244,7 +244,7 @@ fn filter_cells_by_dataframe_contents(
     df: &DataFrame,
     mut input_cells: Vec<H3Cell>,
     h3index_column_name: &str,
-) -> eyre::Result<Vec<H3Cell>> {
+) -> anyhow::Result<Vec<H3Cell>> {
     if df.is_empty() {
         return Ok(Default::default());
     }

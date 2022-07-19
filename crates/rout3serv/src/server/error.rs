@@ -68,7 +68,7 @@ macro_rules! error_status_code_impl {
 
 error_status_code_impl!(gdal::errors::GdalError);
 error_status_code_impl!(tokio::task::JoinError);
-error_status_code_impl!(eyre::Report);
+error_status_code_impl!(anyhow::Error);
 
 pub trait ToStatusResult<T> {
     fn to_status_result(self) -> Result<T, Status>;

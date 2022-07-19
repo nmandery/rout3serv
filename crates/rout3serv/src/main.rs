@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
+use anyhow::Result;
 use clap::{Arg, ArgMatches, Command};
-use eyre::Result;
 use h3ron::H3DirectedEdge;
 use h3ron_graph::algorithm::covered_area::CoveredArea;
 use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
