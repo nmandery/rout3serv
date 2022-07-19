@@ -135,7 +135,7 @@ where
 
 fn h3_shortest_path_internal<W: Send + Sync>(
     parameters: H3ShortestPathParameters<W>,
-) -> eyre::Result<DataFrame>
+) -> anyhow::Result<DataFrame>
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {

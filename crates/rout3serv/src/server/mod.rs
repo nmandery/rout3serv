@@ -38,7 +38,7 @@ struct ServerImpl {
 }
 
 impl ServerImpl {
-    pub async fn create(config: ServerConfig) -> eyre::Result<Self> {
+    pub async fn create(config: ServerConfig) -> anyhow::Result<Self> {
         let config = Arc::new(config);
         let storage = Arc::new(S3Storage::<RoadWeight>::from_config(config.clone())?);
         Ok(Self { storage, config })
@@ -271,7 +271,7 @@ impl Rout3Serv for ServerImpl {
     }
 }
 
-pub fn launch_server(server_config: ServerConfig) -> eyre::Result<()> {
+pub fn launch_server(server_config: ServerConfig) -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
@@ -279,7 +279,7 @@ pub fn launch_server(server_config: ServerConfig) -> eyre::Result<()> {
     Ok(())
 }
 
-async fn run_server(server_config: ServerConfig) -> eyre::Result<()> {
+async fn run_server(server_config: ServerConfig) -> anyhow::Result<()> {
     let addr = server_config.bind_to.parse()?;
     log::info!("creating server");
     let server_impl = ServerImpl::create(server_config).await?;

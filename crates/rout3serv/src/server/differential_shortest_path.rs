@@ -180,7 +180,7 @@ impl<W: Send + Sync> StrId for DspOutput<W> {
 
 ///
 ///
-pub fn calculate<W>(input: DspInput<W>) -> eyre::Result<DspOutput<W>>
+pub fn calculate<W>(input: DspInput<W>) -> anyhow::Result<DspOutput<W>>
 where
     W: PartialOrd + PartialEq + Add + Copy + Send + Ord + Zero + Sync,
 {
@@ -281,7 +281,9 @@ where
 }
 
 /// build an arrow dataset with some basic stats for each of the origin cells
-fn disturbance_statistics_internal<W: Send + Sync>(output: &DspOutput<W>) -> eyre::Result<DataFrame>
+fn disturbance_statistics_internal<W: Send + Sync>(
+    output: &DspOutput<W>,
+) -> anyhow::Result<DataFrame>
 where
     W: Weight,
 {

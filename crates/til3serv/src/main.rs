@@ -1,5 +1,5 @@
+use anyhow::Result;
 use clap::{Arg, ArgMatches, Command};
-use eyre::Result;
 
 use crate::config::ServerConfig;
 use crate::server::run_server;
@@ -48,7 +48,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn subcommand_server(sc_matches: &ArgMatches) -> eyre::Result<()> {
+fn subcommand_server(sc_matches: &ArgMatches) -> Result<()> {
     let config_contents = std::fs::read_to_string(sc_matches.value_of("CONFIG-FILE").unwrap())?;
     let config: ServerConfig = serde_yaml::from_str(&config_contents)?;
     config.validate()?;

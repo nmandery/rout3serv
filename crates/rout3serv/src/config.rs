@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Deref;
 
-use eyre::{Report, Result};
 use serde::Deserialize;
 use tonic::Status;
 
@@ -57,11 +56,11 @@ impl S3H3Dataset for GenericDataset {
 pub struct NonZeroPositiveFactor(f32);
 
 impl TryFrom<f32> for NonZeroPositiveFactor {
-    type Error = Report;
+    type Error = anyhow::Error;
 
     fn try_from(value: f32) -> std::result::Result<Self, Self::Error> {
         if !value.is_normal() || value <= 0.0 {
-            Err(Report::msg("value must be > 0.0"))
+            Err(Self::Error::msg("value must be > 0.0"))
         } else {
             Ok(Self(value))
         }
@@ -97,7 +96,7 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> anyhow::Result<()> {
         for dataset in self.datasets.values() {
             dataset.validate()?;
         }

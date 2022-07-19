@@ -8,7 +8,7 @@ use s3io::polars_core::prelude::{DataFrame, Utf8Chunked};
 use s3io::polars_io::json::JsonFormat;
 use s3io::polars_io::SerWriter;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum OutputFormat {
     JsonLines,
     Json,
@@ -79,7 +79,7 @@ impl IntoResponse for OutDataFrame {
     }
 }
 
-fn outdf_to_response(mut outdf: OutDataFrame) -> eyre::Result<Response<BoxBody>> {
+fn outdf_to_response(mut outdf: OutDataFrame) -> anyhow::Result<Response<BoxBody>> {
     let mut bytes = vec![];
     let status = if outdf.dataframe.is_empty() {
         StatusCode::NO_CONTENT

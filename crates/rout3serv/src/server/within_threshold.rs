@@ -96,7 +96,7 @@ where
 
 fn within_threshold_internal<W: Send + Sync>(
     parameters: H3WithinThresholdParameters<W>,
-) -> eyre::Result<DataFrame>
+) -> anyhow::Result<DataFrame>
 where
     W: Send + Sync + Ord + Copy + Add + Zero + Weight,
 {

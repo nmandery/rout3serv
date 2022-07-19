@@ -34,7 +34,7 @@ pub struct Registry {
 }
 
 impl TryFrom<ServerConfig> for Registry {
-    type Error = eyre::Error;
+    type Error = anyhow::Error;
 
     fn try_from(mut server_config: ServerConfig) -> Result<Self, Self::Error> {
         let s3_client: Arc<S3Client> = Arc::new(S3Client::from_config(&server_config.s3)?);

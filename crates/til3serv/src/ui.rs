@@ -31,7 +31,7 @@ static MJ_ENV: Lazy<Environment<'static>> = Lazy::new(|| {
     env
 });
 
-fn render_template<S: Serialize>(template_name: &str, context: &S) -> eyre::Result<String> {
+fn render_template<S: Serialize>(template_name: &str, context: &S) -> anyhow::Result<String> {
     let template = MJ_ENV.get_template(template_name)?;
     Ok(template.render(context)?)
 }

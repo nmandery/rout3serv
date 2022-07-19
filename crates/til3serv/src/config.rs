@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::ui::ViewerStyleConfig;
-use eyre::Result;
+use anyhow::Result;
 use s3io::s3::{S3Config, S3H3Dataset};
 use serde::{Deserialize, Serialize};
 

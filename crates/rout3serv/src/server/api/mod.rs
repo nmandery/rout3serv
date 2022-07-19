@@ -1,6 +1,5 @@
 use std::convert::TryFrom;
 
-use eyre::Report;
 use geo::chaikin_smoothing::ChaikinSmoothing;
 use geo::simplify::Simplify;
 use geo_types::Geometry;
@@ -133,16 +132,16 @@ impl From<GraphCacheKey> for GraphInfo {
 }
 
 impl TryFrom<&GraphHandle> for GraphCacheKey {
-    type Error = Report;
+    type Error = anyhow::Error;
 
     fn try_from(gh: &GraphHandle) -> Result<Self, Self::Error> {
         if gh.name.is_empty() {
-            return Err(Report::msg("empty graph name"));
+            return Err(Self::Error::msg("empty graph name"));
         }
         if gh.h3_resolution < h3ron::H3_MIN_RESOLUTION as u32
             || gh.h3_resolution > h3ron::H3_MAX_RESOLUTION as u32
         {
-            return Err(Report::msg("invalid h3 resolution in graph handle"));
+            return Err(Self::Error::msg("invalid h3 resolution in graph handle"));
         }
         Ok(Self {
             name: gh.name.clone(),
