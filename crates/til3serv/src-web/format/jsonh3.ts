@@ -1,10 +1,8 @@
 import {ReadOptions} from "ol/format/Feature";
 import {Feature} from "ol";
 import {Geometry} from "ol/geom";
-import _default from "ol/format/FormatType";
 import {H3Index} from 'h3-js';
 import H3FeatureFormat from "./base";
-import TEXT = _default.TEXT;
 
 export default class JsonH3 extends H3FeatureFormat {
     constructor(h3indexPropertyName: string | undefined) {
@@ -14,7 +12,7 @@ export default class JsonH3 extends H3FeatureFormat {
         ]
     }
     getType(): any {
-        return TEXT;
+        return "text";
     }
 
     readFeatures(source: string, opt_options?: ReadOptions | undefined): Feature<Geometry>[] {

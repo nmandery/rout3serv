@@ -6,9 +6,7 @@ import {ReadOptions} from "ol/format/Feature";
 import {Feature} from "ol";
 import {Geometry} from "ol/geom";
 import {Table, tableFromIPC} from "@apache-arrow/es5-cjs";
-import _default from "ol/format/FormatType";
 import H3FeatureFormat from "./base";
-import ARRAY_BUFFER = _default.ARRAY_BUFFER;
 
 function h3indexToString(h3index: number) : string {
     return h3index.toString(16).padEnd(15, "f");
@@ -28,7 +26,7 @@ export default class ArrowH3 extends H3FeatureFormat {
     }
 
     getType(): any {
-        return ARRAY_BUFFER;
+        return 'arraybuffer';
     }
 
     readFeatures(source: ArrayBuffer, opt_options?: ReadOptions | undefined): Feature<Geometry>[] {
