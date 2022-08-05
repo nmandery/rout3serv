@@ -1,4 +1,4 @@
-#![allow(clippy::derive_partial_eq_without_eq)] // for the generated code. https://github.com/tokio-rs/prost/issues/661
+//#![allow(clippy::derive_partial_eq_without_eq)] // for the generated code. https://github.com/tokio-rs/prost/issues/661
 
 use std::convert::TryFrom;
 

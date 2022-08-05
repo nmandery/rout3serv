@@ -5,6 +5,7 @@ use h3ron::collections::H3CellSet;
 use h3ron::H3Cell;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
+use tonic::codec::CompressionEncoding;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 use tower_http::trace::TraceLayer;
@@ -288,7 +289,11 @@ async fn run_server(server_config: ServerConfig) -> anyhow::Result<()> {
 
     Server::builder()
         .layer(TraceLayer::new_for_grpc())
-        .add_service(Rout3ServServer::new(server_impl).send_gzip().accept_gzip())
+        .add_service(
+            Rout3ServServer::new(server_impl)
+                .send_compressed(CompressionEncoding::Gzip)
+                .accept_compressed(CompressionEncoding::Gzip),
+        )
         .serve(addr)
         .await?;
     Ok(())

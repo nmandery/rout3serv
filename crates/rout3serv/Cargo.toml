@@ -17,10 +17,10 @@ once_cell = "1"
 log = "0.4"
 num-traits = "0.2"
 ordered-float = "3"
-prost = "0.10"
+prost = "0.11"
 rayon = "^1.5"
 regex = "1.5"
-serde_yaml = "0.8"
+serde_yaml = "0.9"
 tokio-stream = "0.1"
 
 [dependencies.geo]
@@ -40,14 +40,14 @@ default_features = false
 [dependencies.h3ron]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "13ea3b5310ae6ed83df437d86e640aa6d73dd181"
+rev = "d86828c3adc6b857437d040e7900277d5f1e7cad"
 #path = "/home/nico/CLionProjects/h3ron/h3ron"
 features = ["use-rayon", "roaring", "use-serde"]
 
 [dependencies.h3ron-graph]
 #version = "0.3"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "13ea3b5310ae6ed83df437d86e640aa6d73dd181"
+rev = "d86828c3adc6b857437d040e7900277d5f1e7cad"
 #path = "/home/nico/CLionProjects/h3ron/h3ron-graph"
 features = ["io_gdal", "io_osm", "io_serde_util"]
 
@@ -64,8 +64,8 @@ features = [
 ]
 
 [dependencies.tonic]
-version = "0.7"
-features = ["compression"]
+version = "0.8"
+features = ["gzip"]
 
 [dependencies.serde]
 version = "1"
@@ -87,5 +87,5 @@ features = ["trace"]
 float-cmp = "0.9"
 
 [build-dependencies]
-tonic-build = { version = "0.7", features = ["compression"] }
+tonic-build = { version = "0.8" }
 vergen = { version = "7", features = ["rustc", "build"] }

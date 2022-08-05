@@ -19,17 +19,18 @@ indexmap = "^1.7"
 async-trait = "0.1"
 
 [dependencies.polars-core]
-version = "0.22"
+version = "0.23"
 #git = "https://github.com/pola-rs/polars.git"
 #rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
 features = [
     "serde",
+    "timezones"
 ]
 
 [dependencies.polars-io]
 #git = "https://github.com/pola-rs/polars.git"
 #rev = "f6b6398a0b7bad77b86e130685d56373ce14caa4"
-version = "0.22"
+version = "0.23"
 features = [
     "ipc",
     "parquet",
@@ -46,14 +47,14 @@ features = ["derive"]
 [dependencies.h3ron]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "13ea3b5310ae6ed83df437d86e640aa6d73dd181"
+rev = "d86828c3adc6b857437d040e7900277d5f1e7cad"
 # path = "/home/nico/CLionProjects/h3ron/h3ron"
 features = ["use-rayon", "roaring", "use-serde"]
 
 [dependencies.h3ron-graph]
 #version = "0.14"
 git = "https://github.com/nmandery/h3ron.git"
-rev = "13ea3b5310ae6ed83df437d86e640aa6d73dd181"
+rev = "d86828c3adc6b857437d040e7900277d5f1e7cad"
 # path = "/home/nico/CLionProjects/h3ron/h3ron"
 features = ["io_serde_util"]
 
