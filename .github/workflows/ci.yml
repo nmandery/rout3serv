@@ -19,10 +19,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
 
-      - name: Install GDAL
+      - name: Install GDAL and protoc
         run: |
           sudo apt-get update
-          sudo apt-get install cmake libgdal-dev
+          sudo apt-get install cmake libgdal-dev protobuf-compiler libprotobuf-dev
 
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
