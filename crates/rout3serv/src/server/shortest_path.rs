@@ -123,7 +123,7 @@ where
     fn try_from(path: Path<W>) -> Result<Self, Self::Error> {
         let mut path_length_m = 0.0;
         for edge in path.directed_edge_path.edges() {
-            path_length_m += edge.exact_length_m()?;
+            path_length_m += edge.length_m()?;
         }
         Ok(Self {
             cost: path.cost,

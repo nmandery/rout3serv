@@ -3,7 +3,7 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use geo_types::Coordinate;
-use h3ron::collections::{H3CellSet, H3Treemap};
+use h3ron::collections::{H3CellSet, H3Treemap, RandomState};
 use h3ron::iter::change_resolution;
 use h3ron::{H3Cell, H3DirectedEdge, HasH3Resolution, Index};
 use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPath, ExclusionDiff};
@@ -226,7 +226,8 @@ where
                 (1500.0 / H3DirectedEdge::edge_length_avg_m(downsampled_graph.h3_resolution())?)
                     .ceil() as u32,
             );
-            let mut affected_downsampled: H3CellSet = H3CellSet::with_capacity(diff_ds.len());
+            let mut affected_downsampled: H3CellSet =
+                H3CellSet::with_capacity_and_hasher(diff_ds.len(), RandomState::default());
             for cell in diff_ds.keys() {
                 // the grid_disk creates essentially a buffer so the skew-effects of the
                 // reduction of the resolution at the borders of the disturbance effect

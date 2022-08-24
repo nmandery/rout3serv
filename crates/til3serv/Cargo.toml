@@ -18,7 +18,7 @@ regex = "1.5"
 serde_yaml = "^0.9"
 
 [dependencies.minijinja]
-version = "^0.17"
+version = "^0.18"
 features = ["builtins", "json"]
 
 [dependencies.tokio]
@@ -33,10 +33,7 @@ features = [
 path = "../slippymap-h3-tiles"
 
 [dependencies.h3ron]
-#version = "0.14"
-git = "https://github.com/nmandery/h3ron.git"
-rev = "d86828c3adc6b857437d040e7900277d5f1e7cad"
-#path = "/home/nico/CLionProjects/h3ron/h3ron"
+version = "0.15"
 
 [dependencies.serde]
 version = "1"

@@ -38,17 +38,11 @@ version = "0.1"
 default_features = false
 
 [dependencies.h3ron]
-#version = "0.14"
-git = "https://github.com/nmandery/h3ron.git"
-rev = "d86828c3adc6b857437d040e7900277d5f1e7cad"
-#path = "/home/nico/CLionProjects/h3ron/h3ron"
+version = "0.15"
 features = ["use-rayon", "roaring", "use-serde"]
 
 [dependencies.h3ron-graph]
-#version = "0.3"
-git = "https://github.com/nmandery/h3ron.git"
-rev = "d86828c3adc6b857437d040e7900277d5f1e7cad"
-#path = "/home/nico/CLionProjects/h3ron/h3ron-graph"
+version = "0.4"
 features = ["io_gdal", "io_osm", "io_serde_util"]
 
 [dependencies.uuid]
