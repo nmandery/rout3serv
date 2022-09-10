@@ -7,7 +7,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-geo = "0.22"
+geo = "0.23"
 geo-types = "^0.7"
 
 [dependencies.h3ron]
