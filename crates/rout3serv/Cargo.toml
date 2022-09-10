@@ -24,7 +24,7 @@ serde_yaml = "0.9"
 tokio-stream = "0.1"
 
 [dependencies.geo]
-version = "0.22"
+version = "0.23"
 
 [dependencies.s3io]
 path = "../s3io"
@@ -66,11 +66,11 @@ version = "1"
 features = ["derive"]
 
 [dependencies.geojson]
-version = "0.23"
+version = "0.24"
 features = ["geo-types"]
 
 [dependencies.gdal]
-version = "0.12"
+version = "0.13"
 features = ["bindgen"]
 
 [dependencies.tower-http]
