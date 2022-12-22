@@ -269,6 +269,6 @@ def _get_differential_shortest_path_routes_gdf(
         "h3index_destination": np.asarray(h3index_destination, dtype=np.uint64),
         "travel_duration_secs": np.asarray(travel_duration_secs, dtype=np.float64),
         "edge_preference": np.asarray(edge_preference, dtype=np.float64),
-        "with_disturbance": np.asarray(with_disturbance_list, dtype=np.int),
+        "with_disturbance": np.asarray(with_disturbance_list, dtype=np.uint),
     }, crs=4326)
     return gdf

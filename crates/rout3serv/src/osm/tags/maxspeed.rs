@@ -1,12 +1,13 @@
-use once_cell::sync::Lazy;
 use std::convert::Infallible;
 use std::str::FromStr;
 
-use crate::osm::WALKING_SPEED;
 use h3ron_graph::io::osm::osmpbfreader::Tags;
+use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 use uom::si::f32::Velocity;
 use uom::si::velocity::{kilometer_per_hour, knot, meter_per_second, mile_per_hour};
+
+use crate::osm::WALKING_SPEED;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum MaxSpeed {

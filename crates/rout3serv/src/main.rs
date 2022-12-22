@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use anyhow::Result;
@@ -11,11 +11,12 @@ use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3Ed
 use h3ron_graph::io::gdal::OgrWrite;
 use h3ron_graph::io::osm::OsmPbfH3EdgeGraphBuilder;
 use mimalloc::MiMalloc;
-use s3io::ser_and_de::{deserialize_from, serialize_into};
+use tracing::info;
 use uom::si::f32::Length;
 use uom::si::length::meter;
 
 use crate::config::ServerConfig;
+use crate::io::serde_util::{deserialize_from_byte_slice, serialize_into};
 use crate::osm::car::CarAnalyzer;
 use crate::weight::RoadWeight;
 
@@ -25,25 +26,18 @@ static GLOBAL: MiMalloc = MiMalloc;
 mod build_info;
 mod config;
 mod customization;
+mod grpc;
 mod io;
 mod osm;
-mod server;
 mod weight;
 
 fn main() -> Result<()> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
     );
-    let long_version = format!(
-        "{} (git: {}, build on {})",
-        crate::build_info::version(),
-        crate::build_info::git_comit_sha(),
-        crate::build_info::build_timestamp()
-    );
-
     let app = Command::new(env!("CARGO_PKG_NAME"))
-        .version(crate::build_info::version())
-        .long_version(long_version.as_str())
+        .version(build_info::version())
+        .long_version(build_info::long_version())
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
             Command::new("graph")
@@ -91,7 +85,7 @@ fn main() -> Result<()> {
                         .arg(
                             Arg::new("h3_resolution")
                                 .short('r')
-                                .takes_value(true)
+                                .num_args(1)
                                 .default_value("10"),
                         )
                         .arg(
@@ -103,7 +97,7 @@ fn main() -> Result<()> {
                             Arg::new("OSM-PBF")
                                 .help("input OSM .pbf file")
                                 .required(true)
-                                .min_values(1),
+                                .num_args(1..),
                         ),
                 ),
         )
@@ -119,15 +113,17 @@ fn main() -> Result<()> {
 }
 
 fn read_graph_from_filename(filename: &str) -> Result<PreparedH3EdgeGraph<RoadWeight>> {
-    Ok(deserialize_from(BufReader::new(File::open(filename)?))?)
+    let f = File::open(filename)?;
+    let mapped = unsafe { memmap2::Mmap::map(&f)? };
+    Ok(deserialize_from_byte_slice(&mapped)?)
 }
 
 fn dispatch_command(matches: ArgMatches) -> Result<()> {
     match matches.subcommand() {
         Some(("graph", graph_sc_matches)) => match graph_sc_matches.subcommand() {
             Some(("stats", sc_matches)) => {
-                let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-                let prepared_graph = read_graph_from_filename(&graph_filename)?;
+                let graph_filename: &String = sc_matches.get_one("GRAPH").unwrap();
+                let prepared_graph = read_graph_from_filename(graph_filename)?;
                 println!("{}", serde_yaml::to_string(&prepared_graph.get_stats()?)?);
             }
             Some(("to-ogr", sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
@@ -146,21 +142,23 @@ fn dispatch_command(matches: ArgMatches) -> Result<()> {
 }
 
 fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
-    let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let graph: H3EdgeGraph<RoadWeight> = read_graph_from_filename(&graph_filename)?.into();
+    let graph_filename: &String = sc_matches.get_one("GRAPH").unwrap();
+    let graph: H3EdgeGraph<RoadWeight> = read_graph_from_filename(graph_filename)?.into();
     graph.ogr_write(
-        sc_matches.value_of("driver").unwrap(),
-        sc_matches.value_of("OUTPUT").unwrap(),
-        sc_matches.value_of("layer_name").unwrap(),
+        sc_matches.get_one::<String>("driver").unwrap(),
+        sc_matches.get_one("OUTPUT").unwrap(),
+        sc_matches.get_one("layer_name").unwrap(),
     )?;
     Ok(())
 }
 
 fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
-    let graph_filename = sc_matches.value_of("GRAPH").unwrap().to_string();
-    let prepared_graph = read_graph_from_filename(&graph_filename)?;
+    let graph_filename: &String = sc_matches.get_one("GRAPH").unwrap();
+    let prepared_graph = read_graph_from_filename(graph_filename)?;
 
-    let mut writer = BufWriter::new(File::create(sc_matches.value_of("OUT-GEOJSON").unwrap())?);
+    let mut writer = BufWriter::new(File::create(
+        sc_matches.get_one::<String>("OUT-GEOJSON").unwrap(),
+    )?);
     let multi_poly = prepared_graph.covered_area(2)?;
     let gj_geom = geojson::Geometry::try_from(&multi_poly)?;
     writer.write_all(gj_geom.to_string().as_ref())?;
@@ -170,39 +168,41 @@ fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
 }
 
 fn subcommand_server(sc_matches: &ArgMatches) -> Result<()> {
-    let config_contents = std::fs::read_to_string(sc_matches.value_of("CONFIG-FILE").unwrap())?;
+    let config_contents =
+        std::fs::read_to_string(sc_matches.get_one::<String>("CONFIG-FILE").unwrap())?;
     let config: ServerConfig = serde_yaml::from_str(&config_contents)?;
     config.validate()?;
-    crate::server::launch_server(config)?;
+    grpc::launch_server::<RoadWeight>(config)?;
     Ok(())
 }
 
 fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
-    let h3_resolution: u8 = sc_matches.value_of("h3_resolution").unwrap().parse()?;
-    let graph_output = sc_matches.value_of("OUTPUT-GRAPH").unwrap().to_string();
+    let h3_resolution: u8 = sc_matches
+        .get_one::<String>("h3_resolution")
+        .unwrap()
+        .parse()?;
+    let graph_output: &String = sc_matches.get_one("OUTPUT-GRAPH").unwrap();
 
     let edge_length = Length::new::<meter>(
         H3DirectedEdge::cell_centroid_distance_avg_m_at_resolution(h3_resolution)? as f32,
     );
-    log::info!(
+    info!(
         "Building graph using resolution {} with edge length ~= {:?}",
-        h3_resolution,
-        edge_length
+        h3_resolution, edge_length
     );
     let mut builder = OsmPbfH3EdgeGraphBuilder::new(h3_resolution, CarAnalyzer {});
-    for pbf_input in sc_matches.values_of("OSM-PBF").unwrap() {
+    for pbf_input in sc_matches.get_many::<String>("OSM-PBF").unwrap() {
         builder.read_pbf(Path::new(&pbf_input))?;
     }
     let graph = builder.build_graph()?;
 
-    log::info!("Preparing graph");
+    info!("Preparing graph");
     let prepared_graph = PreparedH3EdgeGraph::from_h3edge_graph(graph, 5)?;
 
     let stats = prepared_graph.get_stats()?;
-    log::info!(
+    info!(
         "Created graph ({} nodes, {} edges)",
-        stats.num_nodes,
-        stats.num_edges
+        stats.num_nodes, stats.num_edges
     );
     let mut writer = BufWriter::new(File::create(graph_output)?);
     serialize_into(&mut writer, &prepared_graph, true)?;

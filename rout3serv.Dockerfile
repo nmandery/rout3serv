@@ -1,31 +1,23 @@
 # dockerfile for the route3 server application
-FROM nmandery/gdal-minimal:3-bullseye as basesystem
+FROM docker.io/rust:1-slim-bullseye as builder
 
-FROM basesystem as builder
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y curl make clang git python3-toml pkg-config libssl-dev
+    apt-get install --no-install-recommends -y make clang git python3-toml pkg-config libgdal-dev protobuf-compiler
 
-# cmake >3.20 is required, so we install from source
-RUN cd /tmp && \
-    curl -L -o cmake.tgz https://github.com/Kitware/CMake/releases/download/v3.22.2/cmake-3.22.2.tar.gz && \
-    tar xf cmake.tgz && \
-    cd cmake-3.22.2 && \
-    ./bootstrap && \
-    make -j3 && \
-    make install
-
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y \
-        --profile minimal \
-        --default-toolchain stable
 COPY . /build
 RUN cd /build && \
     python3 docker-cargo-profile.py && \
     cd /build/crates/rout3serv && \
     export RUSTFLAGS='-C target-feature=+fxsr,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt,+avx,+fma' && \
     PATH=$PATH:$HOME/.cargo/bin cargo install --path . --root /usr/local && \
+    PATH=$PATH:$HOME/.cargo/bin cargo clean && \
     strip /usr/local/bin/rout3serv
 
-FROM basesystem
+FROM docker.io/debian:bullseye-slim
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y libgdal28 && \
+    apt-get clean
+
 # "0" -> let rayon determinate how many threads to use. Defaults to one per CPU core
 ENV RAYON_NUM_THREADS="0"
 ENV RUST_BACKTRACE=1

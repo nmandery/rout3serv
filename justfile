@@ -17,4 +17,3 @@ extract-sample-data:
 
 build-docker:
     sudo docker build -f rout3serv.Dockerfile -t nmandery/rout3serv:latest --pull .
-    sudo docker build -f til3serv.Dockerfile -t nmandery/til3serv:latest --pull .

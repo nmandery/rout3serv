@@ -1,15 +1,21 @@
 ---
 bind_to: "127.0.0.1:7088"
-s3:
-  endpoint: "http://127.0.0.1:9000"
-  region: "us-east-1"
-  access_key: "admin"
-  secret_key: "password"
+
+objectstore:
+  type: filesystem
+  root: ../../data
+
+graphs:
+  prefix: graph/
+  cache_size: 10
+
+outputs:
+  key_prefix: "outputs/out-"
 
 datasets:
   "population":
     bucket: "population"
-    key_pattern: "{ file_h3_resolution }/{ data_h3_resolution }/{ h3cell }.arrow"
+    key_pattern: "population/{ file_h3_resolution }/{ data_h3_resolution }/{ h3cell }.arrow"
     resolutions:
       # maps "data_h3_resolution" to "file_h3_resolution"
       10: 5
@@ -18,15 +24,6 @@ datasets:
     ## must be type UInt64
     ## default: "h3index"
     h3index_column_name: "h3index"
-
-graph_store:
-  bucket: "graph"
-  prefix: ""
-  cache_size: 4
-
-output:
-  bucket: "outputs"
-  key_prefix: "out-"
 
 routing_modes:
   exact:

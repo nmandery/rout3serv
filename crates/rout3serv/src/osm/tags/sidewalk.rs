@@ -1,8 +1,9 @@
 //!
 //! Reference at https://wiki.openstreetmap.org/wiki/Key:sidewalk
 
-use crate::osm::tags::str_to_bool;
 use h3ron_graph::io::osm::osmpbfreader::Tags;
+
+use crate::osm::tags::str_to_bool;
 
 pub struct SideWalk {
     pub on_left_side: bool,

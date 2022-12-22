@@ -7,7 +7,4 @@
 # /.git needs to be COPYied to obtain the commit-sha from
 /*.Dockerfile
 /justfile
-**/node_modules
-**/package-lock.json
-/crates/til3serv/dist/*
 *.tgz

@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
+use crate::grpc::ServerWeight;
+
 pub trait Weight {
     fn travel_duration(&self) -> Time {
         Time::new::<second>(0.0)
@@ -59,6 +61,8 @@ impl Weight for RoadWeight {
         }
     }
 }
+
+impl ServerWeight for RoadWeight {}
 
 impl WeightFeatureField for RoadWeight {
     fn register_weight_fields(layer: &Layer) -> Result<(), Error> {

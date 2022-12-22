@@ -22,7 +22,7 @@ jobs:
       - name: Install GDAL and protoc
         run: |
           sudo apt-get update
-          sudo apt-get install cmake libgdal-dev protobuf-compiler libprotobuf-dev
+          sudo apt-get install libgdal-dev protobuf-compiler libprotobuf-dev
 
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
@@ -61,10 +61,3 @@ jobs:
         with:
           command: clippy
           args: --all-targets --all-features
-
-      - name: Build the typescript til3serv ui
-        working-directory: crates/til3serv
-        run: |
-          npm install
-          npm run build
-

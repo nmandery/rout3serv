@@ -3,7 +3,6 @@
 # Contents
 
 * H3-grid based [Routing server](crates/rout3serv/README.md) with GRPC-API and dataframe integration.
-* [Tileserver](crates/til3serv/README.md) to be used with Web maps in Web-Mercator projection.
 * For all libraries see crates directory 
 
 # License

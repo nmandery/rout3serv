@@ -4,51 +4,30 @@ use std::ops::Deref;
 use serde::Deserialize;
 use tonic::Status;
 
-use s3io::s3::{S3Config, S3H3Dataset};
+use crate::io::dataframe::DataframeDataset;
+use crate::io::objectstore::ObjectStoreConfig;
+
+fn default_graphs_prefix() -> String {
+    "graphs/".to_string()
+}
 
 #[derive(Deserialize, Clone)]
-pub struct GraphStoreConfig {
+pub struct GraphsConfig {
+    #[serde(default = "default_graphs_prefix")]
     pub prefix: String,
-    pub bucket: String,
 
     /// capacity for the internal LRU cache
     pub cache_size: Option<usize>,
 }
 
+fn default_outputs_prefix() -> String {
+    "outputs/".to_string()
+}
+
 #[derive(Deserialize, Clone)]
-pub struct OutputConfig {
-    pub key_prefix: Option<String>,
-    pub bucket: String,
-}
-
-#[derive(Deserialize)]
-pub struct GenericDataset {
-    pub key_pattern: String,
-    pub bucket: String,
-    /// maps data resolutions to the file h3 resolutions
-    pub resolutions: HashMap<u8, u8>,
-
-    pub h3index_column_name: Option<String>,
-}
-
-impl S3H3Dataset for GenericDataset {
-    fn bucket_name(&self) -> String {
-        self.bucket.clone()
-    }
-
-    fn key_pattern(&self) -> String {
-        self.key_pattern.clone()
-    }
-
-    fn h3index_column(&self) -> String {
-        self.h3index_column_name
-            .clone()
-            .unwrap_or_else(|| "h3index".to_string())
-    }
-
-    fn file_h3_resolution(&self, data_h3_resolution: u8) -> Option<u8> {
-        self.resolutions.get(&data_h3_resolution).copied()
-    }
+pub struct OutputsConfig {
+    #[serde(default = "default_outputs_prefix")]
+    pub prefix: String,
 }
 
 #[derive(Deserialize, Clone, Default, Copy)]
@@ -86,10 +65,10 @@ pub struct RoutingMode {
 #[derive(Deserialize)]
 pub struct ServerConfig {
     pub bind_to: String,
-    pub s3: S3Config,
-    pub graph_store: GraphStoreConfig,
-    pub output: OutputConfig,
-    pub datasets: HashMap<String, GenericDataset>,
+    pub objectstore: ObjectStoreConfig,
+    pub graphs: GraphsConfig,
+    pub outputs: OutputsConfig,
+    pub datasets: HashMap<String, DataframeDataset>,
 
     #[serde(default)]
     pub routing_modes: HashMap<String, RoutingMode>,

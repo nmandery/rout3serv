@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 use std::ops::{Add, Deref};
 use std::sync::Arc;
 
-use crate::config::{NonZeroPositiveFactor, RoutingMode};
 use h3ron::{H3Cell, H3DirectedEdge, HasH3Resolution};
 use h3ron_graph::graph::node::NodeType;
 use h3ron_graph::graph::{EdgeWeight, GetCellEdges, GetCellNode, PreparedH3EdgeGraph};
@@ -10,6 +9,7 @@ use h3ron_graph::Error;
 use num_traits::Zero;
 use uom::si::f32::Time;
 
+use crate::config::{NonZeroPositiveFactor, RoutingMode};
 use crate::weight::Weight;
 
 // TODO: mid term: configurable road_preferences for road_types
