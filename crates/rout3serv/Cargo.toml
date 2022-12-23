@@ -14,13 +14,15 @@ bytes = "1"
 bytesize = "1"
 clap = "^4"
 env_logger = "0.10"
+flatgeobuf = { version = "^3", default_features = false }
+futures = "0.3"
 gdal = { version = "0.13", features = ["bindgen"] }
-geo ="0.23"
+geo = "0.23"
 geojson = { version = "0.24", features = ["geo-types"] }
 geo-types = "0.7"
-futures = "0.3"
-h3ron-graph = { version = "0.5.0", features = ["io_gdal", "io_osm"] }
-h3ron-polars = { version = "0.2", features = ["serde"]}
+geozero = { version = "0.9", features=["with-geo"], default_features=false}
+h3ron-graph = { version = "0.5.0", features = ["io_osm"] }
+h3ron-polars = { version = "0.2", features = ["serde"] }
 h3ron = { version = "0.16", features = ["use-rayon", "roaring", "use-serde"] }
 indexmap = "^1.7"
 itertools = "0.10"
@@ -30,8 +32,8 @@ num-traits = "0.2"
 object_store = { version = "0.5", features = ["aws"] }
 once_cell = "1"
 ordered-float = "3"
-polars = { version = "0.25", features = ["ipc", "parquet"]}
 polars-core = "0.25"
+polars = { version = "0.25", features = ["ipc", "parquet"] }
 prost = "0.11"
 rayon = "^1.5"
 regex = "1.5"
@@ -39,11 +41,11 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 thiserror = "1"
 tokio-stream = "0.1"
-tokio = { version = "1", features = [ "rt-multi-thread", "macros", "sync" ] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 tonic = { version = "0.8", features = ["gzip"] }
 tower-http = { version = "^0.3", features = ["trace"] }
 tracing = "0.1"
-uom = {version = "0.33", features = ["use_serde"] }
+uom = { version = "0.33", features = ["use_serde"] }
 uuid = { version = "1", features = ["v4"] }
 zstd = "^0.12"
 

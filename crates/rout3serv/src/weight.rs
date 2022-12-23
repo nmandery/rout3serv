@@ -1,9 +1,6 @@
 use std::cmp::Ordering;
 use std::ops::Add;
 
-use gdal::vector::{Feature, FieldDefn, Layer, OGRFieldType};
-use h3ron_graph::error::Error;
-use h3ron_graph::io::gdal::WeightFeatureField;
 use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 use uom::si::f32::Time;
@@ -63,25 +60,6 @@ impl Weight for RoadWeight {
 }
 
 impl ServerWeight for RoadWeight {}
-
-impl WeightFeatureField for RoadWeight {
-    fn register_weight_fields(layer: &Layer) -> Result<(), Error> {
-        let td_field_defn = FieldDefn::new("travel_duration", OGRFieldType::OFTReal)?;
-        td_field_defn.add_to_layer(layer)?;
-        let cw_field_defn = FieldDefn::new("edge_preference", OGRFieldType::OFTReal)?;
-        cw_field_defn.add_to_layer(layer)?;
-        Ok(())
-    }
-
-    fn fill_weight_feature_fields<'a>(&self, feature: &mut Feature<'a>) -> Result<(), Error> {
-        feature.set_field_double(
-            "travel_duration",
-            self.travel_duration().get::<second>() as f64,
-        )?;
-        feature.set_field_double("edge_preference", self.edge_preference as f64)?;
-        Ok(())
-    }
-}
 
 impl Add for RoadWeight {
     type Output = Self;

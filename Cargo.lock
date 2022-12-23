@@ -435,6 +435,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmake"
+version = "0.1.49"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db34956e100b30725f2eb215f90d4871051239535632f84fea3bc92722c66b7c"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -762,6 +771,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "flatbuffers"
+version = "22.10.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2ba319fc85cd1d8994d42c95b13cdf051786b35f9e401b1c03bff1c67efd899"
+dependencies = [
+ "bitflags",
+ "rustc_version",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -769,6 +788,20 @@ checksum = "a8a2db397cb1c8772f31494cb8917e48cd1e64f0fa7efac59fbd741a0a8ce841"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
+]
+
+[[package]]
+name = "flatgeobuf"
+version = "3.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c770d37d303e9dbca45d260f0d7d6d3ee289a00afed1200736d1a2c4d96d9e21"
+dependencies = [
+ "byteorder",
+ "fallible-streaming-iterator",
+ "flatbuffers",
+ "geozero",
+ "log",
+ "tempfile",
 ]
 
 [[package]]
@@ -993,6 +1026,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "geozero"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8850d78e5f2f803e3b201805bf41aea28eeff71bd0b56c3ff067e805d208b58"
+dependencies = [
+ "geo-types",
+ "log",
+ "prost-build 0.10.4",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1078,14 +1124,12 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "249208cd22ea401692c9b9f06a2f9471fb0fbd09e94efdc0a749f57790e42844"
 dependencies = [
- "gdal",
  "geo",
  "geo-types",
  "h3ron",
  "indexmap",
  "log",
  "num-traits",
- "ordered-float",
  "osmpbfreader",
  "rayon",
  "serde",
@@ -1832,7 +1876,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d84eb1409416d254e4a9c8fa56cc24701755025b458f0fcd8e59e1f5f40c23bf"
 dependencies = [
  "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -2206,12 +2249,44 @@ dependencies = [
 
 [[package]]
 name = "prost"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71adf41db68aa0daaefc69bb30bcd68ded9b9abaad5d1fbb6304c4fb390e083e"
+dependencies = [
+ "bytes",
+ "prost-derive 0.10.1",
+]
+
+[[package]]
+name = "prost"
 version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c01db6702aa05baa3f57dec92b8eeeeb4cb19e894e73996b32a4093289e54592"
 dependencies = [
  "bytes",
- "prost-derive",
+ "prost-derive 0.11.5",
+]
+
+[[package]]
+name = "prost-build"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ae5a4388762d5815a9fc0dea33c56b021cdc8dde0c55e0c9ca57197254b0cab"
+dependencies = [
+ "bytes",
+ "cfg-if",
+ "cmake",
+ "heck",
+ "itertools",
+ "lazy_static",
+ "log",
+ "multimap",
+ "petgraph",
+ "prost 0.10.4",
+ "prost-types 0.10.1",
+ "regex",
+ "tempfile",
+ "which",
 ]
 
 [[package]]
@@ -2228,12 +2303,25 @@ dependencies = [
  "multimap",
  "petgraph",
  "prettyplease",
- "prost",
- "prost-types",
+ "prost 0.11.5",
+ "prost-types 0.11.5",
  "regex",
  "syn",
  "tempfile",
  "which",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b670f45da57fb8542ebdbb6105a925fe571b67f9e7ed9f47a06a84e72b4e7cc"
+dependencies = [
+ "anyhow",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -2251,12 +2339,22 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d0a014229361011dc8e69c8a1ec6c2e8d0f2af7c91e3ea3f5b2170298461e68"
+dependencies = [
+ "bytes",
+ "prost 0.10.4",
+]
+
+[[package]]
+name = "prost-types"
 version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "017f79637768cde62820bc2d4fe0e45daaa027755c323ad077767c6c5f173091"
 dependencies = [
  "bytes",
- "prost",
+ "prost 0.11.5",
 ]
 
 [[package]]
@@ -2506,12 +2604,14 @@ dependencies = [
  "bytesize",
  "clap 4.0.30",
  "env_logger 0.10.0",
+ "flatgeobuf",
  "float-cmp",
  "futures 0.3.25",
  "gdal",
  "geo",
  "geo-types",
  "geojson",
+ "geozero",
  "h3ron",
  "h3ron-graph",
  "h3ron-polars",
@@ -2525,7 +2625,7 @@ dependencies = [
  "ordered-float",
  "polars",
  "polars-core",
- "prost",
+ "prost 0.11.5",
  "rayon",
  "regex",
  "serde",
@@ -3142,8 +3242,8 @@ dependencies = [
  "hyper-timeout",
  "percent-encoding",
  "pin-project",
- "prost",
- "prost-derive",
+ "prost 0.11.5",
+ "prost-derive 0.11.5",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -3162,7 +3262,7 @@ checksum = "5bf5e9b9c0f7e0a7c027dcfaba7b2c60816c7049171f679d99ee2ff65d0de8c4"
 dependencies = [
  "prettyplease",
  "proc-macro2",
- "prost-build",
+ "prost-build 0.11.5",
  "quote",
  "syn",
 ]

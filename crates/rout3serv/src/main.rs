@@ -5,20 +5,24 @@ use std::path::Path;
 
 use anyhow::Result;
 use clap::{Arg, ArgMatches, Command};
-use h3ron::H3DirectedEdge;
+use flatgeobuf::{ColumnType, FgbCrs, FgbWriter, FgbWriterOptions, GeometryType};
+use geo_types::Geometry;
+use geozero::{ColumnValue, PropertyProcessor};
+use h3ron::to_geo::ToLineString;
+use h3ron::{H3DirectedEdge, Index};
 use h3ron_graph::algorithm::covered_area::CoveredArea;
 use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
-use h3ron_graph::io::gdal::OgrWrite;
 use h3ron_graph::io::osm::OsmPbfH3EdgeGraphBuilder;
 use mimalloc::MiMalloc;
 use tracing::info;
 use uom::si::f32::Length;
 use uom::si::length::meter;
+use uom::si::time::second;
 
 use crate::config::ServerConfig;
 use crate::io::serde_util::{deserialize_from_byte_slice, serialize_into};
 use crate::osm::car::CarAnalyzer;
-use crate::weight::RoadWeight;
+use crate::weight::{RoadWeight, Weight};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -58,25 +62,13 @@ fn main() -> Result<()> {
                         ),
                 )
                 .subcommand(
-                    Command::new("to-ogr")
-                        .about("Export the input graph to an OGR vector dataset")
+                    Command::new("to-fgb")
+                        .about("Export the input graph to a flatgeobuf dataset")
                         .arg(Arg::new("GRAPH").help("graph").required(true))
                         .arg(
                             Arg::new("OUTPUT")
                                 .help("output file to write the vector data to")
                                 .required(true),
-                        )
-                        .arg(
-                            Arg::new("driver")
-                                .help("OGR driver to use")
-                                .short('d')
-                                .default_value("FlatGeobuf"),
-                        )
-                        .arg(
-                            Arg::new("layer_name")
-                                .help("layer name")
-                                .short('l')
-                                .default_value("graph"),
                         ),
                 )
                 .subcommand(
@@ -126,7 +118,7 @@ fn dispatch_command(matches: ArgMatches) -> Result<()> {
                 let prepared_graph = read_graph_from_filename(graph_filename)?;
                 println!("{}", serde_yaml::to_string(&prepared_graph.get_stats()?)?);
             }
-            Some(("to-ogr", sc_matches)) => subcommand_graph_to_ogr(sc_matches)?,
+            Some(("to-fgb", sc_matches)) => subcommand_graph_to_fgb(sc_matches)?,
             Some(("covered-area", sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
             Some(("from-osm-pbf", sc_matches)) => subcommand_from_osm_pbf(sc_matches)?,
             _ => {
@@ -141,14 +133,50 @@ fn dispatch_command(matches: ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn subcommand_graph_to_ogr(sc_matches: &ArgMatches) -> Result<()> {
+fn subcommand_graph_to_fgb(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename: &String = sc_matches.get_one("GRAPH").unwrap();
     let graph: H3EdgeGraph<RoadWeight> = read_graph_from_filename(graph_filename)?.into();
-    graph.ogr_write(
-        sc_matches.get_one::<String>("driver").unwrap(),
-        sc_matches.get_one("OUTPUT").unwrap(),
-        sc_matches.get_one("layer_name").unwrap(),
+    let mut writer = BufWriter::new(File::create(
+        sc_matches.get_one::<String>("OUTPUT").unwrap(),
+    )?);
+
+    let mut fgb = FgbWriter::create_with_options(
+        "edges",
+        GeometryType::LineString,
+        FgbWriterOptions {
+            description: Some("graph edges"),
+            crs: FgbCrs {
+                code: 4326,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
     )?;
+
+    fgb.add_column("travel_duration_secs", ColumnType::Float, |_fbb, col| {
+        col.nullable = false;
+    });
+    fgb.add_column("edge_preference", ColumnType::Float, |_fbb, col| {
+        col.nullable = false;
+    });
+
+    for (edge, weight) in graph.iter_edges() {
+        fgb.add_feature_geom(Geometry::LineString(edge.to_linestring()?), |feat| {
+            feat.property(
+                0,
+                "travel_duration_secs",
+                &ColumnValue::Float(weight.travel_duration().get::<second>()),
+            )
+            .unwrap();
+            feat.property(
+                1,
+                "edge_preference",
+                &ColumnValue::Float(weight.edge_preference()),
+            )
+            .unwrap();
+        })?;
+    }
+    fgb.write(&mut writer)?;
     Ok(())
 }
 
