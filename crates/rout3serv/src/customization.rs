@@ -176,7 +176,7 @@ where
         let customized = self
             .inner_graph
             .get_edges_originating_from(cell)?
-            .drain(..)
+            .into_iter()
             .map(|(edge, edge_weight)| {
                 (
                     edge,

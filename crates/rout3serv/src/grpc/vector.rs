@@ -3,7 +3,7 @@
 use std::convert::TryInto;
 
 use gdal::spatial_ref::SpatialRef;
-use gdal::vector::{Geometry, ToGdal};
+use gdal::vector::Geometry;
 use geo::algorithm::centroid::Centroid;
 use geo_types::Geometry as GTGeometry;
 use geozero::wkb::{WkbDialect, WkbWriter};

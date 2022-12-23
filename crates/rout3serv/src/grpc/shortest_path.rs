@@ -203,9 +203,9 @@ where
                 &parameters.destinations.cells,
                 &parameters.options,
             )
-            .map(|mut pathmap| {
+            .map(|pathmap| {
                 pathmap
-                    .drain()
+                    .into_iter()
                     .flat_map(|(_k, v)| v)
                     .map(transformer)
                     .collect::<Result<Vec<_>, _>>()

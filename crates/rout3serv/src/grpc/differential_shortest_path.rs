@@ -159,7 +159,7 @@ fn disturbance_and_buffered_cells(
 ) -> Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
     let disturbance_geom = read_wkb_to_gdal(disturbance_wkb_geometry)?;
     let disturbed_cells: H3Treemap<H3Cell> = H3Treemap::from_iter_with_sort(
-        gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?.drain(..),
+        gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?.into_iter(),
     );
 
     let buffered_cells = gdal_geom_to_h3(
@@ -293,7 +293,7 @@ where
         .to_status_result_with_message(Code::Internal, || {
             "calculating differential_shortest_path failed".to_string()
         })?
-        .drain()
+        .into_iter()
         .collect();
 
     Ok(DspOutput {

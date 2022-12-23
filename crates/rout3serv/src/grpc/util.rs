@@ -35,14 +35,14 @@ pub type ArrowIpcChunkStream = ReceiverStream<Result<ArrowIpcChunk, Status>>;
 
 /// stream `RouteWKB` instances
 pub async fn stream_routes<R>(
-    mut routewkbs: Vec<R>,
+    routewkbs: Vec<R>,
 ) -> Result<Response<ReceiverStream<Result<R, Status>>>, Status>
 where
     R: Route + Send + 'static,
 {
     let (tx, rx) = mpsc::channel(5);
     tokio::spawn(async move {
-        for routewkb in routewkbs.drain(..) {
+        for routewkb in routewkbs {
             if let Err(e) = tx.send(Ok(routewkb)).await {
                 warn!("Streaming routes aborted. reason: {}", e);
                 break;
