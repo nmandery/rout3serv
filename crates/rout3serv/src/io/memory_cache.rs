@@ -81,12 +81,14 @@ where
     }
 
     /// clear all cache contents
+    #[allow(dead_code)]
     pub async fn cache_clear(&self) {
         let mut guard = self.cache_map.lock().await;
         guard.clear();
     }
 
     /// number of items in the cache
+    #[allow(dead_code)]
     pub async fn cache_len(&self) -> usize {
         let guard = self.cache_map.lock().await;
         guard.len()

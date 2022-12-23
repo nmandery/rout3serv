@@ -20,7 +20,7 @@ gdal = { version = "0.13", features = ["bindgen"] }
 geo = "0.23"
 geojson = { version = "0.24", features = ["geo-types"] }
 geo-types = "0.7"
-geozero = { version = "0.9", features=["with-geo"], default_features=false}
+geozero = { version = "0.9", features=["with-geo", "with-wkb"], default_features=false}
 h3ron-graph = { version = "0.5.0", features = ["io_osm"] }
 h3ron-polars = { version = "0.2", features = ["serde"] }
 h3ron = { version = "0.16", features = ["use-rayon", "roaring", "use-serde"] }

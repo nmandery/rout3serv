@@ -6,10 +6,13 @@ use gdal::spatial_ref::SpatialRef;
 use gdal::vector::{Geometry, ToGdal};
 use geo::algorithm::centroid::Centroid;
 use geo_types::Geometry as GTGeometry;
+use geozero::wkb::{WkbDialect, WkbWriter};
+use geozero::{CoordDimensions, GeozeroGeometry};
 use h3ron::{H3Cell, ToH3Cells};
 use tonic::{Code, Status};
+use tracing::log::Level;
 
-use crate::grpc::error::ToStatusResult;
+use crate::grpc::error::{logged_status_with_cause, ToStatusResult};
 
 /// read binary WKB into a gdal `Geometry`
 pub fn read_wkb_to_gdal(wkb_bytes: &[u8]) -> Result<Geometry, Status> {
@@ -54,12 +57,6 @@ pub fn buffer_meters(geom: &Geometry, meters: f64) -> Result<Geometry, Status> {
         .to_status_result_with_message(Code::Internal, || "geometry buffering failed".to_string())
 }
 
-/// mainly used for debugging
-#[allow(dead_code)]
-pub fn to_geojson(geom: GTGeometry<f64>) -> gdal::errors::Result<String> {
-    geom.to_gdal()?.json()
-}
-
 fn buffer_meters_internal(geom: &Geometry, meters: f64) -> gdal::errors::Result<Geometry> {
     let srs_wgs84 = SpatialRef::from_epsg(4326)?;
     let srs_spherical_mercator = SpatialRef::from_epsg(3857)?;
@@ -76,11 +73,16 @@ fn buffer_meters_internal(geom: &Geometry, meters: f64) -> gdal::errors::Result<
 
 /// convert a geotypes `Geometry` to WKB using GDAL
 pub fn to_wkb(geom: &GTGeometry<f64>) -> Result<Vec<u8>, Status> {
-    to_wkb_internal(geom)
-        .to_status_result_with_message(Code::Internal, || "can not encode WKB".to_string())
-}
-
-#[inline]
-fn to_wkb_internal(geom: &GTGeometry<f64>) -> gdal::errors::Result<Vec<u8>> {
-    geom.to_gdal()?.wkb()
+    let mut wkb: Vec<u8> = Vec::with_capacity(20_000);
+    let mut writer = WkbWriter::new(&mut wkb, WkbDialect::Wkb);
+    writer.dims = CoordDimensions::xy();
+    geom.process_geom(&mut writer).map_err(|e| {
+        logged_status_with_cause(
+            "Unable to convert geometry to WKB",
+            Code::Internal,
+            Level::Error,
+            &e,
+        )
+    })?;
+    Ok(wkb)
 }

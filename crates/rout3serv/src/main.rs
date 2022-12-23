@@ -9,7 +9,7 @@ use flatgeobuf::{ColumnType, FgbCrs, FgbWriter, FgbWriterOptions, GeometryType};
 use geo_types::Geometry;
 use geozero::{ColumnValue, PropertyProcessor};
 use h3ron::to_geo::ToLineString;
-use h3ron::{H3DirectedEdge, Index};
+use h3ron::H3DirectedEdge;
 use h3ron_graph::algorithm::covered_area::CoveredArea;
 use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
 use h3ron_graph::io::osm::OsmPbfH3EdgeGraphBuilder;
