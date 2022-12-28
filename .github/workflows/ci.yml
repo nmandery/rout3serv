@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v3
 
       - name: Install GDAL and protoc
         run: |
@@ -46,7 +46,7 @@ jobs:
 
       # build/test before linting, as some source files are created by prost
       - name: Test with cargo
-        uses: actions-rs/cargo@v1.0.1
+        uses: actions-rs/cargo@v1
         with:
           command: test
           toolchain: stable
