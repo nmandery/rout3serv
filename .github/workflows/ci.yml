@@ -25,10 +25,9 @@ jobs:
           sudo apt-get install libgdal-dev protobuf-compiler libprotobuf-dev
 
       - name: Install latest stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          override: true
           components: rustfmt, clippy
 
       - name: Set up cargo cache
@@ -46,18 +45,10 @@ jobs:
 
       # build/test before linting, as some source files are created by prost
       - name: Test with cargo
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          toolchain: stable
+        run: cargo test
 
       - name: Lint with rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
+        run: cargo fmt
 
       - name: Lint with clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets --all-features
+        run: cargo clippy --all-targets --all-features
