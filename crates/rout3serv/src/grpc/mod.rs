@@ -39,10 +39,10 @@ use crate::weight::{RoadWeight, Weight};
 mod api;
 mod differential_shortest_path;
 mod error;
+mod geometry;
 mod names;
 mod shortest_path;
 mod util;
-mod vector;
 mod within_threshold;
 
 pub trait ServerWeight:

@@ -19,8 +19,8 @@ use crate::grpc::api::generated::{
     DifferentialShortestPathRequest, DifferentialShortestPathRoutes, RouteWkb, ShortestPathOptions,
 };
 use crate::grpc::error::{logged_status, StatusCodeAndMessage, ToStatusResult};
+use crate::grpc::geometry::{buffer_meters, from_wkb, geom_to_h3};
 use crate::grpc::util::{change_cell_resolution_dedup, StrId};
-use crate::grpc::vector::{buffer_meters, gdal_geom_to_h3, read_wkb_to_gdal};
 use crate::grpc::{ServerImpl, ServerWeight};
 use crate::io::memory_cache::FetchError;
 
@@ -157,12 +157,12 @@ fn disturbance_and_buffered_cells(
     disturbance_wkb_geometry: &[u8],
     radius_meters: f64,
 ) -> Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
-    let disturbance_geom = read_wkb_to_gdal(disturbance_wkb_geometry)?;
+    let disturbance_geom = from_wkb(disturbance_wkb_geometry)?;
     let disturbed_cells: H3Treemap<H3Cell> = H3Treemap::from_iter_with_sort(
-        gdal_geom_to_h3(&disturbance_geom, h3_resolution, true)?.into_iter(),
+        geom_to_h3(&disturbance_geom, h3_resolution, true)?.into_iter(),
     );
 
-    let buffered_cells = gdal_geom_to_h3(
+    let buffered_cells = geom_to_h3(
         &buffer_meters(&disturbance_geom, radius_meters)?,
         h3_resolution,
         true,
