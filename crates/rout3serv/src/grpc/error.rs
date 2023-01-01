@@ -73,7 +73,6 @@ macro_rules! error_status_code_impl {
     };
 }
 
-error_status_code_impl!(gdal::errors::GdalError);
 error_status_code_impl!(tokio::task::JoinError);
 //error_status_code_impl!(anyhow::Error);
 error_status_code_impl!(polars_core::error::PolarsError);

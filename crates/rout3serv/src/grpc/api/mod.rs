@@ -14,7 +14,7 @@ use uom::si::time::second;
 
 use crate::grpc::api::generated::{GraphHandle, RouteH3Indexes, RouteWkb, ShortestPathOptions};
 use crate::grpc::error::{logged_status, ToStatusResult};
-use crate::grpc::vector::to_wkb;
+use crate::grpc::geometry::to_wkb;
 use crate::io::GraphKey;
 use crate::weight::Weight;
 
