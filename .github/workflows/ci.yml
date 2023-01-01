@@ -19,10 +19,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install GDAL and protoc
+      - name: Install protoc
         run: |
           sudo apt-get update
-          sudo apt-get install libgdal-dev protobuf-compiler libprotobuf-dev
+          sudo apt-get install protobuf-compiler libprotobuf-dev
 
       - name: Install latest stable
         uses: dtolnay/rust-toolchain@master
