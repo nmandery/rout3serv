@@ -20,8 +20,8 @@ FROM gcr.io/distroless/cc-debian11
 ENV RAYON_NUM_THREADS="0"
 ENV RUST_BACKTRACE=1
 ENV RUST_LOG="rout3serv=info,tower_http::trace=debug"
-COPY --from=builder /usr/local/bin/rout3serv /usr/bin/
+COPY --from=builder /usr/local/bin/rout3serv /
 COPY ./crates/rout3serv/config.example.yaml /config.yaml
 COPY ./crates/rout3serv/proto /
 EXPOSE 7088
-ENTRYPOINT ["/usr/bin/rout3serv"]
+ENTRYPOINT ["/rout3serv"]
