@@ -5,7 +5,7 @@ use h3ron::iter::change_resolution;
 use h3ron::H3Cell;
 use h3ron_polars::frame::H3DataFrame;
 use itertools::Itertools;
-use polars::prelude::{DataFrame, IpcWriter, JoinType, SerWriter};
+use polars::prelude::{DataFrame, IpcWriter, JoinType, SerWriter, DataFrameJoinOps};
 use tokio::sync::mpsc;
 use tokio::task::block_in_place;
 use tokio_stream::wrappers::ReceiverStream;

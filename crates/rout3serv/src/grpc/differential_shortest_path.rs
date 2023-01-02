@@ -9,7 +9,7 @@ use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPat
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::graph::PreparedH3EdgeGraph;
 use h3ron_polars::frame::H3DataFrame;
-use polars::prelude::{DataFrame, JoinType, NamedFrom, Series};
+use polars::prelude::{DataFrame, DataFrameJoinOps, JoinType, NamedFrom, Series};
 use serde::{Deserialize, Serialize};
 use tonic::{Code, Status};
 use tracing::log::Level;
