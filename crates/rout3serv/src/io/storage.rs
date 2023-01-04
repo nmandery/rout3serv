@@ -1,3 +1,4 @@
+use std::io::Cursor;
 use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -23,9 +24,10 @@ use tokio::task::block_in_place;
 use tracing::{debug, error, info};
 
 use crate::config::ServerConfig;
-use crate::io::dataframe::DataframeDataset;
+use crate::io::dataframe::{DataframeDataset, FromDataFrame};
 use crate::io::memory_cache::{CacheFetcher, FetchError, MemoryCache};
 use crate::io::objectstore::ObjectStore;
+use crate::io::parquet::ReadParquet;
 use crate::io::serde_util::{deserialize_from_byte_slice, serialize_into};
 use crate::io::{Error, GraphKey};
 
@@ -71,7 +73,10 @@ impl<W: Sync + DeserializeOwned> Storage<W> {
     where
         T: DeserializeOwned,
     {
-        fetch(&self.objectstore, path).await
+        fetch(&self.objectstore, path, |bytes| {
+            deserialize_from_byte_slice(bytes.as_ref())
+        })
+        .await
     }
 
     pub async fn retrieve_graph(
@@ -199,7 +204,8 @@ impl<W> GraphFetcher<W> {
 #[async_trait::async_trait]
 impl<W> CacheFetcher for GraphFetcher<W>
 where
-    W: DeserializeOwned + Sync,
+    W: Sync,
+    PreparedH3EdgeGraph<W>: ReadParquet + FromDataFrame,
 {
     type Key = GraphKey;
     type Value = PreparedH3EdgeGraph<W>;
@@ -211,13 +217,17 @@ where
         key: Self::Key,
     ) -> Result<Self::Value, Self::Error> {
         let path: Path = format!("{}{}", self.prefix(), key.to_string()).into();
-        fetch(objectstore.as_ref(), &path).await
+        fetch(objectstore.as_ref(), &path, |bytes| {
+            let cur = Cursor::new(bytes.as_ref());
+            PreparedH3EdgeGraph::<W>::read_parquet(cur)
+        })
+        .await
     }
 }
 
-async fn fetch<T>(objectstore: &ObjectStore, path: &Path) -> Result<T, Error>
+async fn fetch<T, F>(objectstore: &ObjectStore, path: &Path, f: F) -> Result<T, Error>
 where
-    T: DeserializeOwned,
+    F: FnOnce(Bytes) -> Result<T, Error>,
 {
     match objectstore.get(path).await {
         Ok(get_result) => {
@@ -228,8 +238,9 @@ where
                 bytes.len(),
                 ByteSize(bytes.len() as u64)
             );
-            let data: T = block_in_place(move || deserialize_from_byte_slice(&bytes))?;
-            Ok(data)
+            block_in_place(move || f(bytes))
+            //let data: T = block_in_place(move || deserialize_from_byte_slice(&bytes))?;
+            //Ok(data)
         }
         Err(err) => match err {
             object_store::Error::NotFound { .. } => {

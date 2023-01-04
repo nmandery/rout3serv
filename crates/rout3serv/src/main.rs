@@ -20,7 +20,8 @@ use uom::si::length::meter;
 use uom::si::time::second;
 
 use crate::config::ServerConfig;
-use crate::io::serde_util::{deserialize_from_byte_slice, serialize_into};
+use crate::io::parquet::WriteParquet;
+use crate::io::serde_util::deserialize_from_byte_slice;
 use crate::osm::car::CarAnalyzer;
 use crate::weight::{RoadWeight, Weight};
 
@@ -233,7 +234,7 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
         "Created graph ({} nodes, {} edges)",
         stats.num_nodes, stats.num_edges
     );
-    let mut writer = BufWriter::new(File::create(graph_output)?);
-    serialize_into(&mut writer, &prepared_graph, true)?;
+    let writer = BufWriter::new(File::create(graph_output)?);
+    prepared_graph.write_parquet(writer)?;
     Ok(())
 }
