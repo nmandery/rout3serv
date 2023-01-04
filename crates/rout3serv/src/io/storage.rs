@@ -1,5 +1,4 @@
 use std::io::Cursor;
-use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -24,26 +23,26 @@ use tokio::task::block_in_place;
 use tracing::{debug, error, info};
 
 use crate::config::ServerConfig;
-use crate::io::dataframe::{DataframeDataset, FromDataFrame};
+use crate::io::dataframe::DataframeDataset;
 use crate::io::memory_cache::{CacheFetcher, FetchError, MemoryCache};
 use crate::io::objectstore::ObjectStore;
 use crate::io::parquet::ReadParquet;
 use crate::io::serde_util::{deserialize_from_byte_slice, serialize_into};
 use crate::io::{Error, GraphKey};
+use crate::weight::StandardWeight;
 
-pub struct Storage<W: Sync + DeserializeOwned> {
+pub struct Storage {
     objectstore: Arc<ObjectStore>,
-    graphs: MemoryCache<GraphFetcher<W>>,
+    graphs: MemoryCache<GraphFetcher>,
 }
 
-impl<W: Sync + DeserializeOwned> Storage<W> {
+impl Storage {
     pub fn from_config(config: &ServerConfig) -> Result<Self, Error> {
         let objectstore = Arc::new(ObjectStore::try_from(config.objectstore.clone())?);
         let graphs = MemoryCache::new(
             config.graphs.cache_size.unwrap_or(10),
             GraphFetcher {
                 prefix: config.graphs.prefix.clone(),
-                phantom: Default::default(),
             },
         );
 
@@ -82,7 +81,7 @@ impl<W: Sync + DeserializeOwned> Storage<W> {
     pub async fn retrieve_graph(
         &self,
         graph_key: GraphKey,
-    ) -> Result<Arc<PreparedH3EdgeGraph<W>>, FetchError<Error>> {
+    ) -> Result<Arc<PreparedH3EdgeGraph<StandardWeight>>, FetchError<Error>> {
         self.graphs
             .get_from(self.objectstore.clone(), graph_key)
             .await
@@ -168,12 +167,11 @@ impl<W: Sync + DeserializeOwned> Storage<W> {
     }
 }
 
-pub struct GraphFetcher<W> {
+pub struct GraphFetcher {
     prefix: String,
-    phantom: PhantomData<W>,
 }
 
-impl<W> GraphFetcher<W> {
+impl GraphFetcher {
     pub fn prefix(&self) -> String {
         if self.prefix.is_empty() {
             "".to_string()
@@ -202,13 +200,9 @@ impl<W> GraphFetcher<W> {
 }
 
 #[async_trait::async_trait]
-impl<W> CacheFetcher for GraphFetcher<W>
-where
-    W: Sync,
-    PreparedH3EdgeGraph<W>: ReadParquet + FromDataFrame,
-{
+impl CacheFetcher for GraphFetcher {
     type Key = GraphKey;
-    type Value = PreparedH3EdgeGraph<W>;
+    type Value = PreparedH3EdgeGraph<StandardWeight>;
     type Error = Error;
 
     async fn fetch_from(
@@ -219,7 +213,7 @@ where
         let path: Path = format!("{}{}", self.prefix(), key.to_string()).into();
         fetch(objectstore.as_ref(), &path, |bytes| {
             let cur = Cursor::new(bytes.as_ref());
-            PreparedH3EdgeGraph::<W>::read_parquet(cur)
+            PreparedH3EdgeGraph::read_parquet(cur)
         })
         .await
     }

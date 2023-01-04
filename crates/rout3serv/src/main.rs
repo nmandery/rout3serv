@@ -23,7 +23,7 @@ use crate::config::ServerConfig;
 use crate::io::parquet::WriteParquet;
 use crate::io::serde_util::deserialize_from_byte_slice;
 use crate::osm::car::CarAnalyzer;
-use crate::weight::{RoadWeight, Weight};
+use crate::weight::{StandardWeight, Weight};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -106,7 +106,7 @@ fn main() -> Result<()> {
     dispatch_command(app.get_matches())
 }
 
-fn read_graph_from_filename(filename: &str) -> Result<PreparedH3EdgeGraph<RoadWeight>> {
+fn read_graph_from_filename(filename: &str) -> Result<PreparedH3EdgeGraph<StandardWeight>> {
     let f = File::open(filename)?;
     let mapped = unsafe { memmap2::Mmap::map(&f)? };
     Ok(deserialize_from_byte_slice(&mapped)?)
@@ -137,7 +137,7 @@ fn dispatch_command(matches: ArgMatches) -> Result<()> {
 
 fn subcommand_graph_to_fgb(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename: &String = sc_matches.get_one("GRAPH").unwrap();
-    let graph: H3EdgeGraph<RoadWeight> = read_graph_from_filename(graph_filename)?.into();
+    let graph: H3EdgeGraph<StandardWeight> = read_graph_from_filename(graph_filename)?.into();
     let mut writer = BufWriter::new(File::create(
         sc_matches.get_one::<String>("OUTPUT").unwrap(),
     )?);
@@ -202,7 +202,7 @@ fn subcommand_server(sc_matches: &ArgMatches) -> Result<()> {
         std::fs::read_to_string(sc_matches.get_one::<String>("CONFIG-FILE").unwrap())?;
     let config: ServerConfig = serde_yaml::from_str(&config_contents)?;
     config.validate()?;
-    grpc::launch_server::<RoadWeight>(config)?;
+    grpc::launch_server(config)?;
     Ok(())
 }
 

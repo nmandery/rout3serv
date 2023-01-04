@@ -6,7 +6,7 @@ use uom::si::length::meter;
 use uom::si::velocity::kilometer_per_hour;
 
 use crate::osm::tags::maxspeed::{infer_maxspeed, MaxSpeed};
-use crate::weight::RoadWeight;
+use crate::weight::StandardWeight;
 
 pub struct CarWayProperties {
     max_speed: Velocity,
@@ -16,7 +16,7 @@ pub struct CarWayProperties {
 
 pub struct CarAnalyzer {}
 
-impl WayAnalyzer<RoadWeight> for CarAnalyzer {
+impl WayAnalyzer<StandardWeight> for CarAnalyzer {
     type WayProperties = CarWayProperties;
 
     fn analyze_way_tags(
@@ -68,8 +68,8 @@ impl WayAnalyzer<RoadWeight> for CarAnalyzer {
         &self,
         edge: H3DirectedEdge,
         way_properties: &Self::WayProperties,
-    ) -> Result<EdgeProperties<RoadWeight>, h3ron_graph::Error> {
-        let weight = RoadWeight::new(
+    ) -> Result<EdgeProperties<StandardWeight>, h3ron_graph::Error> {
+        let weight = StandardWeight::new(
             way_properties.edge_preference,
             Length::new::<meter>(edge.cell_centroid_distance_m()? as f32)
                 / way_properties.max_speed,

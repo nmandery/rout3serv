@@ -1,11 +1,9 @@
 use std::fmt::Debug;
-use std::ops::Add;
 
 use h3ron::{H3Cell, HasH3Resolution, Index};
 use h3ron_graph::algorithm::path::Path;
 use h3ron_graph::algorithm::shortest_path::ShortestPathOptions;
 use h3ron_graph::algorithm::ShortestPathManyToMany;
-use num_traits::Zero;
 use ordered_float::OrderedFloat;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use tokio_stream::wrappers::ReceiverStream;
@@ -19,20 +17,20 @@ use crate::grpc::util::{
     inner_join_h3dataframe, spawn_blocking_status, stream_dataframe, stream_routes,
     ArrowIpcChunkStream,
 };
-use crate::grpc::{names, LoadedCellSelection, ServerImpl, ServerWeight};
+use crate::grpc::{names, LoadedCellSelection, ServerImpl};
 use crate::weight::Weight;
 
-pub struct H3ShortestPathParameters<W: ServerWeight> {
-    graph: CustomizedGraph<W>,
+pub struct H3ShortestPathParameters {
+    graph: CustomizedGraph,
     options: super::api::generated::ShortestPathOptions,
     origins: LoadedCellSelection,
     destinations: LoadedCellSelection,
 }
 
-pub(crate) async fn create_parameters<W: ServerWeight>(
+pub(crate) async fn create_parameters(
     request: super::api::generated::H3ShortestPathRequest,
-    server_impl: &ServerImpl<W>,
-) -> Result<H3ShortestPathParameters<W>, Status> {
+    server_impl: &ServerImpl,
+) -> Result<H3ShortestPathParameters, Status> {
     let routing_mode = server_impl.config.get_routing_mode(&request.routing_mode)?;
     let graph = server_impl
         .retrieve_graph_by_handle(&request.graph_handle)
@@ -69,12 +67,9 @@ where
     spawn_blocking_status(func).await?.to_status_result()
 }
 
-pub async fn h3_shortest_path<W: 'static + ServerWeight>(
-    parameters: H3ShortestPathParameters<W>,
-) -> Result<Response<ArrowIpcChunkStream>, Status>
-where
-    W: Send + Sync + Ord + Copy + Add + Zero + Weight,
-{
+pub async fn h3_shortest_path(
+    parameters: H3ShortestPathParameters,
+) -> Result<Response<ArrowIpcChunkStream>, Status> {
     stream_dataframe(
         uuid::Uuid::new_v4().to_string(),
         spawn_h3_shortest_path(move || h3_shortest_path_internal(parameters)).await?,
@@ -108,9 +103,7 @@ where
     }
 }
 
-fn h3_shortest_path_internal<W: ServerWeight>(
-    parameters: H3ShortestPathParameters<W>,
-) -> Result<DataFrame, Status> {
+fn h3_shortest_path_internal(parameters: H3ShortestPathParameters) -> Result<DataFrame, Status> {
     let pathmap = parameters
         .graph
         .shortest_path_many_to_many_map(
@@ -186,14 +179,14 @@ fn h3_shortest_path_internal<W: ServerWeight>(
     Ok(shortest_path_df)
 }
 
-pub async fn h3_shortest_path_routes<W: 'static + ServerWeight, R, F, E>(
-    parameters: H3ShortestPathParameters<W>,
+pub async fn h3_shortest_path_routes<R, F, E>(
+    parameters: H3ShortestPathParameters,
     transformer: F,
 ) -> Result<Response<ReceiverStream<Result<R, Status>>>, Status>
 where
     R: Route + Send + 'static,
     E: Debug + Send + 'static + StatusCodeAndMessage,
-    F: FnMut(Path<CustomizedWeight<W>>) -> Result<R, E> + Send + 'static,
+    F: FnMut(Path<CustomizedWeight>) -> Result<R, E> + Send + 'static,
 {
     let routes = spawn_h3_shortest_path(move || {
         parameters

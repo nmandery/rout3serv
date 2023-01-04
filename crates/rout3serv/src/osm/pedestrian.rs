@@ -14,7 +14,7 @@ use uom::si::length::meter;
 
 use crate::osm::tags::sidewalk::infer_sidewalk;
 use crate::osm::WALKING_SPEED;
-use crate::RoadWeight;
+use crate::StandardWeight;
 
 pub struct FootwayProperties {
     edge_preference: f32,
@@ -22,7 +22,7 @@ pub struct FootwayProperties {
 
 pub struct FootwayAnalyzer {}
 
-impl WayAnalyzer<RoadWeight> for FootwayAnalyzer {
+impl WayAnalyzer<StandardWeight> for FootwayAnalyzer {
     type WayProperties = FootwayProperties;
 
     fn analyze_way_tags(
@@ -69,8 +69,8 @@ impl WayAnalyzer<RoadWeight> for FootwayAnalyzer {
         &self,
         edge: H3DirectedEdge,
         way_properties: &Self::WayProperties,
-    ) -> Result<EdgeProperties<RoadWeight>, h3ron_graph::Error> {
-        let weight = RoadWeight::new(
+    ) -> Result<EdgeProperties<StandardWeight>, h3ron_graph::Error> {
+        let weight = StandardWeight::new(
             way_properties.edge_preference,
             Length::new::<meter>(edge.cell_centroid_distance_m()? as f32) / *WALKING_SPEED,
         );

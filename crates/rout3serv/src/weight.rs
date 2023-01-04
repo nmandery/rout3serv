@@ -25,7 +25,7 @@ pub trait Weight {
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
-pub struct RoadWeight {
+pub struct StandardWeight {
     /// the higher the preference for the edge is, the lower is the `edge_preference`.
     ///
     /// Must be positive.
@@ -37,7 +37,7 @@ pub struct RoadWeight {
     travel_duration: Time,
 }
 
-impl RoadWeight {
+impl StandardWeight {
     pub fn new(edge_preference: f32, travel_duration: Time) -> Self {
         Self {
             edge_preference,
@@ -46,7 +46,7 @@ impl RoadWeight {
     }
 }
 
-impl Weight for RoadWeight {
+impl Weight for StandardWeight {
     fn travel_duration(&self) -> Time {
         self.travel_duration
     }
@@ -63,9 +63,9 @@ impl Weight for RoadWeight {
     }
 }
 
-impl ServerWeight for RoadWeight {}
+impl ServerWeight for StandardWeight {}
 
-impl Add for RoadWeight {
+impl Add for StandardWeight {
     type Output = Self;
 
     fn add(mut self, rhs: Self) -> Self::Output {
@@ -83,7 +83,7 @@ impl Add for RoadWeight {
     }
 }
 
-impl Zero for RoadWeight {
+impl Zero for StandardWeight {
     fn zero() -> Self {
         Self {
             edge_preference: 10.0,
@@ -96,15 +96,15 @@ impl Zero for RoadWeight {
     }
 }
 
-impl PartialEq for RoadWeight {
+impl PartialEq for StandardWeight {
     fn eq(&self, other: &Self) -> bool {
         self.partial_cmp(other).unwrap_or(Ordering::Equal) == Ordering::Equal
     }
 }
 
-impl Eq for RoadWeight {}
+impl Eq for StandardWeight {}
 
-impl PartialOrd for RoadWeight {
+impl PartialOrd for StandardWeight {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.travel_duration
             .value
@@ -119,19 +119,19 @@ impl PartialOrd for RoadWeight {
     }
 }
 
-impl Ord for RoadWeight {
+impl Ord for StandardWeight {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other).unwrap_or(Ordering::Equal)
     }
 }
 
-impl ToDataFrame for PreparedH3EdgeGraph<RoadWeight> {
+impl ToDataFrame for PreparedH3EdgeGraph<StandardWeight> {
     fn to_dataframe(&self) -> Result<DataFrame, Error> {
         todo!()
     }
 }
 
-impl FromDataFrame for PreparedH3EdgeGraph<RoadWeight> {
+impl FromDataFrame for PreparedH3EdgeGraph<StandardWeight> {
     fn from_dataframe(df: DataFrame) -> Result<Self, Error>
     where
         Self: Sized,
@@ -145,7 +145,7 @@ mod tests {
     use uom::si::f32::Time;
     use uom::si::time::second;
 
-    use crate::weight::RoadWeight;
+    use crate::weight::StandardWeight;
 
     macro_rules! secs {
         ($s:expr) => {
@@ -154,15 +154,15 @@ mod tests {
     }
     #[test]
     fn roadweight_partial_eq() {
-        assert!(RoadWeight::new(3.0, secs!(30)) > RoadWeight::new(2.0, secs!(29)));
-        assert!(RoadWeight::new(3.0, secs!(30)) > RoadWeight::new(3.0, secs!(20)));
-        assert!(RoadWeight::new(2.0, secs!(30)) > RoadWeight::new(3.0, secs!(20)));
+        assert!(StandardWeight::new(3.0, secs!(30)) > StandardWeight::new(2.0, secs!(29)));
+        assert!(StandardWeight::new(3.0, secs!(30)) > StandardWeight::new(3.0, secs!(20)));
+        assert!(StandardWeight::new(2.0, secs!(30)) > StandardWeight::new(3.0, secs!(20)));
     }
 
     #[test]
     fn roadweight_add() {
-        let rw1 = RoadWeight::new(4.0, secs!(10));
-        let rw2 = RoadWeight::new(6.0, secs!(15));
-        assert_eq!(rw1 + rw2, RoadWeight::new(5.2, secs!(25)));
+        let rw1 = StandardWeight::new(4.0, secs!(10));
+        let rw2 = StandardWeight::new(6.0, secs!(15));
+        assert_eq!(rw1 + rw2, StandardWeight::new(5.2, secs!(25)));
     }
 }

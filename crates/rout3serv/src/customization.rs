@@ -10,20 +10,17 @@ use num_traits::Zero;
 use uom::si::f32::Time;
 
 use crate::config::{NonZeroPositiveFactor, RoutingMode};
-use crate::weight::Weight;
+use crate::weight::{StandardWeight, Weight};
 
 // TODO: mid term: configurable road_preferences for road_types
 
 #[derive(Copy, Clone)]
-pub struct CustomizedWeight<W> {
-    weight: W,
+pub struct CustomizedWeight {
+    weight: StandardWeight,
     edge_preference_factor: Option<NonZeroPositiveFactor>,
 }
 
-impl<W> CustomizedWeight<W>
-where
-    W: Weight,
-{
+impl CustomizedWeight {
     /// the calculated overall_weight to be used in comparison operations
     ///
     /// Takes all set factors into account
@@ -36,10 +33,7 @@ where
     }
 }
 
-impl<W: Weight> Add for CustomizedWeight<W>
-where
-    W: Zero,
-{
+impl Add for CustomizedWeight {
     type Output = Self;
 
     fn add(mut self, rhs: Self) -> Self::Output {
@@ -56,22 +50,16 @@ where
     }
 }
 
-impl<W: Weight> Default for CustomizedWeight<W>
-where
-    W: Zero,
-{
+impl Default for CustomizedWeight {
     fn default() -> Self {
         Self::zero()
     }
 }
 
-impl<W: Weight> Zero for CustomizedWeight<W>
-where
-    W: Zero,
-{
+impl Zero for CustomizedWeight {
     fn zero() -> Self {
         Self {
-            weight: W::zero(),
+            weight: StandardWeight::zero(),
             edge_preference_factor: None,
         }
     }
@@ -82,36 +70,27 @@ where
     }
 }
 
-impl<W: Weight> Deref for CustomizedWeight<W> {
-    type Target = W;
+impl Deref for CustomizedWeight {
+    type Target = StandardWeight;
 
     fn deref(&self) -> &Self::Target {
         &self.weight
     }
 }
 
-impl<W> PartialEq<Self> for CustomizedWeight<W>
-where
-    W: Weight,
-{
+impl PartialEq<Self> for CustomizedWeight {
     fn eq(&self, other: &Self) -> bool {
         self.overall_weight().eq(&other.overall_weight())
     }
 }
 
-impl<W> PartialOrd for CustomizedWeight<W>
-where
-    W: Weight,
-{
+impl PartialOrd for CustomizedWeight {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.overall_weight().partial_cmp(&other.overall_weight())
     }
 }
 
-impl<W> Weight for CustomizedWeight<W>
-where
-    W: Weight + Zero,
-{
+impl Weight for CustomizedWeight {
     fn travel_duration(&self) -> Time {
         self.weight.travel_duration()
     }
@@ -122,34 +101,34 @@ where
 
     fn from_travel_duration(travel_duration: Time) -> Self {
         Self {
-            weight: W::from_travel_duration(travel_duration),
+            weight: StandardWeight::from_travel_duration(travel_duration),
             edge_preference_factor: None,
         }
     }
 }
 
-impl<W: Weight> Eq for CustomizedWeight<W> {}
+impl Eq for CustomizedWeight {}
 
-impl<W: Weight> Ord for CustomizedWeight<W> {
+impl Ord for CustomizedWeight {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other).unwrap_or(Ordering::Equal)
     }
 }
 
 /// A prepared graph with customized weight comparisons
-pub struct CustomizedGraph<W> {
-    inner_graph: Arc<PreparedH3EdgeGraph<W>>,
+pub struct CustomizedGraph {
+    inner_graph: Arc<PreparedH3EdgeGraph<StandardWeight>>,
     routing_mode: RoutingMode,
 }
 
-impl<W> CustomizedGraph<W> {
+impl CustomizedGraph {
     pub fn set_routing_mode(&mut self, routing_mode: RoutingMode) {
         self.routing_mode = routing_mode;
     }
 }
 
-impl<W> From<Arc<PreparedH3EdgeGraph<W>>> for CustomizedGraph<W> {
-    fn from(inner_graph: Arc<PreparedH3EdgeGraph<W>>) -> Self {
+impl From<Arc<PreparedH3EdgeGraph<StandardWeight>>> for CustomizedGraph {
+    fn from(inner_graph: Arc<PreparedH3EdgeGraph<StandardWeight>>) -> Self {
         CustomizedGraph {
             inner_graph,
             routing_mode: RoutingMode::default(),
@@ -157,17 +136,14 @@ impl<W> From<Arc<PreparedH3EdgeGraph<W>>> for CustomizedGraph<W> {
     }
 }
 
-impl<W> GetCellNode for CustomizedGraph<W> {
+impl GetCellNode for CustomizedGraph {
     fn get_cell_node(&self, cell: &H3Cell) -> Option<NodeType> {
         self.inner_graph.get_cell_node(cell)
     }
 }
 
-impl<W> GetCellEdges for CustomizedGraph<W>
-where
-    W: Weight + Copy + Zero,
-{
-    type EdgeWeightType = CustomizedWeight<W>;
+impl GetCellEdges for CustomizedGraph {
+    type EdgeWeightType = CustomizedWeight;
 
     fn get_edges_originating_from(
         &self,
@@ -204,7 +180,7 @@ where
     }
 }
 
-impl<W> HasH3Resolution for CustomizedGraph<W> {
+impl HasH3Resolution for CustomizedGraph {
     fn h3_resolution(&self) -> u8 {
         self.inner_graph.h3_resolution()
     }
