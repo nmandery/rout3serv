@@ -1,12 +1,16 @@
+use h3ron_graph::graph::PreparedH3EdgeGraph;
 use std::cmp::Ordering;
 use std::ops::Add;
 
 use num_traits::Zero;
+use polars_core::frame::DataFrame;
 use serde::{Deserialize, Serialize};
 use uom::si::f32::Time;
 use uom::si::time::second;
 
 use crate::grpc::ServerWeight;
+use crate::io::dataframe::{FromDataFrame, ToDataFrame};
+use crate::io::Error;
 
 pub trait Weight {
     fn travel_duration(&self) -> Time {
@@ -118,6 +122,21 @@ impl PartialOrd for RoadWeight {
 impl Ord for RoadWeight {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other).unwrap_or(Ordering::Equal)
+    }
+}
+
+impl ToDataFrame for PreparedH3EdgeGraph<RoadWeight> {
+    fn to_dataframe(&self) -> Result<DataFrame, Error> {
+        todo!()
+    }
+}
+
+impl FromDataFrame for PreparedH3EdgeGraph<RoadWeight> {
+    fn from_dataframe(df: DataFrame) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        todo!()
     }
 }
 

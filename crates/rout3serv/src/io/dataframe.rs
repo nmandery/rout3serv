@@ -1,3 +1,4 @@
+use polars_core::prelude::DataFrame;
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -38,4 +39,14 @@ impl DataframeDataset {
                 Error::UnsupportedH3Resolution(data_h3_resolution)
             })
     }
+}
+
+pub trait ToDataFrame {
+    fn to_dataframe(&self) -> Result<DataFrame, Error>;
+}
+
+pub trait FromDataFrame {
+    fn from_dataframe(df: DataFrame) -> Result<Self, Error>
+    where
+        Self: Sized;
 }
