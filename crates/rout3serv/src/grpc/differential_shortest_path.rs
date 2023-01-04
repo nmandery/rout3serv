@@ -21,10 +21,11 @@ use crate::grpc::api::generated::{
 use crate::grpc::error::{logged_status, StatusCodeAndMessage, ToStatusResult};
 use crate::grpc::geometry::{buffer_meters, from_wkb, geom_to_h3};
 use crate::grpc::util::{change_cell_resolution_dedup, StrId};
-use crate::grpc::{ServerImpl, ServerWeight};
+use crate::grpc::ServerImpl;
 use crate::io::memory_cache::FetchError;
+use crate::weight::{StandardWeight, Weight};
 
-pub struct DspInput<W: ServerWeight> {
+pub struct DspInput {
     /// the cells within the disturbance
     pub disturbance: H3Treemap<H3Cell>,
 
@@ -36,23 +37,23 @@ pub struct DspInput<W: ServerWeight> {
 
     pub store_output: bool,
     pub options: ShortestPathOptions,
-    pub graph: Arc<PreparedH3EdgeGraph<W>>,
+    pub graph: Arc<PreparedH3EdgeGraph<StandardWeight>>,
 
     /// Setting a `downsampled_graph` will allow performing an initial routing at a lower resolution
     /// to reduce the number of routings to perform on the full-resolution graph. This has the potential
     /// to skew the results as a reduction in resolution may change the graph topology, but decreases the
     /// running time in most cases.
     /// The reduction should be no more than two resolutions.
-    pub downsampled_graph: Option<Arc<PreparedH3EdgeGraph<W>>>,
+    pub downsampled_graph: Option<Arc<PreparedH3EdgeGraph<StandardWeight>>>,
     pub ref_dataframe: H3DataFrame<H3Cell>,
     pub ref_dataframe_cells: H3CellSet,
 }
 
 /// collect/prepare/download all input data needed for the differential shortest path
-pub(crate) async fn collect_input<W: ServerWeight>(
+pub(crate) async fn collect_input(
     mut request: DifferentialShortestPathRequest,
-    server_impl: &ServerImpl<W>,
-) -> Result<DspInput<W>, Status> {
+    server_impl: &ServerImpl,
+) -> Result<DspInput, Status> {
     let (graph, graph_key) = server_impl
         .retrieve_graph_by_handle(&request.graph_handle)
         .await?;
@@ -171,16 +172,16 @@ fn disturbance_and_buffered_cells(
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct DspOutput<W: Send + Sync> {
+pub struct DspOutput {
     pub object_id: String,
     pub ref_dataframe: H3DataFrame<H3Cell>,
     pub ref_dataframe_cells: H3CellSet,
 
     /// tuple: (origin h3 cell, diff)
-    pub differential_shortest_paths: Vec<(H3Cell, ExclusionDiff<Path<W>>)>,
+    pub differential_shortest_paths: Vec<(H3Cell, ExclusionDiff<Path<StandardWeight>>)>,
 }
 
-impl<W: ServerWeight> StrId for DspOutput<W> {
+impl StrId for DspOutput {
     fn id(&self) -> &str {
         self.object_id.as_ref()
     }
@@ -188,10 +189,7 @@ impl<W: ServerWeight> StrId for DspOutput<W> {
 
 ///
 ///
-pub fn calculate<W>(input: DspInput<W>) -> Result<DspOutput<W>, Status>
-where
-    W: ServerWeight,
-{
+pub fn calculate(input: DspInput) -> Result<DspOutput, Status> {
     let origin_cells: Vec<H3Cell> = {
         let origin_cells: Vec<H3Cell> = {
             let mut origin_cells = Vec::with_capacity(input.within_buffer.len());
@@ -305,10 +303,8 @@ where
 }
 
 /// build an arrow dataset with some basic stats for each of the origin cells
-fn disturbance_statistics_internal<W: ServerWeight>(
-    output: &DspOutput<W>,
-) -> Result<DataFrame, Status> {
-    let avg_travel_duration = |paths: &[Path<W>]| -> Option<f64> {
+fn disturbance_statistics_internal(output: &DspOutput) -> Result<DataFrame, Status> {
+    let avg_travel_duration = |paths: &[Path<StandardWeight>]| -> Option<f64> {
         if paths.is_empty() {
             None
         } else {
@@ -322,7 +318,7 @@ fn disturbance_statistics_internal<W: ServerWeight>(
         }
     };
 
-    let avg_edge_preference = |paths: &[Path<W>]| -> Option<f64> {
+    let avg_edge_preference = |paths: &[Path<StandardWeight>]| -> Option<f64> {
         if paths.is_empty() {
             None
         } else {
@@ -336,8 +332,9 @@ fn disturbance_statistics_internal<W: ServerWeight>(
         }
     };
 
-    let preferred_destination =
-        |paths: &[Path<W>]| -> Option<u64> { paths.first().map(|p| p.destination_cell.h3index()) };
+    let preferred_destination = |paths: &[Path<StandardWeight>]| -> Option<u64> {
+        paths.first().map(|p| p.destination_cell.h3index())
+    };
 
     let mut cell_h3indexes = Vec::with_capacity(output.differential_shortest_paths.len());
     let mut num_reached_without_disturbance =
@@ -424,12 +421,12 @@ fn disturbance_statistics_internal<W: ServerWeight>(
     Ok(df)
 }
 
-pub fn disturbance_statistics<W: ServerWeight>(output: &DspOutput<W>) -> Result<DataFrame, Status> {
+pub fn disturbance_statistics(output: &DspOutput) -> Result<DataFrame, Status> {
     disturbance_statistics_internal(output)
 }
 
-pub fn build_routes_response<W: ServerWeight>(
-    diff: &ExclusionDiff<Path<W>>,
+pub fn build_routes_response(
+    diff: &ExclusionDiff<Path<StandardWeight>>,
     smoothen_geometries: bool,
 ) -> Result<DifferentialShortestPathRoutes, Status> {
     let response = DifferentialShortestPathRoutes {

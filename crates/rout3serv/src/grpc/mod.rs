@@ -34,7 +34,7 @@ use crate::grpc::error::{logged_status, StatusCodeAndMessage};
 use crate::grpc::util::{spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream};
 use crate::io::dataframe::DataframeDataset;
 use crate::io::{GraphKey, Storage};
-use crate::weight::{RoadWeight, Weight};
+use crate::weight::{StandardWeight, Weight};
 
 mod api;
 mod differential_shortest_path;
@@ -65,12 +65,12 @@ pub struct LoadedCellSelection {
     pub dataframe: Option<H3DataFrame<H3Cell>>,
 }
 
-pub(crate) struct ServerImpl<W: ServerWeight> {
-    storage: Arc<Storage<W>>,
+pub(crate) struct ServerImpl {
+    storage: Arc<Storage>,
     config: Arc<ServerConfig>,
 }
 
-impl<W: ServerWeight> ServerImpl<W> {
+impl ServerImpl {
     pub async fn create(config: ServerConfig) -> anyhow::Result<Self> {
         let config = Arc::new(config);
         let storage = Arc::new(Storage::from_config(&config)?);
@@ -84,7 +84,7 @@ impl<W: ServerWeight> ServerImpl<W> {
     async fn retrieve_graph_by_handle(
         &self,
         graph_handle: &Option<GraphHandle>,
-    ) -> Result<(Arc<PreparedH3EdgeGraph<W>>, GraphKey), Status> {
+    ) -> Result<(Arc<PreparedH3EdgeGraph<StandardWeight>>, GraphKey), Status> {
         let gk: GraphKey = graph_handle.try_into()?;
         self.storage
             .retrieve_graph(gk.clone())
@@ -178,7 +178,7 @@ impl<W: ServerWeight> ServerImpl<W> {
 }
 
 #[tonic::async_trait]
-impl<W: ServerWeight + 'static> Rout3Serv for ServerImpl<W> {
+impl Rout3Serv for ServerImpl {
     async fn version(&self, _request: Request<Empty>) -> Result<Response<VersionResponse>, Status> {
         Ok(Response::new(VersionResponse {
             version: crate::build_info::version().to_string(),
@@ -309,7 +309,7 @@ impl<W: ServerWeight + 'static> Rout3Serv for ServerImpl<W> {
         request: Request<IdRef>,
     ) -> Result<Response<ArrowIpcChunkStream>, Status> {
         let inner = request.into_inner();
-        let output: differential_shortest_path::DspOutput<RoadWeight> = self
+        let output: differential_shortest_path::DspOutput = self
             .storage
             .retrieve(&self.build_output_key(&inner.object_id))
             .await
@@ -331,7 +331,7 @@ impl<W: ServerWeight + 'static> Rout3Serv for ServerImpl<W> {
     ) -> Result<Response<Self::GetDifferentialShortestPathRoutesStream>, Status> {
         let (tx, rx) = mpsc::channel(20);
         let inner = request.into_inner();
-        let output: differential_shortest_path::DspOutput<RoadWeight> = self
+        let output: differential_shortest_path::DspOutput = self
             .storage
             .retrieve(&self.build_output_key(inner.object_id.as_str()))
             .await
@@ -382,18 +382,18 @@ impl<W: ServerWeight + 'static> Rout3Serv for ServerImpl<W> {
     }
 }
 
-pub fn launch_server<W: ServerWeight + 'static>(server_config: ServerConfig) -> anyhow::Result<()> {
+pub fn launch_server(server_config: ServerConfig) -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
-    runtime.block_on(run_server::<W>(server_config))?;
+    runtime.block_on(run_server(server_config))?;
     Ok(())
 }
 
-async fn run_server<W: ServerWeight + 'static>(server_config: ServerConfig) -> anyhow::Result<()> {
+async fn run_server(server_config: ServerConfig) -> anyhow::Result<()> {
     let addr = server_config.bind_to.parse()?;
     info!("creating grpc server");
-    let server_impl: ServerImpl<W> = ServerImpl::create(server_config).await?;
+    let server_impl: ServerImpl = ServerImpl::create(server_config).await?;
 
     info!("{} is listening on {}", env!("CARGO_PKG_NAME"), addr);
 

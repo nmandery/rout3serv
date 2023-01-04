@@ -11,7 +11,7 @@ use crate::grpc::error::{logged_status, ToStatusResult};
 use crate::grpc::util::{
     inner_join_h3dataframe, spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream,
 };
-use crate::grpc::{LoadedCellSelection, ServerImpl, ServerWeight};
+use crate::grpc::{LoadedCellSelection, ServerImpl};
 use crate::weight::Weight;
 
 use super::names;
@@ -20,16 +20,16 @@ pub enum Threshold {
     TravelDuration(Time),
 }
 
-pub struct H3WithinThresholdParameters<W: ServerWeight> {
-    pub graph: CustomizedGraph<W>,
+pub struct H3WithinThresholdParameters {
+    pub graph: CustomizedGraph,
     pub origins: LoadedCellSelection,
     pub threshold: Threshold,
 }
 
-pub(crate) async fn create_parameters<W: ServerWeight>(
+pub(crate) async fn create_parameters(
     request: super::api::generated::H3WithinThresholdRequest,
-    server_impl: &ServerImpl<W>,
-) -> Result<H3WithinThresholdParameters<W>, Status> {
+    server_impl: &ServerImpl,
+) -> Result<H3WithinThresholdParameters, Status> {
     let threshold = if request.travel_duration_secs_threshold.is_normal()
         && request.travel_duration_secs_threshold > 0.0
     {
@@ -62,8 +62,8 @@ pub(crate) async fn create_parameters<W: ServerWeight>(
     })
 }
 
-pub async fn within_threshold<W: 'static + ServerWeight>(
-    parameters: H3WithinThresholdParameters<W>,
+pub async fn within_threshold(
+    parameters: H3WithinThresholdParameters,
 ) -> Result<Response<ArrowIpcChunkStream>, Status> {
     stream_dataframe(
         uuid::Uuid::new_v4().to_string(),
@@ -76,17 +76,15 @@ pub async fn within_threshold<W: 'static + ServerWeight>(
     .await
 }
 
-fn within_threshold_internal<W: ServerWeight>(
-    parameters: H3WithinThresholdParameters<W>,
-) -> Result<DataFrame, Status> {
+fn within_threshold_internal(parameters: H3WithinThresholdParameters) -> Result<DataFrame, Status> {
     let threshold_weight = match parameters.threshold {
         Threshold::TravelDuration(travel_duration) => {
-            CustomizedWeight::<W>::from_travel_duration(travel_duration)
+            CustomizedWeight::from_travel_duration(travel_duration)
         }
     };
 
     // use the minimum weight encountered
-    let agg_fn = |existing: &mut CustomizedWeight<W>, new: CustomizedWeight<W>| {
+    let agg_fn = |existing: &mut CustomizedWeight, new: CustomizedWeight| {
         if new < *existing {
             *existing = new;
         }
