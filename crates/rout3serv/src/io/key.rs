@@ -11,7 +11,7 @@ pub struct GraphKey {
 
 impl GraphKey {
     pub fn file_suffix() -> &'static str {
-        ".parquet"
+        ".ipc"
     }
 }
 
@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn graph_regex() {
         assert_eq!(
-            GraphKey::from_str("somegraph_7.parquet").unwrap(),
+            GraphKey::from_str("somegraph_7.ipc").unwrap(),
             GraphKey {
                 name: "somegraph".to_string(),
                 h3_resolution: 7,
