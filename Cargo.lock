@@ -1048,6 +1048,7 @@ dependencies = [
 [[package]]
 name = "h3ron"
 version = "0.16.0"
+source = "git+https://github.com/nmandery/h3ron.git?rev=2dd6a5c995639a6239fb7b75c8add1e6c266839d#2dd6a5c995639a6239fb7b75c8add1e6c266839d"
 dependencies = [
  "ahash",
  "geo",
@@ -1063,6 +1064,7 @@ dependencies = [
 [[package]]
 name = "h3ron-graph"
 version = "0.5.0"
+source = "git+https://github.com/nmandery/h3ron.git?rev=2dd6a5c995639a6239fb7b75c8add1e6c266839d#2dd6a5c995639a6239fb7b75c8add1e6c266839d"
 dependencies = [
  "geo",
  "geo-types",
@@ -1080,6 +1082,7 @@ dependencies = [
 [[package]]
 name = "h3ron-h3-sys"
 version = "0.15.2"
+source = "git+https://github.com/nmandery/h3ron.git?rev=2dd6a5c995639a6239fb7b75c8add1e6c266839d#2dd6a5c995639a6239fb7b75c8add1e6c266839d"
 dependencies = [
  "cc",
  "geo-types",
@@ -1090,6 +1093,7 @@ dependencies = [
 [[package]]
 name = "h3ron-polars"
 version = "0.2.0"
+source = "git+https://github.com/nmandery/h3ron.git?rev=2dd6a5c995639a6239fb7b75c8add1e6c266839d#2dd6a5c995639a6239fb7b75c8add1e6c266839d"
 dependencies = [
  "geo",
  "geo-types",
