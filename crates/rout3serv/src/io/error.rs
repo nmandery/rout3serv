@@ -33,6 +33,9 @@ pub enum Error {
     H3ron(#[from] h3ron::Error),
 
     #[error(transparent)]
+    H3ronGraph(#[from] h3ron_graph::Error),
+
+    #[error(transparent)]
     H3ronPolars(#[from] h3ron_polars::Error),
 }
 

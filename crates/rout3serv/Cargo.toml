@@ -21,12 +21,16 @@ geo = "0.23"
 geojson = { version = "0.24", features = ["geo-types"] }
 geo-types = "0.7"
 geozero = { version = "0.9", features = ["with-geo", "with-wkb", "with-geos"], default_features = false }
-h3ron-graph = { features = ["io_osm"], git = "https://github.com/nmandery/h3ron.git", rev = "41ce0fc2cef3732c8231c605bedb2db9a7787404" }
-h3ron-polars = { features = ["serde"], git = "https://github.com/nmandery/h3ron.git", rev = "41ce0fc2cef3732c8231c605bedb2db9a7787404" }
-h3ron = { features = ["use-rayon", "roaring", "use-serde"], git = "https://github.com/nmandery/h3ron.git", rev = "41ce0fc2cef3732c8231c605bedb2db9a7787404" }
+
+#h3ron-graph = { features = ["io_osm"], git = "https://github.com/nmandery/h3ron.git", rev = "41ce0fc2cef3732c8231c605bedb2db9a7787404" }
+#h3ron-polars = { features = ["serde"], git = "https://github.com/nmandery/h3ron.git", rev = "41ce0fc2cef3732c8231c605bedb2db9a7787404" }
+#h3ron = { features = ["use-rayon", "roaring", "use-serde"], git = "https://github.com/nmandery/h3ron.git", rev = "41ce0fc2cef3732c8231c605bedb2db9a7787404" }
+h3ron-graph = { features = ["io_osm"], path = "/home/nicodev/CLionProjects/h3ron/h3ron-graph"}
+h3ron-polars = { features = ["serde"], path = "/home/nicodev/CLionProjects/h3ron/h3ron-polars"}
+h3ron = { features = ["use-rayon", "roaring", "use-serde"], path = "/home/nicodev/CLionProjects/h3ron/h3ron"}
+
 indexmap = "^1.7"
 itertools = "0.10"
-memmap2 = "0.5"
 mimalloc = { version = "0.1", default_features = false }
 num-traits = "0.2"
 object_store = { version = "0.5", features = ["aws"] }

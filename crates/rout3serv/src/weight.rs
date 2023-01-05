@@ -2,8 +2,12 @@ use h3ron_graph::graph::PreparedH3EdgeGraph;
 use std::cmp::Ordering;
 use std::ops::Add;
 
+use h3ron::{H3DirectedEdge, Index};
+use itertools::izip;
 use num_traits::Zero;
 use polars_core::frame::DataFrame;
+use polars_core::prelude::{NamedFrom, UInt64Chunked};
+use polars_core::series::Series;
 use serde::{Deserialize, Serialize};
 use uom::si::f32::Time;
 use uom::si::time::second;
@@ -125,9 +129,53 @@ impl Ord for StandardWeight {
     }
 }
 
+const COL_EDGE: &str = "edge";
+const COL_EDGE_PREFERENCE: &str = "edge_preference";
+const COL_EDGE_TRAVEL_DURATION: &str = "edge_travel_duration";
+const COL_LONG_EDGE: &str = "long_edge";
+const COL_LONG_EDGE_PREFERENCE: &str = "long_edge_preference";
+const COL_LONG_EDGE_TRAVEL_DURATION: &str = "long_edge_travel_duration";
+
 impl ToDataFrame for PreparedH3EdgeGraph<StandardWeight> {
     fn to_dataframe(&self) -> Result<DataFrame, Error> {
-        todo!()
+        let mut directed_edges = Vec::with_capacity(self.count_edges().0);
+        let mut edge_preferences = Vec::with_capacity(directed_edges.capacity());
+        let mut travel_durations = Vec::with_capacity(directed_edges.capacity());
+        let mut le_directed_edges = Vec::with_capacity(directed_edges.capacity());
+        let mut le_edge_preferences = Vec::with_capacity(directed_edges.capacity());
+        let mut le_travel_durations = Vec::with_capacity(directed_edges.capacity());
+
+        for (edge, edgeweight) in self.iter_edges() {
+            directed_edges.push(edge.h3index());
+            edge_preferences.push(edgeweight.weight.edge_preference);
+            travel_durations.push(edgeweight.weight.travel_duration.get::<second>());
+
+            if let Some((longedge, longedge_weight)) = edgeweight.longedge {
+                let le_edges: UInt64Chunked =
+                    longedge.h3edge_path()?.map(|e| Some(e.h3index())).collect();
+                if edge.h3index() == 1486744316942909439 {
+                    dbg!(&le_edges);
+                }
+                //le_directed_edges.push(Series::new("", le_edges));
+                le_directed_edges.push(Some(Series::new("", le_edges)));
+                le_edge_preferences.push(Some(longedge_weight.edge_preference));
+                le_travel_durations.push(Some(longedge_weight.travel_duration.get::<second>()));
+            } else {
+                //le_directed_edges.push(Series::new_empty("", &DataType::UInt64));
+                le_directed_edges.push(None);
+                le_edge_preferences.push(None);
+                le_travel_durations.push(None);
+            }
+        }
+
+        Ok(DataFrame::new(vec![
+            Series::new(COL_EDGE, directed_edges),
+            Series::new(COL_EDGE_PREFERENCE, edge_preferences),
+            Series::new(COL_EDGE_TRAVEL_DURATION, travel_durations),
+            Series::new(COL_LONG_EDGE, le_directed_edges),
+            Series::new(COL_LONG_EDGE_PREFERENCE, le_edge_preferences),
+            Series::new(COL_LONG_EDGE_TRAVEL_DURATION, le_travel_durations),
+        ])?)
     }
 }
 
@@ -136,8 +184,64 @@ impl FromDataFrame for PreparedH3EdgeGraph<StandardWeight> {
     where
         Self: Sized,
     {
-        todo!()
+        Ok(PreparedH3EdgeGraph::try_from_iter(
+            collect_edges(df)?.into_iter(),
+        )?)
     }
+}
+
+fn collect_edges(
+    df: DataFrame,
+) -> Result<
+    Vec<(
+        H3DirectedEdge,
+        StandardWeight,
+        Option<(Vec<H3DirectedEdge>, StandardWeight)>,
+    )>,
+    Error,
+> {
+    let directed_edges = df.column(COL_EDGE)?.u64()?;
+    let edge_preferences = df.column(COL_EDGE_PREFERENCE)?.f32()?;
+    let travel_durations = df.column(COL_EDGE_TRAVEL_DURATION)?.f32()?;
+    let le_directed_edges = df.column(COL_LONG_EDGE)?.list()?;
+    let le_edge_preferences = df.column(COL_LONG_EDGE_PREFERENCE)?.f32()?;
+    let le_travel_durations = df.column(COL_LONG_EDGE_TRAVEL_DURATION)?.f32()?;
+
+    let mut out = Vec::with_capacity(directed_edges.len());
+    for (de, de_pref, de_td, le, le_pref, le_td) in izip!(
+        directed_edges.into_iter(),
+        edge_preferences.into_iter(),
+        travel_durations.into_iter(),
+        le_directed_edges,
+        le_edge_preferences.into_iter(),
+        le_travel_durations.into_iter()
+    ) {
+        if let (Some(de), Some(de_pref), Some(de_td)) = (de, de_pref, de_td) {
+            let edge = H3DirectedEdge::try_from(de)?;
+            let edge_weight = StandardWeight::new(de_pref, Time::new::<second>(de_td));
+
+            let longedge = if let (Some(le), Some(le_pref), Some(le_td)) = (le, le_pref, le_td) {
+                let le = le.u64()?;
+                if le.is_empty() {
+                    None
+                } else {
+                    let le_edges = le
+                        .into_iter()
+                        .flatten()
+                        .map(H3DirectedEdge::try_from)
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let le_weight = StandardWeight::new(le_pref, Time::new::<second>(le_td));
+                    Some((le_edges, le_weight))
+                }
+            } else {
+                None
+            };
+
+            out.push((edge, edge_weight, longedge));
+        }
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
