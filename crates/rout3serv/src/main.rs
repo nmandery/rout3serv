@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
 use anyhow::Result;
@@ -20,8 +20,7 @@ use uom::si::length::meter;
 use uom::si::time::second;
 
 use crate::config::ServerConfig;
-use crate::io::parquet::WriteParquet;
-use crate::io::serde_util::deserialize_from_byte_slice;
+use crate::io::ipc::{ReadIPC, WriteIPC};
 use crate::osm::car::CarAnalyzer;
 use crate::weight::{StandardWeight, Weight};
 
@@ -108,8 +107,7 @@ fn main() -> Result<()> {
 
 fn read_graph_from_filename(filename: &str) -> Result<PreparedH3EdgeGraph<StandardWeight>> {
     let f = File::open(filename)?;
-    let mapped = unsafe { memmap2::Mmap::map(&f)? };
-    Ok(deserialize_from_byte_slice(&mapped)?)
+    Ok(PreparedH3EdgeGraph::read_ipc(BufReader::new(f))?)
 }
 
 fn dispatch_command(matches: ArgMatches) -> Result<()> {
@@ -235,6 +233,6 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
         stats.num_nodes, stats.num_edges
     );
     let writer = BufWriter::new(File::create(graph_output)?);
-    prepared_graph.write_parquet(writer)?;
+    prepared_graph.write_ipc(writer)?;
     Ok(())
 }

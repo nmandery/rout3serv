@@ -24,9 +24,9 @@ use tracing::{debug, error, info};
 
 use crate::config::ServerConfig;
 use crate::io::dataframe::DataframeDataset;
+use crate::io::ipc::ReadIPC;
 use crate::io::memory_cache::{CacheFetcher, FetchError, MemoryCache};
 use crate::io::objectstore::ObjectStore;
-use crate::io::parquet::ReadParquet;
 use crate::io::serde_util::{deserialize_from_byte_slice, serialize_into};
 use crate::io::{Error, GraphKey};
 use crate::weight::StandardWeight;
@@ -213,7 +213,7 @@ impl CacheFetcher for GraphFetcher {
         let path: Path = format!("{}{}", self.prefix(), key.to_string()).into();
         fetch(objectstore.as_ref(), &path, |bytes| {
             let cur = Cursor::new(bytes.as_ref());
-            PreparedH3EdgeGraph::read_parquet(cur)
+            PreparedH3EdgeGraph::read_ipc(cur)
         })
         .await
     }

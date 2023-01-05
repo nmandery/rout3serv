@@ -1048,7 +1048,6 @@ dependencies = [
 [[package]]
 name = "h3ron"
 version = "0.16.0"
-source = "git+https://github.com/nmandery/h3ron.git?rev=41ce0fc2cef3732c8231c605bedb2db9a7787404#41ce0fc2cef3732c8231c605bedb2db9a7787404"
 dependencies = [
  "ahash",
  "geo",
@@ -1064,7 +1063,6 @@ dependencies = [
 [[package]]
 name = "h3ron-graph"
 version = "0.5.0"
-source = "git+https://github.com/nmandery/h3ron.git?rev=41ce0fc2cef3732c8231c605bedb2db9a7787404#41ce0fc2cef3732c8231c605bedb2db9a7787404"
 dependencies = [
  "geo",
  "geo-types",
@@ -1082,7 +1080,6 @@ dependencies = [
 [[package]]
 name = "h3ron-h3-sys"
 version = "0.15.2"
-source = "git+https://github.com/nmandery/h3ron.git?rev=41ce0fc2cef3732c8231c605bedb2db9a7787404#41ce0fc2cef3732c8231c605bedb2db9a7787404"
 dependencies = [
  "cc",
  "geo-types",
@@ -1093,7 +1090,6 @@ dependencies = [
 [[package]]
 name = "h3ron-polars"
 version = "0.2.0"
-source = "git+https://github.com/nmandery/h3ron.git?rev=41ce0fc2cef3732c8231c605bedb2db9a7787404#41ce0fc2cef3732c8231c605bedb2db9a7787404"
 dependencies = [
  "geo",
  "geo-types",
@@ -2482,7 +2478,6 @@ dependencies = [
  "h3ron-polars",
  "indexmap",
  "itertools",
- "memmap2",
  "mimalloc",
  "num-traits",
  "object_store",
