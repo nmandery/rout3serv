@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use std::ops::Add;
 
 use h3ron::{H3DirectedEdge, Index};
+use h3ron_graph::graph::prepared::FromIterItem;
 use itertools::izip;
 use num_traits::Zero;
 use polars_core::frame::DataFrame;
@@ -186,16 +187,7 @@ impl FromDataFrame for PreparedH3EdgeGraph<StandardWeight> {
     }
 }
 
-fn collect_edges(
-    df: DataFrame,
-) -> Result<
-    Vec<(
-        H3DirectedEdge,
-        StandardWeight,
-        Option<(Vec<H3DirectedEdge>, StandardWeight)>,
-    )>,
-    Error,
-> {
+fn collect_edges(df: DataFrame) -> Result<Vec<FromIterItem<StandardWeight>>, Error> {
     let directed_edges = df.column(COL_EDGE)?.u64()?;
     let edge_preferences = df.column(COL_EDGE_PREFERENCE)?.f32()?;
     let travel_durations = df.column(COL_EDGE_TRAVEL_DURATION)?.f32()?;
