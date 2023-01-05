@@ -153,15 +153,11 @@ impl ToDataFrame for PreparedH3EdgeGraph<StandardWeight> {
             if let Some((longedge, longedge_weight)) = edgeweight.longedge {
                 let le_edges: UInt64Chunked =
                     longedge.h3edge_path()?.map(|e| Some(e.h3index())).collect();
-                if edge.h3index() == 1486744316942909439 {
-                    dbg!(&le_edges);
-                }
-                //le_directed_edges.push(Series::new("", le_edges));
+
                 le_directed_edges.push(Some(Series::new("", le_edges)));
                 le_edge_preferences.push(Some(longedge_weight.edge_preference));
                 le_travel_durations.push(Some(longedge_weight.travel_duration.get::<second>()));
             } else {
-                //le_directed_edges.push(Series::new_empty("", &DataType::UInt64));
                 le_directed_edges.push(None);
                 le_edge_preferences.push(None);
                 le_travel_durations.push(None);
