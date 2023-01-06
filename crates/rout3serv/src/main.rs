@@ -11,7 +11,7 @@ use geozero::{ColumnValue, PropertyProcessor};
 use h3ron::to_geo::ToLineString;
 use h3ron::H3DirectedEdge;
 use h3ron_graph::algorithm::covered_area::CoveredArea;
-use h3ron_graph::graph::{GetStats, H3EdgeGraph, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
+use h3ron_graph::graph::{GetStats, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
 use h3ron_graph::io::osm::OsmPbfH3EdgeGraphBuilder;
 use mimalloc::MiMalloc;
 use tracing::info;
@@ -135,7 +135,7 @@ fn dispatch_command(matches: ArgMatches) -> Result<()> {
 
 fn subcommand_graph_to_fgb(sc_matches: &ArgMatches) -> Result<()> {
     let graph_filename: &String = sc_matches.get_one("GRAPH").unwrap();
-    let graph: H3EdgeGraph<StandardWeight> = read_graph_from_filename(graph_filename)?.into();
+    let graph = read_graph_from_filename(graph_filename)?;
     let mut writer = BufWriter::new(File::create(
         sc_matches.get_one::<String>("OUTPUT").unwrap(),
     )?);
@@ -159,22 +159,53 @@ fn subcommand_graph_to_fgb(sc_matches: &ArgMatches) -> Result<()> {
     fgb.add_column("edge_preference", ColumnType::Float, |_fbb, col| {
         col.nullable = false;
     });
+    fgb.add_column("is_long_edge", ColumnType::Bool, |_fbb, col| {
+        col.nullable = false;
+    });
+    fgb.add_column("num_edges", ColumnType::UInt, |_fbb, col| {
+        col.nullable = false;
+    });
 
-    for (edge, weight) in graph.iter_edges() {
+    for (edge, edgeweight) in graph.iter_edges() {
         fgb.add_feature_geom(Geometry::LineString(edge.to_linestring()?), |feat| {
             feat.property(
                 0,
                 "travel_duration_secs",
-                &ColumnValue::Float(weight.travel_duration().get::<second>()),
+                &ColumnValue::Float(edgeweight.weight.travel_duration().get::<second>()),
             )
             .unwrap();
             feat.property(
                 1,
                 "edge_preference",
-                &ColumnValue::Float(weight.edge_preference()),
+                &ColumnValue::Float(edgeweight.weight.edge_preference()),
             )
             .unwrap();
+            feat.property(2, "is_long_edge", &ColumnValue::Bool(false))
+                .unwrap();
+            feat.property(3, "num_edges", &ColumnValue::UInt(1))
+                .unwrap();
         })?;
+
+        if let Some((le, le_weight)) = edgeweight.longedge {
+            fgb.add_feature_geom(Geometry::LineString(le.to_linestring()?), |feat| {
+                feat.property(
+                    0,
+                    "travel_duration_secs",
+                    &ColumnValue::Float(le_weight.travel_duration().get::<second>()),
+                )
+                .unwrap();
+                feat.property(
+                    1,
+                    "edge_preference",
+                    &ColumnValue::Float(le_weight.edge_preference()),
+                )
+                .unwrap();
+                feat.property(2, "is_long_edge", &ColumnValue::Bool(true))
+                    .unwrap();
+                feat.property(3, "num_edges", &ColumnValue::UInt(le.h3edges_len() as u32))
+                    .unwrap();
+            })?;
+        }
     }
     fgb.write(&mut writer)?;
     Ok(())
