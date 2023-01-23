@@ -1,14 +1,17 @@
+use ahash::RandomState;
 use std::cmp::max;
 use std::sync::Arc;
 
 use geo_types::Coord;
-use h3ron::collections::{H3CellSet, H3Treemap, RandomState};
-use h3ron::iter::change_resolution;
-use h3ron::{H3Cell, H3DirectedEdge, HasH3Resolution, Index};
-use h3ron_graph::algorithm::differential_shortest_path::{DifferentialShortestPath, ExclusionDiff};
-use h3ron_graph::algorithm::path::Path;
-use h3ron_graph::graph::PreparedH3EdgeGraph;
-use h3ron_polars::frame::H3DataFrame;
+use h3o::{CellIndex, LatLng, Resolution};
+use hexigraph::algorithm::graph::differential_shortest_path::ExclusionDiff;
+use hexigraph::algorithm::graph::path::Path;
+use hexigraph::algorithm::graph::DifferentialShortestPath;
+use hexigraph::algorithm::resolution::transform_resolution;
+use hexigraph::container::treemap::H3Treemap;
+use hexigraph::container::CellSet;
+use hexigraph::graph::PreparedH3EdgeGraph;
+use hexigraph::HasH3Resolution;
 use polars::prelude::{DataFrame, DataFrameJoinOps, JoinType, NamedFrom, Series};
 use serde::{Deserialize, Serialize};
 use tonic::{Code, Status};
@@ -22,18 +25,19 @@ use crate::grpc::error::{logged_status, StatusCodeAndMessage, ToStatusResult};
 use crate::grpc::geometry::{buffer_meters, from_wkb, geom_to_h3};
 use crate::grpc::util::{change_cell_resolution_dedup, StrId};
 use crate::grpc::ServerImpl;
+use crate::io::dataframe::CellDataFrame;
 use crate::io::memory_cache::FetchError;
 use crate::weight::{StandardWeight, Weight};
 
 pub struct DspInput {
     /// the cells within the disturbance
-    pub disturbance: H3Treemap<H3Cell>,
+    pub disturbance: H3Treemap<CellIndex>,
 
     /// the cells of the disturbance and within the surrounding buffer
-    pub within_buffer: Vec<H3Cell>,
+    pub within_buffer: Vec<CellIndex>,
 
     /// the destination cells to route to
-    pub destinations: Vec<H3Cell>,
+    pub destinations: Vec<CellIndex>,
 
     pub store_output: bool,
     pub options: ShortestPathOptions,
@@ -45,8 +49,8 @@ pub struct DspInput {
     /// running time in most cases.
     /// The reduction should be no more than two resolutions.
     pub downsampled_graph: Option<Arc<PreparedH3EdgeGraph<StandardWeight>>>,
-    pub ref_dataframe: H3DataFrame<H3Cell>,
-    pub ref_dataframe_cells: H3CellSet,
+    pub ref_dataframe: CellDataFrame,
+    pub ref_dataframe_cells: CellSet,
 }
 
 /// collect/prepare/download all input data needed for the differential shortest path
@@ -62,9 +66,12 @@ pub(crate) async fn collect_input(
         // attempt to find a suitable graph at a lower resolution
 
         let mut downsampled_graph = None;
-        for r in ((graph_key.h3_resolution.saturating_sub(4))..graph_key.h3_resolution).rev() {
+        let r_end: u8 = graph_key.h3_resolution.into();
+        let r_start: u8 = r_end.saturating_sub(4);
+
+        for r in (r_start..r_end).rev() {
             let mut gck = graph_key.clone();
-            gck.h3_resolution = r;
+            gck.h3_resolution = r.try_into().expect("resolution search");
 
             match server_impl.storage.retrieve_graph(gck).await {
                 Ok(graph) => {
@@ -117,11 +124,13 @@ pub(crate) async fn collect_input(
         .to_status_result()?
         .ok_or_else(|| logged_status("ref_dataset was empty", Code::NotFound, Level::Warn))?;
 
-    let ref_dataframe_cells: H3CellSet = ref_dataframe
-        .h3indexchunked()
+    let ref_dataframe_cells: CellSet = ref_dataframe
+        .cell_u64s()
         .to_status_result()?
-        .to_collection()
-        .to_status_result()?;
+        .into_iter()
+        .filter_map(|v| v.map(|h3index| CellIndex::try_from(h3index).ok()))
+        .flatten()
+        .collect();
 
     Ok(DspInput {
         disturbance,
@@ -139,11 +148,11 @@ pub(crate) async fn collect_input(
 /// cells to route to
 fn destination_cells(
     destinations: Vec<super::api::generated::Point>,
-    h3_resolution: u8,
-) -> Result<Vec<H3Cell>, Status> {
+    h3_resolution: Resolution,
+) -> Result<Vec<CellIndex>, Status> {
     let mut destination_cells = destinations
         .iter()
-        .map(|pt| H3Cell::from_coordinate(Coord::from((pt.x, pt.y)), h3_resolution))
+        .map(|pt| LatLng::try_from(Coord::from((pt.x, pt.y))).map(|ll| ll.to_cell(h3_resolution)))
         .collect::<Result<Vec<_>, _>>()
         .to_status_result_with_message(Code::Internal, || {
             "can not convert the target points to h3".to_string()
@@ -154,17 +163,17 @@ fn destination_cells(
 }
 
 fn disturbance_and_buffered_cells(
-    h3_resolution: u8,
+    h3_resolution: Resolution,
     disturbance_wkb_geometry: &[u8],
     radius_meters: f64,
-) -> Result<(H3Treemap<H3Cell>, Vec<H3Cell>), Status> {
+) -> Result<(H3Treemap<CellIndex>, Vec<CellIndex>), Status> {
     let disturbance_geom = from_wkb(disturbance_wkb_geometry)?;
-    let disturbed_cells: H3Treemap<H3Cell> = H3Treemap::from_iter_with_sort(
-        geom_to_h3(&disturbance_geom, h3_resolution, true)?.into_iter(),
+    let disturbed_cells: H3Treemap<CellIndex> = H3Treemap::from_iter(
+        geom_to_h3(disturbance_geom.clone(), h3_resolution, true)?.into_iter(),
     );
 
     let buffered_cells = geom_to_h3(
-        &buffer_meters(&disturbance_geom, radius_meters)?,
+        buffer_meters(&disturbance_geom, radius_meters)?,
         h3_resolution,
         true,
     )?;
@@ -174,11 +183,11 @@ fn disturbance_and_buffered_cells(
 #[derive(Serialize, Deserialize)]
 pub struct DspOutput {
     pub object_id: String,
-    pub ref_dataframe: H3DataFrame<H3Cell>,
-    pub ref_dataframe_cells: H3CellSet,
+    pub ref_dataframe: CellDataFrame,
+    pub ref_dataframe_cells: CellSet,
 
     /// tuple: (origin h3 cell, diff)
-    pub differential_shortest_paths: Vec<(H3Cell, ExclusionDiff<Path<StandardWeight>>)>,
+    pub differential_shortest_paths: Vec<(CellIndex, ExclusionDiff<Path<StandardWeight>>)>,
 }
 
 impl StrId for DspOutput {
@@ -190,8 +199,8 @@ impl StrId for DspOutput {
 ///
 ///
 pub fn calculate(input: DspInput) -> Result<DspOutput, Status> {
-    let origin_cells: Vec<H3Cell> = {
-        let origin_cells: Vec<H3Cell> = {
+    let origin_cells: Vec<CellIndex> = {
+        let origin_cells: Vec<CellIndex> = {
             let mut origin_cells = Vec::with_capacity(input.within_buffer.len());
             for cell in &input.within_buffer {
                 // exclude the cells of the disturbance itself as well as all origin cells without
@@ -205,18 +214,17 @@ pub fn calculate(input: DspInput) -> Result<DspOutput, Status> {
 
         if let Some(downsampled_graph) = input.downsampled_graph {
             let origin_cells_ds =
-                change_cell_resolution_dedup(&origin_cells, downsampled_graph.h3_resolution())
-                    .to_status_result()?;
+                change_cell_resolution_dedup(&origin_cells, downsampled_graph.h3_resolution());
 
             let destinations_ds = change_cell_resolution_dedup(
                 &input.destinations,
                 downsampled_graph.h3_resolution(),
-            )?;
+            );
 
-            let disturbance_ds: H3Treemap<_> = H3Treemap::from_result_iter_with_sort(
-                change_resolution(input.disturbance.iter(), downsampled_graph.h3_resolution()),
-            )
-            .to_status_result()?;
+            let disturbance_ds: H3Treemap<_> = H3Treemap::from_iter(transform_resolution(
+                input.disturbance.iter().filter_map(|v| v.ok()),
+                downsampled_graph.h3_resolution(),
+            ));
 
             let diff_ds = downsampled_graph
                 .differential_shortest_path_map(
@@ -232,46 +240,38 @@ pub fn calculate(input: DspInput) -> Result<DspOutput, Status> {
             // cells around the found disturbance effect. This is essentially a buffering.
             let k_affected = max(
                 1,
-                (1500.0
-                    / H3DirectedEdge::edge_length_avg_m(downsampled_graph.h3_resolution())
-                        .to_status_result()?)
-                .ceil() as u32,
+                (1500.0 / downsampled_graph.h3_resolution().edge_length_m()).ceil() as u32,
             );
-            let mut affected_downsampled: H3CellSet =
-                H3CellSet::with_capacity_and_hasher(diff_ds.len(), RandomState::default());
+            let mut affected_downsampled =
+                CellSet::with_capacity_and_hasher(diff_ds.len(), RandomState::default());
             for cell in diff_ds.keys() {
                 // the grid_disk creates essentially a buffer so the skew-effects of the
                 // reduction of the resolution at the borders of the disturbance effect
                 // are reduced. The result is a larger number of full-resolution routing runs
                 // is performed.
-                if !cell
-                    .grid_disk(k_affected)
-                    .to_status_result()?
-                    .iter()
-                    .all(|ring_cell| {
-                        if let Some(diff) = diff_ds.get(&ring_cell) {
-                            diff.before_cell_exclusion == diff.after_cell_exclusion
-                        } else {
-                            true
-                        }
-                    })
-                {
+                let disk: Vec<_> = cell.grid_disk(k_affected);
+
+                if !disk.iter().all(|ring_cell| {
+                    if let Some(diff) = diff_ds.get(ring_cell) {
+                        diff.before_cell_exclusion == diff.after_cell_exclusion
+                    } else {
+                        true
+                    }
+                }) {
                     affected_downsampled.insert(*cell);
                 }
             }
 
             let mut reduced_origin_cells = Vec::with_capacity(origin_cells.len());
             for cell in origin_cells {
-                let parent_cell = cell
-                    .get_parent(downsampled_graph.h3_resolution())
-                    .to_status_result()?;
-
-                // always add cells within the downsampled disturbance to avoid ignoring cells directly
-                // bordering to the disturbance.
-                if affected_downsampled.contains(&parent_cell)
-                    || disturbance_ds.contains(&parent_cell)
-                {
-                    reduced_origin_cells.push(cell);
+                if let Some(parent_cell) = cell.parent(downsampled_graph.h3_resolution()) {
+                    // always add cells within the downsampled disturbance to avoid ignoring cells directly
+                    // bordering to the disturbance.
+                    if affected_downsampled.contains(&parent_cell)
+                        || disturbance_ds.contains(&parent_cell)
+                    {
+                        reduced_origin_cells.push(cell);
+                    }
                 }
             }
             reduced_origin_cells
@@ -333,7 +333,7 @@ fn disturbance_statistics_internal(output: &DspOutput) -> Result<DataFrame, Stat
     };
 
     let preferred_destination = |paths: &[Path<StandardWeight>]| -> Option<u64> {
-        paths.first().map(|p| p.destination_cell.h3index())
+        paths.first().map(|p| u64::from(p.destination_cell))
     };
 
     let mut cell_h3indexes = Vec::with_capacity(output.differential_shortest_paths.len());
@@ -354,7 +354,7 @@ fn disturbance_statistics_internal(output: &DspOutput) -> Result<DataFrame, Stat
     let mut preferred_destination_with_disturbance =
         Vec::with_capacity(output.differential_shortest_paths.len());
     for (origin_cell, diff) in &output.differential_shortest_paths {
-        cell_h3indexes.push(origin_cell.h3index());
+        cell_h3indexes.push(u64::from(*origin_cell));
         //population_at_origin.push(output.population_at_origins.get(origin_cell).cloned());
 
         num_reached_without_disturbance.push(diff.before_cell_exclusion.len() as u64);
@@ -411,9 +411,9 @@ fn disturbance_statistics_internal(output: &DspOutput) -> Result<DataFrame, Stat
     .to_status_result()?;
     let df = df
         .join(
-            output.ref_dataframe.dataframe(),
+            &output.ref_dataframe.dataframe,
             ["h3index_origin"],
-            [output.ref_dataframe.h3index_column_name()],
+            [output.ref_dataframe.cell_column_name.as_str()],
             JoinType::Inner,
             None,
         )

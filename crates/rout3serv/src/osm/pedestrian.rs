@@ -6,9 +6,10 @@
 //! - use a DEM (Copernicus DEM-30) to derive inclines and declines in height
 //!   along edges. This could also be of use for other models.
 //!
-use h3ron::H3DirectedEdge;
-use h3ron_graph::io::osm::osmpbfreader::Tags;
-use h3ron_graph::io::osm::{EdgeProperties, WayAnalyzer};
+use h3o::DirectedEdgeIndex;
+use hexigraph::algorithm::edge::cell_centroid_distance_m;
+use hexigraph::io::osm::osmpbfreader::Tags;
+use hexigraph::io::osm::{EdgeProperties, WayAnalyzer};
 use uom::si::f32::Length;
 use uom::si::length::meter;
 
@@ -28,7 +29,7 @@ impl WayAnalyzer<StandardWeight> for FootwayAnalyzer {
     fn analyze_way_tags(
         &self,
         tags: &Tags,
-    ) -> Result<Option<Self::WayProperties>, h3ron_graph::Error> {
+    ) -> Result<Option<Self::WayProperties>, hexigraph::error::Error> {
         // https://wiki.openstreetmap.org/wiki/Key:highway or https://wiki.openstreetmap.org/wiki/DE:Key:highway
         // TODO: make use of `access` tag: https://wiki.openstreetmap.org/wiki/Key:access
         let mut edge_preference = None;
@@ -67,12 +68,12 @@ impl WayAnalyzer<StandardWeight> for FootwayAnalyzer {
 
     fn way_edge_properties(
         &self,
-        edge: H3DirectedEdge,
+        edge: DirectedEdgeIndex,
         way_properties: &Self::WayProperties,
-    ) -> Result<EdgeProperties<StandardWeight>, h3ron_graph::Error> {
+    ) -> Result<EdgeProperties<StandardWeight>, hexigraph::error::Error> {
         let weight = StandardWeight::new(
             way_properties.edge_preference,
-            Length::new::<meter>(edge.cell_centroid_distance_m()? as f32) / *WALKING_SPEED,
+            Length::new::<meter>(cell_centroid_distance_m(edge) as f32) / *WALKING_SPEED,
         );
         Ok(EdgeProperties {
             is_bidirectional: true,

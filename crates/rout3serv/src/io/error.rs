@@ -1,3 +1,4 @@
+use h3o::Resolution;
 use tokio::task::JoinError;
 
 #[derive(thiserror::Error, Debug)]
@@ -24,19 +25,22 @@ pub enum Error {
     UnidentifiedFileFormat(String),
 
     #[error("unsupported h3 resolution: {0}")]
-    UnsupportedH3Resolution(u8),
+    UnsupportedH3Resolution(Resolution),
 
     #[error("join error")]
     Join,
 
-    #[error(transparent)]
-    H3ron(#[from] h3ron::Error),
+    #[error("missing cell column {0}")]
+    MissingCellColumn(String),
 
     #[error(transparent)]
-    H3ronGraph(#[from] h3ron_graph::Error),
+    InvalidDirectedEdgeIndex(#[from] h3o::error::InvalidDirectedEdgeIndex),
 
     #[error(transparent)]
-    H3ronPolars(#[from] h3ron_polars::Error),
+    InvalidCellIndex(#[from] h3o::error::InvalidCellIndex),
+
+    #[error(transparent)]
+    Hexigraph(#[from] hexigraph::error::Error),
 }
 
 impl From<tokio::task::JoinError> for Error {

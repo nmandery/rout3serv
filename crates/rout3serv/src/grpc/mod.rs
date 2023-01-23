@@ -1,12 +1,11 @@
+use h3o::{CellIndex, Resolution};
 use std::convert::TryFrom;
 use std::ops::Add;
 use std::sync::Arc;
 
-use h3ron::collections::H3CellSet;
-use h3ron::iter::change_resolution;
-use h3ron::H3Cell;
-use h3ron_graph::graph::PreparedH3EdgeGraph;
-use h3ron_polars::frame::H3DataFrame;
+use hexigraph::algorithm::resolution::transform_resolution;
+use hexigraph::container::{CellSet, HashSet};
+use hexigraph::graph::PreparedH3EdgeGraph;
 use num_traits::Zero;
 use object_store::path::Path;
 use serde::de::DeserializeOwned;
@@ -32,7 +31,7 @@ use crate::grpc::api::RouteH3IndexesKind;
 use crate::grpc::error::ToStatusResult;
 use crate::grpc::error::{logged_status, StatusCodeAndMessage};
 use crate::grpc::util::{spawn_blocking_status, stream_dataframe, ArrowIpcChunkStream};
-use crate::io::dataframe::DataframeDataset;
+use crate::io::dataframe::{CellDataFrame, DataframeDataset};
 use crate::io::{GraphKey, Storage};
 use crate::weight::{StandardWeight, Weight};
 
@@ -61,8 +60,8 @@ pub trait ServerWeight:
 }
 
 pub struct LoadedCellSelection {
-    pub cells: Vec<H3Cell>,
-    pub dataframe: Option<H3DataFrame<H3Cell>>,
+    pub cells: Vec<CellIndex>,
+    pub dataframe: Option<CellDataFrame>,
 }
 
 pub(crate) struct ServerImpl {
@@ -115,7 +114,7 @@ impl ServerImpl {
     pub async fn load_cell_selection(
         &self,
         cell_selection: &Option<CellSelection>,
-        h3_resolution: u8,
+        h3_resolution: Resolution,
         selection_name: &str,
     ) -> Result<LoadedCellSelection, Status> {
         let Some(cell_selection) = cell_selection else { return Err(logged_status(format!("empty cell selection '{}' given", selection_name), Code::InvalidArgument, Level::Info)) };
@@ -123,9 +122,9 @@ impl ServerImpl {
         // build a complete list of the requested h3cells transformed to the
         // correct resolution
         let mut cells = block_in_place(|| {
-            change_resolution(
+            let mut cells: Vec<_> = transform_resolution(
                 cell_selection.cells.iter().filter_map(|v| {
-                    if let Ok(cell) = H3Cell::try_from(*v) {
+                    if let Ok(cell) = CellIndex::try_from(*v) {
                         Some(cell)
                     } else {
                         warn!("invalid h3 index {} ignored", v);
@@ -134,16 +133,11 @@ impl ServerImpl {
                 }),
                 h3_resolution,
             )
-            .collect::<Result<Vec<_>, _>>()
-            .to_status_result_with_message(Code::Internal, || {
-                "transforming input cell selection resolution failed".to_string()
-            })
-            .map(|mut cells| {
-                cells.sort_unstable();
-                cells.dedup();
-                cells
-            })
-        })?;
+            .collect();
+            cells.sort_unstable();
+            cells.dedup();
+            cells
+        });
 
         if cells.is_empty() || cell_selection.dataset_name.is_empty() {
             Ok(LoadedCellSelection {
@@ -338,11 +332,11 @@ impl Rout3Serv for ServerImpl {
             .to_status_result()?;
 
         tokio::spawn(async move {
-            let cell_lookup: H3CellSet = inner
+            let cell_lookup: CellSet = inner
                 .cells
                 .iter()
                 .filter_map(|h3index| {
-                    if let Ok(cell) = H3Cell::try_from(*h3index) {
+                    if let Ok(cell) = CellIndex::try_from(*h3index) {
                         Some(cell)
                     } else {
                         warn!("received invalid h3index: {}", h3index);
@@ -410,18 +404,19 @@ async fn run_server(server_config: ServerConfig) -> anyhow::Result<()> {
 }
 
 fn filter_cells_by_dataframe_contents(
-    df: &H3DataFrame<H3Cell>,
-    cells: &mut Vec<H3Cell>,
+    df: &CellDataFrame,
+    cells: &mut Vec<CellIndex>,
 ) -> Result<(), Status> {
-    if df.dataframe().is_empty() {
+    if df.dataframe.is_empty() {
         cells.clear();
     } else {
-        let df_cells_lookup: H3CellSet = df
-            .h3indexchunked()
+        let df_cells_lookup: HashSet<_> = df
+            .cell_u64s()
             .to_status_result()?
-            .to_collection()
-            .to_status_result()?;
-        cells.retain(|cell| df_cells_lookup.contains(cell));
+            .into_iter()
+            .flatten()
+            .collect();
+        cells.retain(|cell| df_cells_lookup.contains(&(u64::from(*cell))));
     }
     Ok(())
 }

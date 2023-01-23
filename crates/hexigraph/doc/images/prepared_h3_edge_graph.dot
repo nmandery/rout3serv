@@ -1,0 +1,52 @@
+# renderer:
+#    without fastforward: circo
+#    with fastforward: dot
+
+digraph {
+
+  "h3cell" [
+shape=plaintext,
+   label=<
+     <table border="0" cellborder="1" cellspacing="0" cellpadding="7">
+       <tr><td bgcolor="lightblue">H3 cell</td><td port="p">uint64</td></tr>
+     </table>>
+  ];
+
+
+
+  "h3edge" [
+shape=plaintext,
+   label=<
+     <table border="0" cellborder="1" cellspacing="0" cellpadding="7">
+       <tr><td bgcolor="lightblue">Outgoing H3 edge direction n</td><td bgcolor="lightgray">[..]</td></tr>
+       <tr><td port="p_n">uint64</td><td bgcolor="lightgray" port="p3">uint64</td></tr>
+     </table>>
+  ];
+
+
+  "attributes_n" [
+shape=plaintext,
+   label=<
+     <table border="0" cellborder="1" cellspacing="0" cellpadding="7">
+       <tr><td bgcolor="lightblue" port="p">Attributes</td><td>implementation specific</td></tr>
+     </table>>
+  ];
+
+
+  "fastforward_n" [
+shape=plaintext,
+   label=<
+     <table border="0" cellborder="1" cellspacing="0" cellpadding="7">
+        <tr><td bgcolor="indianred1" port="p">In H3 Edge</td><td>uint64</td></tr>
+        <tr><td bgcolor="indianred1" port="p">Out H3 Edge</td><td>uint64</td></tr>
+        <tr><td bgcolor="indianred1" port="p">Contained Edges</td><td>Compressed bitmap</td></tr>
+        <tr><td bgcolor="indianred1" port="p">Contained Edge Sequence</td><td>Compressed uint64 vector</td></tr>
+        <tr><td bgcolor="indianred1" port="p">Aggregated attributes</td><td>implementation specific</td></tr>
+     </table>>
+  ];
+
+
+  h3cell:p -> h3edge;
+  h3edge:p_n -> attributes_n:p;
+  h3edge:p_n -> fastforward_n:p [style=dashed];
+}

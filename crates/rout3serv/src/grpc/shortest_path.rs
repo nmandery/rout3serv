@@ -1,9 +1,10 @@
+use h3o::CellIndex;
 use std::fmt::Debug;
 
-use h3ron::{H3Cell, HasH3Resolution, Index};
-use h3ron_graph::algorithm::path::Path;
-use h3ron_graph::algorithm::shortest_path::ShortestPathOptions;
-use h3ron_graph::algorithm::ShortestPathManyToMany;
+use hexigraph::algorithm::graph::path::Path;
+use hexigraph::algorithm::graph::shortest_path::ShortestPathOptions;
+use hexigraph::algorithm::graph::ShortestPathManyToMany;
+use hexigraph::HasH3Resolution;
 use ordered_float::OrderedFloat;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use tokio_stream::wrappers::ReceiverStream;
@@ -81,25 +82,19 @@ pub async fn h3_shortest_path(
 struct PathSummary<W> {
     cost: W,
     path_length_m: OrderedFloat<f64>,
-    destination_cell: H3Cell,
+    destination_cell: CellIndex,
 }
 
-impl<W> TryFrom<Path<W>> for PathSummary<W>
+impl<W> From<Path<W>> for PathSummary<W>
 where
     W: Copy,
 {
-    type Error = h3ron_graph::Error;
-
-    fn try_from(path: Path<W>) -> Result<Self, Self::Error> {
-        let mut path_length_m = 0.0;
-        for edge in path.directed_edge_path.edges() {
-            path_length_m += edge.length_m()?;
-        }
-        Ok(Self {
+    fn from(path: Path<W>) -> Self {
+        Self {
             cost: path.cost,
-            path_length_m: path_length_m.into(),
+            path_length_m: path.directed_edge_path.length_m().into(),
             destination_cell: path.destination_cell,
-        })
+        }
     }
 }
 
@@ -110,7 +105,7 @@ fn h3_shortest_path_internal(parameters: H3ShortestPathParameters) -> Result<Dat
             &parameters.origins.cells,
             &parameters.destinations.cells,
             &parameters.options,
-            PathSummary::try_from,
+            |path| Ok(PathSummary::from(path)),
         )
         .to_status_result()?;
 
@@ -132,15 +127,15 @@ fn h3_shortest_path_internal(parameters: H3ShortestPathParameters) -> Result<Dat
                 // keep one entry for the origin regardless if a route to a
                 // destination was found.
 
-                origin_cell_vec.push(origin_cell.h3index());
+                origin_cell_vec.push(u64::from(*origin_cell));
                 destination_cell_vec.push(None);
                 path_cell_length_m_vec.push(None);
                 travel_duration_secs_vec.push(None);
                 edge_preferences_vec.push(None);
             } else {
                 for path_summary in paths.iter() {
-                    origin_cell_vec.push(origin_cell.h3index());
-                    destination_cell_vec.push(Some(path_summary.destination_cell.h3index()));
+                    origin_cell_vec.push(u64::from(*origin_cell));
+                    destination_cell_vec.push(Some(u64::from(path_summary.destination_cell)));
                     path_cell_length_m_vec.push(Some(path_summary.path_length_m.into_inner()));
                     travel_duration_secs_vec
                         .push(Some(path_summary.cost.travel_duration().get::<second>()));

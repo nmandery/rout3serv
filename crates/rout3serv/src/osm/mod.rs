@@ -16,5 +16,5 @@ pub mod tags;
 /// > Transport for London recommend 1.33 metres per second (4.8 km/h; 3.0 mph; 4.4 ft/s)
 /// > in the PTAL methodology.
 ///
-/// From [https://en.wikipedia.org/wiki/Preferred_walking_speed]
+/// From <https://en.wikipedia.org/wiki/Preferred_walking_speed>
 pub static WALKING_SPEED: Lazy<Velocity> = Lazy::new(|| Velocity::new::<kilometer_per_hour>(5.0));
