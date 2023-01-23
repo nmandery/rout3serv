@@ -5,9 +5,9 @@ use std::convert::TryFrom;
 use geo::chaikin_smoothing::ChaikinSmoothing;
 use geo::simplify::Simplify;
 use geo_types::Geometry;
-use h3ron::Index;
-use h3ron_graph::algorithm::path::Path;
-use h3ron_graph::algorithm::shortest_path;
+use h3o::Resolution;
+use hexigraph::algorithm::graph::path::Path;
+use hexigraph::algorithm::graph::shortest_path;
 use tonic::{Code, Status};
 use tracing::log::Level;
 use uom::si::time::second;
@@ -25,18 +25,6 @@ pub trait Route {}
 impl Route for RouteWkb {}
 
 impl Route for RouteH3Indexes {}
-
-#[inline(always)]
-fn path_length_m<T>(path: &Path<T>) -> Result<f64, Status>
-where
-    T: Weight,
-{
-    path.directed_edge_path
-        .length_m()
-        .to_status_result_with_message(Code::Internal, || {
-            "can not determinate path length".to_string()
-        })
-}
 
 const SIMPLIFICATION_EPSILON: f64 = 0.00001;
 
@@ -63,12 +51,12 @@ impl RouteWkb {
 
         let wkb_bytes = to_wkb(&Geometry::LineString(linestring))?;
         Ok(Self {
-            origin_cell: path.origin_cell.h3index(),
-            destination_cell: path.destination_cell.h3index(),
+            origin_cell: u64::from(path.origin_cell),
+            destination_cell: u64::from(path.destination_cell),
             travel_duration_secs: path.cost.travel_duration().get::<second>() as f64,
             edge_preference: path.cost.edge_preference() as f64,
             wkb: wkb_bytes,
-            path_length_m: path_length_m(path)?,
+            path_length_m: path.directed_edge_path.length_m(),
         })
     }
 }
@@ -88,26 +76,24 @@ impl RouteH3Indexes {
             RouteH3IndexesKind::Cells => path
                 .directed_edge_path
                 .cells()
-                .to_status_result_with_message(Code::Internal, || {
-                    "can not extract cells from path".to_string()
-                })?
-                .iter()
-                .map(|cell| cell.h3index())
+                .into_iter()
+                .map(u64::from)
                 .collect(),
             RouteH3IndexesKind::Edges => path
                 .directed_edge_path
                 .edges()
                 .iter()
-                .map(|edge| edge.h3index())
+                .copied()
+                .map(u64::from)
                 .collect(),
         };
         Ok(Self {
-            origin_cell: path.origin_cell.h3index(),
-            destination_cell: path.destination_cell.h3index(),
+            origin_cell: u64::from(path.origin_cell),
+            destination_cell: u64::from(path.destination_cell),
             travel_duration_secs: path.cost.travel_duration().get::<second>() as f64,
             edge_preference: path.cost.edge_preference() as f64,
             h3indexes,
-            path_length_m: path_length_m(path)?,
+            path_length_m: path.directed_edge_path.length_m(),
         })
     }
 }
@@ -132,18 +118,16 @@ impl TryFrom<&GraphHandle> for GraphKey {
                 Level::Info,
             ));
         }
-        if gh.h3_resolution < h3ron::H3_MIN_RESOLUTION as u32
-            || gh.h3_resolution > h3ron::H3_MAX_RESOLUTION as u32
-        {
-            return Err(logged_status(
+        let h3_resolution = Resolution::try_from(gh.h3_resolution as u8).map_err(|_| {
+            logged_status(
                 "invalid h3 resolution in graph handle",
                 Code::InvalidArgument,
                 Level::Info,
-            ));
-        }
+            )
+        })?;
         Ok(Self {
             name: gh.name.clone(),
-            h3_resolution: gh.h3_resolution as u8,
+            h3_resolution,
         })
     }
 }

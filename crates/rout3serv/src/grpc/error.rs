@@ -14,12 +14,6 @@ pub trait StatusCodeAndMessage {
     }
 }
 
-impl StatusCodeAndMessage for h3ron::Error {
-    fn status_code_and_message(&self) -> (Code, String) {
-        (Code::Internal, format!("{:?}", self))
-    }
-}
-
 impl StatusCodeAndMessage for crate::io::Error {
     fn status_code_and_message(&self) -> (Code, String) {
         if self.is_not_found() {
@@ -39,23 +33,24 @@ where
     }
 }
 
-impl StatusCodeAndMessage for h3ron_graph::Error {
+impl StatusCodeAndMessage for hexigraph::error::Error {
     fn status_code_and_message(&self) -> (Code, String) {
-        match self {
-            h3ron_graph::Error::H3ron(inner) => inner.status_code_and_message(),
-            _ => (Code::Internal, format!("{:?}", self)),
-        }
+        (Code::Internal, format!("{:?}", self))
     }
 }
 
-impl StatusCodeAndMessage for h3ron_polars::Error {
-    fn status_code_and_message(&self) -> (Code, String) {
-        match self {
-            h3ron_polars::Error::H3ron(inner) => inner.status_code_and_message(),
-            _ => (Code::Internal, format!("{:?}", self)),
+macro_rules! impl_invalid_geom {
+    ($type:ty) => {
+        impl StatusCodeAndMessage for $type {
+            fn status_code_and_message(&self) -> (Code, String) {
+                (Code::Internal, format!("invalid geometry: {:?}", self))
+            }
         }
-    }
+    };
 }
+
+impl_invalid_geom!(h3o::error::InvalidGeometry);
+impl_invalid_geom!(h3o::error::InvalidLatLng);
 
 impl StatusCodeAndMessage for tonic::Status {
     fn status_code_and_message(&self) -> (Code, String) {

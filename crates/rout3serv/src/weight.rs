@@ -1,13 +1,14 @@
-use h3ron_graph::graph::PreparedH3EdgeGraph;
+use h3o::DirectedEdgeIndex;
 use std::cmp::Ordering;
 use std::ops::Add;
 
-use h3ron::{H3DirectedEdge, Index};
-use h3ron_graph::graph::prepared::FromIterItem;
+use hexigraph::container::block::Decompressor;
+use hexigraph::graph::prepared::FromIterItem;
+use hexigraph::graph::PreparedH3EdgeGraph;
 use itertools::izip;
 use num_traits::Zero;
 use polars_core::frame::DataFrame;
-use polars_core::prelude::{NamedFrom, UInt64Chunked};
+use polars_core::prelude::NamedFrom;
 use polars_core::series::Series;
 use serde::{Deserialize, Serialize};
 use uom::si::f32::Time;
@@ -146,18 +147,21 @@ impl ToDataFrame for PreparedH3EdgeGraph<StandardWeight> {
         let mut le_edge_preferences = Vec::with_capacity(directed_edges.capacity());
         let mut le_travel_durations = Vec::with_capacity(directed_edges.capacity());
 
+        let mut decompressor = Decompressor::new();
         for (edge, edgeweight) in self.iter_edges() {
-            directed_edges.push(edge.h3index());
+            directed_edges.push(u64::from(edge));
             edge_preferences.push(edgeweight.weight.edge_preference);
             travel_durations.push(edgeweight.weight.travel_duration.get::<second>());
 
-            if let Some((longedge, longedge_weight)) = edgeweight.longedge {
-                let le_edges: UInt64Chunked =
-                    longedge.h3edge_path()?.map(|e| Some(e.h3index())).collect();
+            if let Some((fastforward, fastforward_weight)) = edgeweight.fastforward {
+                let ff_edges: Vec<_> = decompressor
+                    .decompress_block(&fastforward.edge_path)?
+                    .filter_map(|edge_res| edge_res.ok().map(u64::from))
+                    .collect();
 
-                le_directed_edges.push(Some(Series::new("", le_edges)));
-                le_edge_preferences.push(Some(longedge_weight.edge_preference));
-                le_travel_durations.push(Some(longedge_weight.travel_duration.get::<second>()));
+                le_directed_edges.push(Some(Series::new("", ff_edges)));
+                le_edge_preferences.push(Some(fastforward_weight.edge_preference));
+                le_travel_durations.push(Some(fastforward_weight.travel_duration.get::<second>()));
             } else {
                 le_directed_edges.push(None);
                 le_edge_preferences.push(None);
@@ -196,7 +200,7 @@ fn collect_edges(df: DataFrame) -> Result<Vec<FromIterItem<StandardWeight>>, Err
     let le_travel_durations = df.column(COL_LONG_EDGE_TRAVEL_DURATION)?.f32()?;
 
     let mut out = Vec::with_capacity(directed_edges.len());
-    for (de, de_pref, de_td, le, le_pref, le_td) in izip!(
+    for (de, de_pref, de_td, ff_edges, ff_pref, ff_td) in izip!(
         directed_edges.into_iter(),
         edge_preferences.into_iter(),
         travel_durations.into_iter(),
@@ -205,28 +209,29 @@ fn collect_edges(df: DataFrame) -> Result<Vec<FromIterItem<StandardWeight>>, Err
         le_travel_durations.into_iter()
     ) {
         if let (Some(de), Some(de_pref), Some(de_td)) = (de, de_pref, de_td) {
-            let edge = H3DirectedEdge::try_from(de)?;
+            let edge = DirectedEdgeIndex::try_from(de)?;
             let edge_weight = StandardWeight::new(de_pref, Time::new::<second>(de_td));
 
-            let longedge = if let (Some(le), Some(le_pref), Some(le_td)) = (le, le_pref, le_td) {
-                let le = le.u64()?;
-                if le.is_empty() {
-                    None
+            let fastforward =
+                if let (Some(ff_edges), Some(ff_pref), Some(ff_td)) = (ff_edges, ff_pref, ff_td) {
+                    let ff_edges = ff_edges.u64()?;
+                    if ff_edges.is_empty() {
+                        None
+                    } else {
+                        let le_edges = ff_edges
+                            .into_iter()
+                            .flatten()
+                            .map(DirectedEdgeIndex::try_from)
+                            .collect::<Result<Vec<_>, _>>()?;
+
+                        let le_weight = StandardWeight::new(ff_pref, Time::new::<second>(ff_td));
+                        Some((le_edges, le_weight))
+                    }
                 } else {
-                    let le_edges = le
-                        .into_iter()
-                        .flatten()
-                        .map(H3DirectedEdge::try_from)
-                        .collect::<Result<Vec<_>, _>>()?;
+                    None
+                };
 
-                    let le_weight = StandardWeight::new(le_pref, Time::new::<second>(le_td));
-                    Some((le_edges, le_weight))
-                }
-            } else {
-                None
-            };
-
-            out.push((edge, edge_weight, longedge));
+            out.push((edge, edge_weight, fastforward));
         }
     }
     Ok(out)

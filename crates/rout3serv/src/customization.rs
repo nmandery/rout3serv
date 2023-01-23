@@ -1,11 +1,11 @@
+use h3o::{CellIndex, DirectedEdgeIndex, Resolution};
 use std::cmp::Ordering;
 use std::ops::{Add, Deref};
 use std::sync::Arc;
 
-use h3ron::{H3Cell, H3DirectedEdge, HasH3Resolution};
-use h3ron_graph::graph::node::NodeType;
-use h3ron_graph::graph::{EdgeWeight, GetCellEdges, GetCellNode, PreparedH3EdgeGraph};
-use h3ron_graph::Error;
+use hexigraph::graph::node::NodeType;
+use hexigraph::graph::{EdgeWeight, GetCellEdges, GetCellNode, PreparedH3EdgeGraph};
+use hexigraph::HasH3Resolution;
 use num_traits::Zero;
 use uom::si::f32::Time;
 
@@ -137,7 +137,7 @@ impl From<Arc<PreparedH3EdgeGraph<StandardWeight>>> for CustomizedGraph {
 }
 
 impl GetCellNode for CustomizedGraph {
-    fn get_cell_node(&self, cell: &H3Cell) -> Option<NodeType> {
+    fn get_cell_node(&self, cell: CellIndex) -> Option<NodeType> {
         self.inner_graph.get_cell_node(cell)
     }
 }
@@ -147,11 +147,10 @@ impl GetCellEdges for CustomizedGraph {
 
     fn get_edges_originating_from(
         &self,
-        cell: &H3Cell,
-    ) -> Result<Vec<(H3DirectedEdge, EdgeWeight<Self::EdgeWeightType>)>, Error> {
-        let customized = self
-            .inner_graph
-            .get_edges_originating_from(cell)?
+        cell: CellIndex,
+    ) -> Vec<(DirectedEdgeIndex, EdgeWeight<Self::EdgeWeightType>)> {
+        self.inner_graph
+            .get_edges_originating_from(cell)
             .into_iter()
             .map(|(edge, edge_weight)| {
                 (
@@ -161,9 +160,9 @@ impl GetCellEdges for CustomizedGraph {
                             weight: edge_weight.weight,
                             edge_preference_factor: self.routing_mode.edge_preference_factor,
                         },
-                        longedge: edge_weight.longedge.map(|(longedge, road_weight)| {
+                        fastforward: edge_weight.fastforward.map(|(fastforward, road_weight)| {
                             (
-                                longedge,
+                                fastforward,
                                 CustomizedWeight {
                                     weight: road_weight,
                                     edge_preference_factor: self
@@ -175,13 +174,12 @@ impl GetCellEdges for CustomizedGraph {
                     },
                 )
             })
-            .collect();
-        Ok(customized)
+            .collect()
     }
 }
 
 impl HasH3Resolution for CustomizedGraph {
-    fn h3_resolution(&self) -> u8 {
+    fn h3_resolution(&self) -> Resolution {
         self.inner_graph.h3_resolution()
     }
 }

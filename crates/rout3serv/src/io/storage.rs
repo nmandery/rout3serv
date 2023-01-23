@@ -6,11 +6,10 @@ use bytes::Bytes;
 use bytesize::ByteSize;
 use futures::future::try_join_all;
 use futures::TryStreamExt;
-use h3ron::collections::HashSet;
-use h3ron::iter::change_resolution;
-use h3ron::H3Cell;
-use h3ron_graph::graph::PreparedH3EdgeGraph;
-use h3ron_polars::frame::H3DataFrame;
+use h3o::{CellIndex, Resolution};
+use hexigraph::algorithm::resolution::transform_resolution;
+use hexigraph::container::CellSet;
+use hexigraph::graph::PreparedH3EdgeGraph;
 use object_store::path::Path;
 use once_cell::sync::Lazy;
 use polars::prelude::DataFrame;
@@ -23,7 +22,7 @@ use tokio::task::block_in_place;
 use tracing::{debug, error, info};
 
 use crate::config::ServerConfig;
-use crate::io::dataframe::DataframeDataset;
+use crate::io::dataframe::{CellDataFrame, DataframeDataset};
 use crate::io::ipc::ReadIPC;
 use crate::io::memory_cache::{CacheFetcher, FetchError, MemoryCache};
 use crate::io::objectstore::ObjectStore;
@@ -94,22 +93,22 @@ impl Storage {
     pub async fn retrieve_dataframe(
         &self,
         dataset: &DataframeDataset,
-        cells: &[H3Cell],
-        data_h3_resolution: u8,
-    ) -> Result<Option<H3DataFrame<H3Cell>>, Error> {
+        cells: &[CellIndex],
+        data_h3_resolution: Resolution,
+    ) -> Result<Option<CellDataFrame>, Error> {
         if cells.is_empty() {
             return Ok(Default::default());
         }
         let fileformat = dataset.fileformat()?;
-        let file_cells = change_resolution(
+        let file_cells: CellSet = transform_resolution(
             cells.iter(),
             dataset.file_h3_resolution(data_h3_resolution)?,
         )
-        .collect::<Result<HashSet<_>, _>>()?;
+        .collect();
 
         let mut paths = file_cells
             .iter()
-            .map(|cell| build_dataset_path(dataset, cell, data_h3_resolution))
+            .map(|cell| build_dataset_path(dataset, *cell, data_h3_resolution))
             .collect::<Result<Vec<_>, _>>()?;
         paths.sort_unstable(); // remove duplicates when the keys are not grouped using a file resolution
         paths.dedup();
@@ -152,7 +151,7 @@ impl Storage {
                 }
             }
         }
-        let df = match dataframes.len() {
+        let dataframe = match dataframes.len() {
             0 => DataFrame::default(),
             1 => dataframes.pop().unwrap(),
             _ => {
@@ -160,10 +159,10 @@ impl Storage {
                 block_in_place(|| concat_df(dataframes.iter()))?
             }
         };
-        Ok(Some(H3DataFrame::from_dataframe(
-            df,
-            dataset.h3index_column_name.as_str(),
-        )?))
+        Ok(Some(CellDataFrame {
+            dataframe,
+            cell_column_name: dataset.h3index_column_name.clone(),
+        }))
     }
 }
 
@@ -257,15 +256,17 @@ static RE_S3KEY_H3_CELL: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{\s*h3cell\s*\
 
 fn build_dataset_path(
     dataset: &DataframeDataset,
-    cell: &H3Cell,
-    data_h3_resolution: u8,
+    cell: CellIndex,
+    data_h3_resolution: Resolution,
 ) -> Result<Path, Error> {
     Ok(RE_S3KEY_H3_CELL
         .replace_all(
             &RE_S3KEY_FILE_H3_RESOLUTION.replace_all(
-                &RE_S3KEY_DATA_H3_RESOLUTION
-                    .replace_all(dataset.key_pattern.as_ref(), data_h3_resolution.to_string()),
-                dataset.file_h3_resolution(data_h3_resolution)?.to_string(),
+                &RE_S3KEY_DATA_H3_RESOLUTION.replace_all(
+                    dataset.key_pattern.as_ref(),
+                    u8::from(data_h3_resolution).to_string(),
+                ),
+                u8::from(dataset.file_h3_resolution(data_h3_resolution)?).to_string(),
             ),
             cell.to_string(),
         )

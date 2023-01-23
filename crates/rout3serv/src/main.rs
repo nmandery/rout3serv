@@ -6,13 +6,14 @@ use std::path::Path;
 use anyhow::Result;
 use clap::{Arg, ArgMatches, Command};
 use flatgeobuf::{ColumnType, FgbCrs, FgbWriter, FgbWriterOptions, GeometryType};
-use geo_types::Geometry;
+use geo_types::{Geometry, LineString};
 use geozero::{ColumnValue, PropertyProcessor};
-use h3ron::to_geo::ToLineString;
-use h3ron::H3DirectedEdge;
-use h3ron_graph::algorithm::covered_area::CoveredArea;
-use h3ron_graph::graph::{GetStats, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
-use h3ron_graph::io::osm::OsmPbfH3EdgeGraphBuilder;
+use h3o::geom::ToGeo;
+use h3o::Resolution;
+use hexigraph::algorithm::edge::cell_centroid_distance_avg_m_at_resolution;
+use hexigraph::algorithm::graph::CoveredArea;
+use hexigraph::graph::{GetStats, H3EdgeGraphBuilder, PreparedH3EdgeGraph};
+use hexigraph::io::osm::OsmPbfH3EdgeGraphBuilder;
 use mimalloc::MiMalloc;
 use tracing::info;
 use uom::si::f32::Length;
@@ -167,7 +168,8 @@ fn subcommand_graph_to_fgb(sc_matches: &ArgMatches) -> Result<()> {
     });
 
     for (edge, edgeweight) in graph.iter_edges() {
-        fgb.add_feature_geom(Geometry::LineString(edge.to_linestring()?), |feat| {
+        let line = edge.to_geom(true).unwrap();
+        fgb.add_feature_geom(Geometry::LineString(LineString::from(line)), |feat| {
             feat.property(
                 0,
                 "travel_duration_secs",
@@ -186,24 +188,28 @@ fn subcommand_graph_to_fgb(sc_matches: &ArgMatches) -> Result<()> {
                 .unwrap();
         })?;
 
-        if let Some((le, le_weight)) = edgeweight.longedge {
-            fgb.add_feature_geom(Geometry::LineString(le.to_linestring()?), |feat| {
+        if let Some((fastforward, fastforward_weight)) = edgeweight.fastforward {
+            fgb.add_feature_geom(Geometry::LineString(fastforward.to_linestring()?), |feat| {
                 feat.property(
                     0,
                     "travel_duration_secs",
-                    &ColumnValue::Float(le_weight.travel_duration().get::<second>()),
+                    &ColumnValue::Float(fastforward_weight.travel_duration().get::<second>()),
                 )
                 .unwrap();
                 feat.property(
                     1,
                     "edge_preference",
-                    &ColumnValue::Float(le_weight.edge_preference()),
+                    &ColumnValue::Float(fastforward_weight.edge_preference()),
                 )
                 .unwrap();
                 feat.property(2, "is_long_edge", &ColumnValue::Bool(true))
                     .unwrap();
-                feat.property(3, "num_edges", &ColumnValue::UInt(le.h3edges_len() as u32))
-                    .unwrap();
+                feat.property(
+                    3,
+                    "num_edges",
+                    &ColumnValue::UInt(fastforward.h3edges_len() as u32),
+                )
+                .unwrap();
             })?;
         }
     }
@@ -240,11 +246,11 @@ fn subcommand_from_osm_pbf(sc_matches: &ArgMatches) -> Result<()> {
         .get_one::<String>("h3_resolution")
         .unwrap()
         .parse()?;
+    let h3_resolution: Resolution = h3_resolution.try_into()?;
     let graph_output: &String = sc_matches.get_one("OUTPUT-GRAPH").unwrap();
 
-    let edge_length = Length::new::<meter>(
-        H3DirectedEdge::cell_centroid_distance_avg_m_at_resolution(h3_resolution)? as f32,
-    );
+    let edge_length =
+        Length::new::<meter>(cell_centroid_distance_avg_m_at_resolution(h3_resolution) as f32);
     info!(
         "Building graph using resolution {} with edge length ~= {:?}",
         h3_resolution, edge_length

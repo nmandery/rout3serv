@@ -1,4 +1,5 @@
-use polars_core::prelude::DataFrame;
+use h3o::Resolution;
+use polars_core::prelude::{DataFrame, UInt64Chunked};
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -6,12 +7,13 @@ use tracing::error;
 
 use crate::io::format::FileFormat;
 use crate::io::Error;
+use crate::io::Error::MissingCellColumn;
 
 #[derive(Deserialize)]
 pub struct DataframeDataset {
     pub key_pattern: String,
     /// maps data resolutions to the file h3 resolutions
-    pub resolutions: HashMap<u8, u8>,
+    pub resolutions: HashMap<Resolution, Resolution>,
 
     pub h3index_column_name: String,
 }
@@ -27,7 +29,7 @@ impl DataframeDataset {
         Ok(())
     }
 
-    pub fn file_h3_resolution(&self, data_h3_resolution: u8) -> Result<u8, Error> {
+    pub fn file_h3_resolution(&self, data_h3_resolution: Resolution) -> Result<Resolution, Error> {
         self.resolutions
             .get(&data_h3_resolution)
             .copied()
@@ -49,4 +51,20 @@ pub trait FromDataFrame {
     fn from_dataframe(df: DataFrame) -> Result<Self, Error>
     where
         Self: Sized;
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct CellDataFrame {
+    pub dataframe: DataFrame,
+    pub cell_column_name: String,
+}
+
+impl CellDataFrame {
+    pub fn cell_u64s(&self) -> Result<&UInt64Chunked, Error> {
+        self.dataframe
+            .column(&self.cell_column_name)
+            .map_err(|_| MissingCellColumn(self.cell_column_name.clone()))?
+            .u64()
+            .map_err(Error::from)
+    }
 }

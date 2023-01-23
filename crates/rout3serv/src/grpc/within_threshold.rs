@@ -1,5 +1,5 @@
-use h3ron::{HasH3Resolution, Index};
-use h3ron_graph::algorithm::WithinWeightThresholdMany;
+use hexigraph::algorithm::graph::WithinWeightThresholdMany;
+use hexigraph::HasH3Resolution;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use tonic::{Code, Response, Status};
 use tracing::log::Level;
@@ -105,7 +105,7 @@ fn within_threshold_internal(parameters: H3WithinThresholdParameters) -> Result<
             Vec::with_capacity(capacity),
         ),
         |mut acc, item| {
-            acc.0.push(item.0.h3index());
+            acc.0.push(u64::from(*item.0));
             acc.1.push(item.1.travel_duration().get::<second>());
             acc.2.push(item.1.edge_preference());
             acc

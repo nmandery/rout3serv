@@ -1,6 +1,7 @@
-use h3ron::H3DirectedEdge;
-use h3ron_graph::io::osm::osmpbfreader::Tags;
-use h3ron_graph::io::osm::{EdgeProperties, WayAnalyzer};
+use h3o::DirectedEdgeIndex;
+use hexigraph::algorithm::edge::cell_centroid_distance_m;
+use hexigraph::io::osm::osmpbfreader::Tags;
+use hexigraph::io::osm::{EdgeProperties, WayAnalyzer};
 use uom::si::f32::{Length, Velocity};
 use uom::si::length::meter;
 use uom::si::velocity::kilometer_per_hour;
@@ -22,7 +23,7 @@ impl WayAnalyzer<StandardWeight> for CarAnalyzer {
     fn analyze_way_tags(
         &self,
         tags: &Tags,
-    ) -> Result<Option<Self::WayProperties>, h3ron_graph::Error> {
+    ) -> Result<Option<Self::WayProperties>, hexigraph::error::Error> {
         // https://wiki.openstreetmap.org/wiki/Key:highway or https://wiki.openstreetmap.org/wiki/DE:Key:highway
         // TODO: make use of `access` tag: https://wiki.openstreetmap.org/wiki/Key:access
         if let Some(highway_value) = tags.get("highway") {
@@ -66,13 +67,12 @@ impl WayAnalyzer<StandardWeight> for CarAnalyzer {
 
     fn way_edge_properties(
         &self,
-        edge: H3DirectedEdge,
+        edge: DirectedEdgeIndex,
         way_properties: &Self::WayProperties,
-    ) -> Result<EdgeProperties<StandardWeight>, h3ron_graph::Error> {
+    ) -> Result<EdgeProperties<StandardWeight>, hexigraph::error::Error> {
         let weight = StandardWeight::new(
             way_properties.edge_preference,
-            Length::new::<meter>(edge.cell_centroid_distance_m()? as f32)
-                / way_properties.max_speed,
+            Length::new::<meter>(cell_centroid_distance_m(edge) as f32) / way_properties.max_speed,
         );
         Ok(EdgeProperties {
             is_bidirectional: way_properties.is_bidirectional,
@@ -84,7 +84,7 @@ impl WayAnalyzer<StandardWeight> for CarAnalyzer {
 #[cfg(test)]
 mod tests {
     use float_cmp::approx_eq;
-    use h3ron::H3DirectedEdge;
+    use h3o::Resolution;
     use uom::si::f32::{Length, Velocity};
     use uom::si::length::meter;
     use uom::si::velocity::kilometer_per_hour;
@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn test_calc() {
         let speed = Velocity::new::<kilometer_per_hour>(30.0);
-        let distance = Length::new::<meter>(H3DirectedEdge::edge_length_avg_m(6).unwrap() as f32);
+        let distance = Length::new::<meter>(Resolution::Six.edge_length_m() as f32);
 
         let travel_time = distance / speed;
         assert!(approx_eq!(f32, travel_time.value, 387.5379f32));

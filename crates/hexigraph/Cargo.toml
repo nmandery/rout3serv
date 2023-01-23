@@ -1,0 +1,27 @@
+[package]
+name = "hexigraph"
+version = "0.1.0"
+edition = "2021"
+
+
+[features]
+serde = ["dep:serde", "h3o/serde", "smallvec/serde", "hashbrown/serde", "roaring/serde"]
+osm = ["dep:osmpbfreader"]
+
+[dependencies]
+ahash = { workspace = true }
+geo = { workspace = true }
+h3o = { workspace = true, features = ["geo"] }
+hashbrown = { version = "0.13", features = ["rayon"] }
+indexmap = "1.7"
+num-traits = "0.2"
+osmpbfreader = { version = "0.15", optional = true }
+rayon = { workspace = true }
+roaring = "0.10"
+serde = { version = "^1.0", features = ["derive"], optional = true }
+smallvec = { version = "^1.8", features = ["serde"] }
+thiserror = "1"
+tracing = { workspace = true }
+
+[dev-dependencies]
+bincode = "1"

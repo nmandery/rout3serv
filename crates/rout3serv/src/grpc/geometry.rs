@@ -2,7 +2,8 @@
 //!
 use geo::algorithm::centroid::Centroid;
 use geo_types::Geometry;
-use h3ron::{H3Cell, ToH3Cells};
+use h3o::geom::ToCells;
+use h3o::{CellIndex, LatLng, Resolution};
 use tonic::{Code, Status};
 use tracing::log::Level;
 use uom::si::f64::Length;
@@ -17,24 +18,22 @@ pub fn from_wkb(wkb_bytes: &[u8]) -> Result<Geometry, Status> {
     })
 }
 
-/// convert a`Geometry` to `H3Cell`s.
+/// convert a [`Geometry`] to a vec of [`CellIndex`].
 pub fn geom_to_h3(
-    geom: &Geometry,
-    h3_resolution: u8,
+    geom: Geometry,
+    h3_resolution: Resolution,
     include_centroid: bool,
-) -> Result<Vec<H3Cell>, Status> {
-    let mut cells = geom
-        .to_h3_cells(h3_resolution)
+) -> Result<Vec<CellIndex>, Status> {
+    let mut cells = h3o::geom::Geometry::from_degrees(geom.clone())
         .to_status_result()?
-        .iter()
+        .to_cells(h3_resolution)
         .collect::<Vec<_>>();
 
     if include_centroid {
         // add centroid in case of small geometries
-        if let Some(point) = geom.centroid() {
-            if let Ok(cell) = H3Cell::from_coordinate(point.0, h3_resolution) {
-                cells.push(cell);
-            }
+        if let Some(ll) = geom.centroid().and_then(|pt| LatLng::try_from(pt.0).ok()) {
+            cells.push(ll.to_cell(h3_resolution));
+            // TODO: port intersecting cells
         }
     }
 

@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use std::str::FromStr;
 
-use h3ron_graph::io::osm::osmpbfreader::Tags;
+use hexigraph::io::osm::osmpbfreader::Tags;
 use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 use uom::si::f32::Velocity;

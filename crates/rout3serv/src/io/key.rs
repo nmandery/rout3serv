@@ -1,3 +1,4 @@
+use h3o::Resolution;
 use std::str::FromStr;
 
 use once_cell::sync::Lazy;
@@ -6,7 +7,7 @@ use regex::Regex;
 #[derive(Hash, Debug, PartialEq, Eq, Clone)]
 pub struct GraphKey {
     pub name: String,
-    pub h3_resolution: u8,
+    pub h3_resolution: Resolution,
 }
 
 impl GraphKey {
@@ -27,13 +28,23 @@ impl FromStr for GraphKey {
     type Err = crate::io::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        RE_GRAPH_FILE
-            .captures(s)
-            .map(|cap| Self {
-                name: cap.name("name").unwrap().as_str().to_string(),
-                h3_resolution: cap.name("h3_res").unwrap().as_str().parse().unwrap(),
-            })
-            .ok_or(crate::io::Error::NotAGraphKey)
+        match RE_GRAPH_FILE.captures(s) {
+            Some(cap) => {
+                let h3_resolution = Resolution::try_from(
+                    cap.name("h3_res")
+                        .unwrap()
+                        .as_str()
+                        .parse::<u8>()
+                        .map_err(|_| crate::io::Error::NotAGraphKey)?,
+                )
+                .map_err(|_| crate::io::Error::NotAGraphKey)?;
+                Ok(Self {
+                    name: cap.name("name").unwrap().as_str().to_string(),
+                    h3_resolution,
+                })
+            }
+            None => Err(crate::io::Error::NotAGraphKey),
+        }
     }
 }
 
@@ -42,7 +53,7 @@ impl ToString for GraphKey {
         format!(
             "{}_{}{}",
             self.name,
-            self.h3_resolution,
+            u8::from(self.h3_resolution),
             GraphKey::file_suffix()
         )
     }
@@ -50,6 +61,7 @@ impl ToString for GraphKey {
 
 #[cfg(test)]
 mod tests {
+    use h3o::Resolution;
     use std::str::FromStr;
 
     use crate::io::GraphKey;
@@ -60,7 +72,7 @@ mod tests {
             GraphKey::from_str("somegraph_7.ipc").unwrap(),
             GraphKey {
                 name: "somegraph".to_string(),
-                h3_resolution: 7,
+                h3_resolution: Resolution::Seven,
             }
         );
     }

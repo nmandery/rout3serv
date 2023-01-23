@@ -1,11 +1,10 @@
 //! utility functions to use within the grpc context, most of them
 //! return a `tonic::Status` on error and a somewhat useful error message + logging.
 
-use h3ron::iter::change_resolution;
-use h3ron::H3Cell;
-use h3ron_polars::frame::H3DataFrame;
+use h3o::{CellIndex, Resolution};
+use hexigraph::algorithm::resolution::transform_resolution;
 use itertools::Itertools;
-use polars::prelude::{DataFrame, IpcWriter, JoinType, SerWriter, DataFrameJoinOps};
+use polars::prelude::{DataFrame, DataFrameJoinOps, IpcWriter, JoinType, SerWriter};
 use tokio::sync::mpsc;
 use tokio::task::block_in_place;
 use tokio_stream::wrappers::ReceiverStream;
@@ -15,6 +14,7 @@ use tracing::{debug, warn};
 use crate::grpc::api::generated::ArrowIpcChunk;
 use crate::grpc::api::Route;
 use crate::grpc::error::ToStatusResult;
+use crate::io::dataframe::CellDataFrame;
 
 /// wrapper around tokios `spawn_blocking` to directly
 /// return the `JoinHandle` as a tonic `Status`.
@@ -53,15 +53,13 @@ where
 }
 
 pub fn change_cell_resolution_dedup(
-    cells: &[H3Cell],
-    h3_resolution: u8,
-) -> Result<Vec<H3Cell>, Status> {
-    let mut out_cells = change_resolution(cells, h3_resolution)
-        .collect::<Result<Vec<_>, _>>()
-        .to_status_result()?;
+    cells: &[CellIndex],
+    h3_resolution: Resolution,
+) -> Vec<CellIndex> {
+    let mut out_cells: Vec<_> = transform_resolution(cells, h3_resolution).collect();
     out_cells.sort_unstable();
     out_cells.dedup();
-    Ok(out_cells)
+    out_cells
 }
 
 #[inline]
@@ -150,21 +148,21 @@ pub fn prefix_column_names(dataframe: &mut DataFrame, prefix: &str) -> Result<()
     Ok(())
 }
 
-/// inner-join a [`H3DataFrame`] to the given `dataframe` using the specified `prefix`
+/// inner-join a [`CellDataFrame`] to the given `dataframe` using the specified `prefix`
 pub fn inner_join_h3dataframe(
     dataframe: &mut DataFrame,
     dataframe_h3index_column: &str,
-    mut h3dataframe: H3DataFrame<H3Cell>,
+    mut celldataframe: CellDataFrame,
     prefix: &str,
 ) -> Result<(), Status> {
     // add prefix for origin columns
-    prefix_column_names(h3dataframe.dataframe_mut(), prefix)?;
+    prefix_column_names(&mut celldataframe.dataframe, prefix)?;
 
     *dataframe = dataframe
         .join(
-            h3dataframe.dataframe(),
+            &celldataframe.dataframe,
             [dataframe_h3index_column],
-            [format!("{}{}", prefix, h3dataframe.h3index_column_name()).as_str()],
+            [format!("{}{}", prefix, celldataframe.cell_column_name.as_str()).as_str()],
             JoinType::Inner,
             None,
         )
