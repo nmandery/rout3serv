@@ -7,7 +7,6 @@ use h3o::{CellIndex, DirectedEdgeIndex, LatLng, Resolution};
 use hashbrown::hash_map::Entry;
 use num_traits::Zero;
 use rayon::prelude::*;
-use smallvec::{smallvec, SmallVec};
 
 use crate::algorithm::edge::reverse_directed_edge;
 use crate::algorithm::graph::covered_area::cells_covered_area;
@@ -53,10 +52,7 @@ where
 }
 
 type OwnedEdgeTuple<W> = (DirectedEdgeIndex, OwnedEdgeWeight<W>);
-
-/// A smallvec with an array length of 2 allows storing the - probably - most common
-/// number of edges on the heap
-type OwnedEdgeTupleList<W> = SmallVec<[OwnedEdgeTuple<W>; 2]>;
+type OwnedEdgeTupleList<W> = Box<[OwnedEdgeTuple<W>]>;
 
 /// A prepared graph which can be used with a few algorithms.
 ///
@@ -156,7 +152,7 @@ where
         I: Iterator<Item = FromIterItem<W>>,
     {
         let mut h3_resolution = None;
-        let mut outgoing_edges: CellMap<OwnedEdgeTupleList<W>> = Default::default();
+        let mut outgoing_edges: CellMap<Vec<OwnedEdgeTuple<W>>> = Default::default();
         let mut graph_nodes: CellMap<NodeType> = Default::default();
 
         for (edge, edge_weight, fastforward_components) in iter {
@@ -200,12 +196,12 @@ where
                     occ.get_mut().push(edge_with_weight);
                 }
                 Entry::Vacant(vac) => {
-                    vac.insert(smallvec![edge_with_weight]);
+                    vac.insert(vec![edge_with_weight]);
                 }
             }
         }
 
-        remove_duplicated_edges(&mut outgoing_edges);
+        let outgoing_edges = remove_duplicated_edges(outgoing_edges);
 
         if let Some(h3_resolution) = h3_resolution {
             Ok(Self {
@@ -290,35 +286,39 @@ where
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut outgoing_edges: CellMap<OwnedEdgeTupleList<W>> = Default::default();
+    let mut outgoing_edges: CellMap<Vec<_>> = Default::default();
     for outgoing_edge_vec in outgoing_edge_vecs.into_iter() {
         for (cell, edge_with_weight) in outgoing_edge_vec.into_iter() {
             match outgoing_edges.entry(cell) {
                 Entry::Occupied(mut occ) => occ.get_mut().push(edge_with_weight),
                 Entry::Vacant(vac) => {
-                    vac.insert(smallvec![edge_with_weight]);
+                    vac.insert(vec![edge_with_weight]);
                 }
             }
         }
     }
 
-    remove_duplicated_edges(&mut outgoing_edges);
+    let outgoing_edges = remove_duplicated_edges(outgoing_edges);
 
     Ok(outgoing_edges)
 }
 
 /// remove duplicates if there are any. Ignores any differences in weights
-fn remove_duplicated_edges<W>(outgoing_edges: &mut CellMap<OwnedEdgeTupleList<W>>)
+fn remove_duplicated_edges<W>(
+    outgoing_edges: CellMap<Vec<OwnedEdgeTuple<W>>>,
+) -> CellMap<OwnedEdgeTupleList<W>>
 where
     W: Send + Sync,
 {
     outgoing_edges
-        .par_iter_mut()
-        .for_each(|(_cell, edges_with_weights)| {
+        .into_par_iter()
+        .map(|(cell, mut edges_with_weights)| {
             edges_with_weights.sort_unstable_by_key(|eww| eww.0);
             edges_with_weights.dedup_by(|a, b| a.0 == b.0);
-            edges_with_weights.shrink_to_fit();
-        });
+
+            (cell, edges_with_weights.into_boxed_slice())
+        })
+        .collect()
 }
 
 fn assemble_edge_with_fastforward<W>(

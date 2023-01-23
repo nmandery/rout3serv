@@ -5,7 +5,7 @@ edition = "2021"
 
 
 [features]
-serde = ["dep:serde", "h3o/serde", "smallvec/serde", "hashbrown/serde", "roaring/serde"]
+serde = ["dep:serde", "h3o/serde", "hashbrown/serde", "roaring/serde"]
 osm = ["dep:osmpbfreader"]
 
 [dependencies]
@@ -19,7 +19,6 @@ osmpbfreader = { version = "0.15", optional = true }
 rayon = { workspace = true }
 roaring = "0.10"
 serde = { version = "^1.0", features = ["derive"], optional = true }
-smallvec = { version = "^1.8", features = ["serde"] }
 thiserror = "1"
 tracing = { workspace = true }
 
