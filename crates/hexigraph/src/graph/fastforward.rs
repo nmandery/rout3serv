@@ -98,8 +98,6 @@ where
         out_vec.push(h3edge.borrow().origin());
         out_vec.push(h3edge.borrow().destination());
     }
-    for h3edge in iter {
-        out_vec.push(h3edge.borrow().destination());
-    }
+    out_vec.extend(iter.map(|h3edge| h3edge.borrow().destination()));
     out_vec
 }
