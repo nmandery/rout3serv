@@ -1,11 +1,8 @@
-use h3o::{CellIndex, Resolution};
 use std::convert::TryFrom;
 use std::ops::Add;
 use std::sync::Arc;
 
-use hexigraph::algorithm::resolution::transform_resolution;
-use hexigraph::container::{CellSet, HashSet};
-use hexigraph::graph::PreparedH3EdgeGraph;
+use h3o::{CellIndex, Resolution};
 use num_traits::Zero;
 use object_store::path::Path;
 use serde::de::DeserializeOwned;
@@ -18,6 +15,10 @@ use tonic::transport::Server;
 use tonic::{Code, Request, Response, Status};
 use tower_http::trace::TraceLayer;
 use tracing::{info, log::Level, warn};
+
+use hexigraph::algorithm::resolution::transform_resolution;
+use hexigraph::container::{CellSet, HashSet};
+use hexigraph::graph::PreparedH3EdgeGraph;
 
 use crate::config::ServerConfig;
 use crate::grpc::api::generated::rout3_serv_server::{Rout3Serv, Rout3ServServer};
@@ -95,7 +96,7 @@ impl ServerImpl {
     fn dataset_by_name(&self, dataset_name: &str) -> Result<&DataframeDataset, Status> {
         self.config.datasets.get(dataset_name).ok_or_else(|| {
             logged_status(
-                format!("not such dataset: {}", dataset_name),
+                format!("not such dataset: {dataset_name}"),
                 Code::NotFound,
                 Level::Debug,
             )
@@ -117,7 +118,7 @@ impl ServerImpl {
         h3_resolution: Resolution,
         selection_name: &str,
     ) -> Result<LoadedCellSelection, Status> {
-        let Some(cell_selection) = cell_selection else { return Err(logged_status(format!("empty cell selection '{}' given", selection_name), Code::InvalidArgument, Level::Info)) };
+        let Some(cell_selection) = cell_selection else { return Err(logged_status(format!("empty cell selection '{selection_name}' given"), Code::InvalidArgument, Level::Info)) };
 
         // build a complete list of the requested h3cells transformed to the
         // correct resolution

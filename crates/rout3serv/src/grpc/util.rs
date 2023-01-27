@@ -140,9 +140,9 @@ pub fn prefix_column_names(dataframe: &mut DataFrame, prefix: &str) -> Result<()
 
     for col_name in col_names {
         dataframe
-            .rename(&col_name, &format!("{}{}", prefix, col_name))
+            .rename(&col_name, &format!("{prefix}{col_name}"))
             .to_status_result_with_message(Code::Internal, || {
-                format!("prefixing column {} with {} failed", col_name, prefix)
+                format!("prefixing column {col_name} with {prefix} failed")
             })?;
     }
     Ok(())

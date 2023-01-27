@@ -19,7 +19,7 @@ impl StatusCodeAndMessage for crate::io::Error {
         if self.is_not_found() {
             (Code::NotFound, "not found".to_string())
         } else {
-            (Code::Internal, format!("IO error: {:?}", self))
+            (Code::Internal, format!("IO error: {self:?}"))
         }
     }
 }
@@ -29,13 +29,13 @@ where
     E: Debug,
 {
     fn status_code_and_message(&self) -> (Code, String) {
-        (Code::Internal, format!("IO error: {:?}", self))
+        (Code::Internal, format!("IO error: {self:?}"))
     }
 }
 
 impl StatusCodeAndMessage for hexigraph::error::Error {
     fn status_code_and_message(&self) -> (Code, String) {
-        (Code::Internal, format!("{:?}", self))
+        (Code::Internal, format!("{self:?}"))
     }
 }
 
@@ -43,7 +43,7 @@ macro_rules! impl_invalid_geom {
     ($type:ty) => {
         impl StatusCodeAndMessage for $type {
             fn status_code_and_message(&self) -> (Code, String) {
-                (Code::Internal, format!("invalid geometry: {:?}", self))
+                (Code::Internal, format!("invalid geometry: {self:?}"))
             }
         }
     };
