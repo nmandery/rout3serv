@@ -15,7 +15,7 @@ h3o = { workspace = true, features = ["geo"] }
 hashbrown = { version = "0.13", features = ["rayon"] }
 indexmap = "1.7"
 num-traits = "0.2"
-osmpbfreader = { version = "0.15", optional = true }
+osmpbfreader = { version = "0.16", optional = true }
 rayon = { workspace = true }
 roaring = "0.10"
 serde = { version = "^1.0", features = ["derive"], optional = true }

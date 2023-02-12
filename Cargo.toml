@@ -6,8 +6,8 @@ members = [
 
 [workspace.dependencies]
 ahash = "0.8"
-geo = "0.23.1"
-h3o = { version = "0.2.0", features = ["geo"] }
+geo = "0.23"
+h3o = { version = "0.3.0", features = ["geo"] }
 rayon = "1"
 tracing = "0.1"
 
