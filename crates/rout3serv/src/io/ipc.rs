@@ -1,8 +1,7 @@
 use crate::io::dataframe::{FromDataFrame, ToDataFrame};
 use crate::io::Error;
 use polars::io::mmap::MmapBytesReader;
-use polars::prelude::{IpcReader, IpcWriter, SerReader, SerWriter};
-use polars_core::export::arrow::io::ipc::write::Compression;
+use polars::prelude::{IpcCompression, IpcReader, IpcWriter, SerReader, SerWriter};
 use std::io::Write;
 
 fn write_ipc<Writer, T>(writer: Writer, value: &T) -> Result<(), Error>
@@ -12,7 +11,7 @@ where
 {
     let mut df = value.to_dataframe()?;
     IpcWriter::new(writer)
-        .with_compression(Some(Compression::ZSTD))
+        .with_compression(Some(IpcCompression::ZSTD))
         .finish(&mut df)?;
     Ok(())
 }

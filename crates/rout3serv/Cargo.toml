@@ -31,8 +31,8 @@ num-traits = "0.2"
 object_store = { version = "0.5", features = ["aws"] }
 once_cell = "1"
 ordered-float = "3"
-polars-core = "0.26"
-polars = { version = "0.26", features = ["ipc", "parquet", "performant", "serde"] }
+polars-core = "0.27"
+polars = { version = "0.27", features = ["ipc", "parquet", "performant", "serde"] }
 prost = "0.11"
 rayon = "^1.5"
 regex = "1.5"
@@ -44,7 +44,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 tonic = { version = "0.8", features = ["gzip"] }
 tower-http = { version = "^0.3", features = ["trace"] }
 tracing = "0.1"
-uom = { version = "0.33", features = ["use_serde"] }
+uom = { version = "0.34", features = ["use_serde"] }
 uuid = { version = "1", features = ["v4"] }
 zstd = "^0.12"
 
