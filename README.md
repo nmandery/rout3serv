@@ -2,7 +2,7 @@
 
 # Contents
 
-* H3-grid based [Routing server](crates/rout3serv/README.md) with GRPC-API and dataframe integration.
+* H3-grid based [Routing server](crates/rout3serv/README.md) with GRPC-API and dataframe integration. See link for a list of features.
 * For all libraries see crates directory 
 
 # License
