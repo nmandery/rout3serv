@@ -14,7 +14,7 @@ use tonic::codec::CompressionEncoding;
 use tonic::transport::Server;
 use tonic::{Code, Request, Response, Status};
 use tower_http::trace::TraceLayer;
-use tracing::{info, log::Level, warn};
+use tracing::{info, warn, Level};
 
 use hexigraph::algorithm::resolution::transform_resolution;
 use hexigraph::container::{CellSet, HashSet};
@@ -95,10 +95,10 @@ impl ServerImpl {
 
     fn dataset_by_name(&self, dataset_name: &str) -> Result<&DataframeDataset, Status> {
         self.config.datasets.get(dataset_name).ok_or_else(|| {
-            logged_status(
+            logged_status!(
                 format!("not such dataset: {dataset_name}"),
                 Code::NotFound,
-                Level::Debug,
+                Level::DEBUG
             )
         })
     }
@@ -118,7 +118,7 @@ impl ServerImpl {
         h3_resolution: Resolution,
         selection_name: &str,
     ) -> Result<LoadedCellSelection, Status> {
-        let Some(cell_selection) = cell_selection else { return Err(logged_status(format!("empty cell selection '{selection_name}' given"), Code::InvalidArgument, Level::Info)) };
+        let Some(cell_selection) = cell_selection else { return Err(logged_status!(format!("empty cell selection '{selection_name}' given"), Code::InvalidArgument, Level::INFO)) };
 
         // build a complete list of the requested h3cells transformed to the
         // correct resolution

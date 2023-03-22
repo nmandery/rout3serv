@@ -2,8 +2,7 @@ use std::any::type_name;
 use std::fmt::Debug;
 
 use tonic::{Code, Status};
-use tracing::error;
-use tracing::log::{log, Level};
+use tracing::{error, Level};
 
 pub trait StatusCodeAndMessage {
     fn status_code_and_message(&self) -> (Code, String);
@@ -72,6 +71,18 @@ error_status_code_impl!(tokio::task::JoinError);
 //error_status_code_impl!(anyhow::Error);
 error_status_code_impl!(polars_core::error::PolarsError);
 
+macro_rules! logged_status {
+    ($msg:expr, $code: expr, $lvl:expr, $caused_by:expr) => {{
+        tracing::event!($lvl, "{}: {:?}", $msg, $caused_by);
+        Status::new($code, $msg)
+    }};
+    ($msg:expr, $code: expr, $lvl:expr) => {{
+        tracing::event!($lvl, "{}", $msg);
+        Status::new($code, $msg)
+    }};
+}
+pub(crate) use logged_status;
+
 pub trait ToStatusResult<T> {
     fn to_status_result(self) -> Result<T, Status>;
 
@@ -95,30 +106,7 @@ where
     where
         MF: FnOnce() -> String,
     {
-        self.map_err(|e| logged_status_with_cause(msg(), code, Level::Error, &e))
+        let m = msg();
+        self.map_err(|e| logged_status!(m, code, Level::ERROR, &e))
     }
-}
-
-#[inline(always)]
-pub fn logged_status<A>(msg: A, code: Code, level: tracing::log::Level) -> Status
-where
-    A: AsRef<str>,
-{
-    log!(level, "{}", msg.as_ref());
-    Status::new(code, msg.as_ref())
-}
-
-#[inline(always)]
-pub fn logged_status_with_cause<A, E>(
-    msg: A,
-    code: Code,
-    level: tracing::log::Level,
-    caused_by: &E,
-) -> Status
-where
-    A: AsRef<str>,
-    E: Debug,
-{
-    log!(level, "{}: {:?}", msg.as_ref(), caused_by);
-    Status::new(code, msg.as_ref())
 }

@@ -9,7 +9,7 @@ use h3o::Resolution;
 use hexigraph::algorithm::graph::path::Path;
 use hexigraph::algorithm::graph::shortest_path;
 use tonic::{Code, Status};
-use tracing::log::Level;
+use tracing::Level;
 use uom::si::time::second;
 
 use crate::grpc::api::generated::{GraphHandle, RouteH3Indexes, RouteWkb, ShortestPathOptions};
@@ -112,17 +112,17 @@ impl TryFrom<&GraphHandle> for GraphKey {
 
     fn try_from(gh: &GraphHandle) -> Result<Self, Self::Error> {
         if gh.name.is_empty() {
-            return Err(logged_status(
+            return Err(logged_status!(
                 "empty graph name",
                 Code::InvalidArgument,
-                Level::Info,
+                Level::INFO
             ));
         }
         let h3_resolution = Resolution::try_from(gh.h3_resolution as u8).map_err(|_| {
-            logged_status(
+            logged_status!(
                 "invalid h3 resolution in graph handle",
                 Code::InvalidArgument,
-                Level::Info,
+                Level::INFO
             )
         })?;
         Ok(Self {
@@ -139,10 +139,10 @@ impl TryFrom<&Option<GraphHandle>> for GraphKey {
         if let Some(gh) = gh {
             gh.try_into()
         } else {
-            Err(logged_status(
+            Err(logged_status!(
                 "graph handle not set",
                 Code::InvalidArgument,
-                Level::Info,
+                Level::INFO
             ))
         }
     }

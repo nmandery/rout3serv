@@ -2,7 +2,7 @@ use hexigraph::algorithm::graph::WithinWeightThresholdMany;
 use hexigraph::HasH3Resolution;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use tonic::{Code, Response, Status};
-use tracing::log::Level;
+use tracing::Level;
 use uom::si::f32::Time;
 use uom::si::time::second;
 
@@ -35,10 +35,10 @@ pub(crate) async fn create_parameters(
     {
         Threshold::TravelDuration(Time::new::<second>(request.travel_duration_secs_threshold))
     } else {
-        return Err(logged_status(
+        return Err(logged_status!(
             "invalid or no threshold given",
             Code::InvalidArgument,
-            Level::Debug,
+            Level::DEBUG
         ));
     };
     let routing_mode = server_impl.config.get_routing_mode(&request.routing_mode)?;

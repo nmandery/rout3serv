@@ -15,7 +15,7 @@ use hexigraph::HasH3Resolution;
 use polars::prelude::{DataFrame, DataFrameJoinOps, JoinType, NamedFrom, Series};
 use serde::{Deserialize, Serialize};
 use tonic::{Code, Status};
-use tracing::log::Level;
+use tracing::Level;
 use uom::si::time::second;
 
 use crate::grpc::api::generated::{
@@ -90,10 +90,10 @@ pub(crate) async fn collect_input(
         }
 
         if downsampled_graph.is_none() {
-            return Err(logged_status(
+            return Err(logged_status!(
                 "no suitable graph at a lower resolution found",
                 Code::InvalidArgument,
-                Level::Debug,
+                Level::DEBUG
             ));
         }
         downsampled_graph
@@ -122,7 +122,7 @@ pub(crate) async fn collect_input(
         )
         .await
         .to_status_result()?
-        .ok_or_else(|| logged_status("ref_dataset was empty", Code::NotFound, Level::Warn))?;
+        .ok_or_else(|| logged_status!("ref_dataset was empty", Code::NotFound, Level::WARN))?;
 
     let ref_dataframe_cells: CellSet = ref_dataframe
         .cell_u64s()

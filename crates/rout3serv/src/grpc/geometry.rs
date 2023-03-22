@@ -5,17 +5,16 @@ use geo_types::Geometry;
 use h3o::geom::ToCells;
 use h3o::{CellIndex, LatLng, Resolution};
 use tonic::{Code, Status};
-use tracing::log::Level;
+use tracing::Level;
 use uom::si::f64::Length;
 use uom::si::length::meter;
 
-use crate::grpc::error::{logged_status_with_cause, ToStatusResult};
+use crate::grpc::error::{logged_status, ToStatusResult};
 
 /// read binary WKB into a gdal `Geometry`
 pub fn from_wkb(wkb_bytes: &[u8]) -> Result<Geometry, Status> {
-    crate::geo::wkb::from_wkb(wkb_bytes).map_err(|e| {
-        logged_status_with_cause("Can not parse WKB", Code::InvalidArgument, Level::Warn, &e)
-    })
+    crate::geo::wkb::from_wkb(wkb_bytes)
+        .map_err(|e| logged_status!("Can not parse WKB", Code::InvalidArgument, Level::WARN, &e))
 }
 
 /// convert a [`Geometry`] to a vec of [`CellIndex`].
@@ -49,11 +48,11 @@ pub fn geom_to_h3(
 /// between WGS84 and Spherical Mercator
 pub fn buffer_meters(geom: &Geometry, meters: f64) -> Result<Geometry, Status> {
     crate::geo::buffer(geom, Length::new::<meter>(meters)).map_err(|e| {
-        logged_status_with_cause(
+        logged_status!(
             "geometry buffering failed",
             Code::Internal,
-            Level::Error,
-            &e,
+            Level::ERROR,
+            &e
         )
     })
 }
@@ -61,11 +60,11 @@ pub fn buffer_meters(geom: &Geometry, meters: f64) -> Result<Geometry, Status> {
 /// convert a geotypes `Geometry` to WKB using GDAL
 pub fn to_wkb(geom: &Geometry) -> Result<Vec<u8>, Status> {
     crate::geo::wkb::to_wkb(geom).map_err(|e| {
-        logged_status_with_cause(
+        logged_status!(
             "Unable to convert geometry to WKB",
             Code::Internal,
-            Level::Error,
-            &e,
+            Level::ERROR,
+            &e
         )
     })
 }
