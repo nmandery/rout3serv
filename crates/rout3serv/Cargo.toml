@@ -17,7 +17,7 @@ clap = "^4"
 env_logger = "0.10"
 flatgeobuf = { version = "^3", default_features = false }
 futures = "0.3"
-geo = "0.23"
+geo = "0.24"
 geojson = { version = "0.24", features = ["geo-types"] }
 geos = { version = "8", features = ["geo", "static"] }
 geo-types = "0.7"
@@ -42,7 +42,7 @@ thiserror = "1"
 tokio-stream = "0.1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 tonic = { version = "0.8", features = ["gzip"] }
-tower-http = { version = "^0.3", features = ["trace"] }
+tower-http = { version = "^0.4", features = ["trace"] }
 tracing = "0.1"
 uom = { version = "0.34", features = ["use_serde"] }
 uuid = { version = "1", features = ["v4"] }
