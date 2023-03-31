@@ -31,8 +31,8 @@ num-traits = "0.2"
 object_store = { version = "0.5", features = ["aws"] }
 once_cell = "1"
 ordered-float = "3"
-polars-core = "0.27"
-polars = { version = "0.27", features = ["ipc", "parquet", "performant", "serde"] }
+polars-core = { version = "0.28" }
+polars = { version = "0.28", features = ["ipc", "parquet", "performant", "serde", "serde-lazy"] }
 prost = "0.11"
 rayon = "^1.5"
 regex = "1.5"
@@ -53,4 +53,4 @@ float-cmp = "0.9"
 
 [build-dependencies]
 tonic-build = { version = "0.8" }
-vergen = { version = "7", features = ["rustc", "build"] }
+vergen = { version = "8", features = ["rustc", "build", "git", "gitcl"] }

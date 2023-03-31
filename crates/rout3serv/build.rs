@@ -1,10 +1,14 @@
 use std::fs::rename;
 use std::path::Path;
 
-use vergen::{vergen, Config};
+use vergen::EmitBuilder;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    vergen(Config::default())?;
+    EmitBuilder::builder()
+        .build_timestamp()
+        .git_sha(true)
+        .emit()?;
+
     println!("cargo:rerun-if-changed=proto/rout3serv.proto");
     tonic_build::configure()
         .build_client(false)
