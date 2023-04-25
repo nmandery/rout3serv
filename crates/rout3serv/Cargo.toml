@@ -41,7 +41,7 @@ serde_yaml = "0.9"
 thiserror = "1"
 tokio-stream = "0.1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
-tonic = { version = "0.8", features = ["gzip"] }
+tonic = { version = "0.9", features = ["gzip"] }
 tower-http = { version = "^0.4", features = ["trace"] }
 tracing = "0.1"
 uom = { version = "0.34", features = ["use_serde"] }
@@ -52,5 +52,5 @@ zstd = "^0.12"
 float-cmp = "0.9"
 
 [build-dependencies]
-tonic-build = { version = "0.8" }
+tonic-build = { version = "0.9" }
 vergen = { version = "8", features = ["rustc", "build", "git", "gitcl"] }
