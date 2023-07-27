@@ -141,7 +141,7 @@ where
         Self {
             num_indexes: index_slice.len(),
             block_data,
-            phantom_data: PhantomData::default(),
+            phantom_data: PhantomData,
         }
     }
 }

@@ -36,7 +36,7 @@ impl<'de, T> Visitor<'de> for H3TreemapVisitor<T> {
         let treemap = RoaringTreemap::deserialize_from(v).map_err(E::custom)?;
         Ok(H3Treemap {
             treemap,
-            phantom_data: PhantomData::<T>::default(),
+            phantom_data: PhantomData::<T>,
         })
     }
 }
@@ -48,7 +48,7 @@ impl<'de, T> Deserialize<'de> for H3Treemap<T> {
         D: Deserializer<'de>,
     {
         deserializer.deserialize_bytes(H3TreemapVisitor {
-            phantom_data: PhantomData::<T>::default(),
+            phantom_data: PhantomData::<T>,
         })
     }
 }

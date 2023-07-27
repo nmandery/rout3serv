@@ -13,6 +13,7 @@ use hexigraph::container::CellSet;
 use hexigraph::graph::PreparedH3EdgeGraph;
 use hexigraph::HasH3Resolution;
 use polars::prelude::{DataFrame, DataFrameJoinOps, JoinType, NamedFrom, Series};
+use polars_core::prelude::JoinArgs;
 use serde::{Deserialize, Serialize};
 use tonic::{Code, Status};
 use tracing::Level;
@@ -414,8 +415,7 @@ fn disturbance_statistics_internal(output: &DspOutput) -> Result<DataFrame, Stat
             &output.ref_dataframe.dataframe,
             ["h3index_origin"],
             [output.ref_dataframe.cell_column_name.as_str()],
-            JoinType::Inner,
-            None,
+            JoinArgs::new(JoinType::Inner),
         )
         .to_status_result()?;
     Ok(df)

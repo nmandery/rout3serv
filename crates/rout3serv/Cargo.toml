@@ -19,9 +19,9 @@ flatgeobuf = { version = "^3", default_features = false }
 futures = "0.3"
 geo = { workspace = true }
 geojson = { version = "0.24", features = ["geo-types"] }
-geos = { version = "=8.2.0", features = ["geo", "static"] } # pinned to this version until geozero > 0.9.9 is released
+geos = { version = "^8", features = ["geo", "static"] }
 geo-types = "0.7"
-geozero = { version = "0.9", features = ["with-geo", "with-wkb", "with-geos"], default_features = false }
+geozero = { version = "0.10", features = ["with-geo", "with-wkb", "with-geos"], default_features = false }
 h3o = { workspace = true }
 hexigraph = { path = "../hexigraph", features = ["osm", "serde"] }
 indexmap = "2"
@@ -31,8 +31,8 @@ num-traits = "0.2"
 object_store = { version = "0.6", features = ["aws"] }
 once_cell = "1"
 ordered-float = "3"
-polars-core = { version = "0.30" }
-polars = { version = "0.30", features = ["ipc", "parquet", "performant", "serde", "serde-lazy"] }
+polars-core = { version = "0.31" }
+polars = { version = "0.31", features = ["ipc", "parquet", "performant", "serde", "serde-lazy"] }
 prost = "0.11"
 rayon = "^1.5"
 regex = "1.5"
@@ -44,7 +44,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 tonic = { version = "0.9", features = ["gzip"] }
 tower-http = { version = "^0.4", features = ["trace"] }
 tracing = "0.1"
-uom = { version = "0.34", features = ["use_serde"] }
+uom = { version = "0.35", features = ["use_serde"] }
 uuid = { version = "1", features = ["v4"] }
 zstd = "^0.12"
 

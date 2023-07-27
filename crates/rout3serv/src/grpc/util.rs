@@ -5,6 +5,7 @@ use h3o::{CellIndex, Resolution};
 use hexigraph::algorithm::resolution::transform_resolution;
 use itertools::Itertools;
 use polars::prelude::{DataFrame, DataFrameJoinOps, IpcWriter, JoinType, SerWriter};
+use polars_core::prelude::JoinArgs;
 use tokio::sync::mpsc;
 use tokio::task::block_in_place;
 use tokio_stream::wrappers::ReceiverStream;
@@ -163,8 +164,7 @@ pub fn inner_join_h3dataframe(
             &celldataframe.dataframe,
             [dataframe_h3index_column],
             [format!("{}{}", prefix, celldataframe.cell_column_name.as_str()).as_str()],
-            JoinType::Inner,
-            None,
+            JoinArgs::new(JoinType::Inner),
         )
         .to_status_result_with_message(Code::Internal, || {
             "joining polars dataframes failed".to_string()
