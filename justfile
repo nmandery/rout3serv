@@ -15,5 +15,5 @@ extract-sample-data:
     osmium tags-filter data/germany-latest.osm.pbf wnr/amenity=hospital -o data/hospital.osm.pbf --progress --overwrite
     osmium export -f geojson -o data/hospital.geojson -c datasources/osmium.hospital.json --progress --overwrite data/hospital.osm.pbf
 
-build-docker:
-    sudo docker build -f rout3serv.Dockerfile -t nmandery/rout3serv:latest --pull .
+build-container:
+    podman build -f rout3serv.Dockerfile -t git.elsbeere/nico/rout3serv:latest --pull .
