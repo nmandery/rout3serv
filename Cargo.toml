@@ -3,11 +3,12 @@ members = [
     "crates/rout3serv",
     "crates/hexigraph",
 ]
+resolver = "2"
 
 [workspace.dependencies]
 ahash = "0.8"
 geo = "0.26"
-h3o = { version = "0.3", features = ["geo"] }
+h3o = { version = "0.4", features = ["geo"] }
 rayon = "1"
 tracing = "0.1"
 

@@ -169,9 +169,8 @@ fn disturbance_and_buffered_cells(
     radius_meters: f64,
 ) -> Result<(H3Treemap<CellIndex>, Vec<CellIndex>), Status> {
     let disturbance_geom = from_wkb(disturbance_wkb_geometry)?;
-    let disturbed_cells: H3Treemap<CellIndex> = H3Treemap::from_iter(
-        geom_to_h3(disturbance_geom.clone(), h3_resolution, true)?.into_iter(),
-    );
+    let disturbed_cells: H3Treemap<CellIndex> =
+        H3Treemap::from_iter(geom_to_h3(disturbance_geom.clone(), h3_resolution, true)?);
 
     let buffered_cells = geom_to_h3(
         buffer_meters(&disturbance_geom, radius_meters)?,

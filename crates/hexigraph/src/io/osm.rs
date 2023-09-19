@@ -7,7 +7,7 @@ use std::path::Path;
 use crate::algorithm::edge::{continuous_cells_to_edges, reverse_directed_edge};
 use crate::container::HashMap;
 use geo::{Coord, LineString};
-use h3o::geom::ToCells;
+use h3o::geom::{PolyfillConfig, ToCells};
 use h3o::{DirectedEdgeIndex, Resolution};
 pub use osmpbfreader;
 use osmpbfreader::{OsmPbfReader, Tags};
@@ -88,7 +88,7 @@ where
                         if coordinates.len() >= 2 {
                             for edge in continuous_cells_to_edges(
                                 h3o::geom::LineString::from_degrees(LineString::from(coordinates))?
-                                    .to_cells(self.h3_resolution),
+                                    .to_cells(PolyfillConfig::new(self.h3_resolution)),
                             ) {
                                 let edge_props =
                                     self.way_analyzer.way_edge_properties(edge, &way_props)?;

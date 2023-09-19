@@ -40,7 +40,7 @@ where
         let r: u8 = cell_iter_resolution.into();
         r.saturating_sub(reduce_resolution_by).try_into().unwrap()
     };
-    let cells: CellSet = transform_resolution(cell_iter.into_iter(), t_res).collect();
+    let cells: CellSet = transform_resolution(cell_iter, t_res).collect();
     Ok(MultiPolygon::new(
         cells
             .into_iter()

@@ -41,7 +41,7 @@ where
         h3indexes.dedup();
 
         Self {
-            treemap: RoaringTreemap::from_sorted_iter(h3indexes.into_iter()).unwrap(),
+            treemap: RoaringTreemap::from_sorted_iter(h3indexes).unwrap(),
             phantom_data: Default::default(),
         }
     }

@@ -2,7 +2,7 @@
 //!
 use geo::algorithm::centroid::Centroid;
 use geo_types::Geometry;
-use h3o::geom::ToCells;
+use h3o::geom::{PolyfillConfig, ToCells};
 use h3o::{CellIndex, LatLng, Resolution};
 use tonic::{Code, Status};
 use tracing::Level;
@@ -25,7 +25,7 @@ pub fn geom_to_h3(
 ) -> Result<Vec<CellIndex>, Status> {
     let mut cells = h3o::geom::Geometry::from_degrees(geom.clone())
         .to_status_result()?
-        .to_cells(h3_resolution)
+        .to_cells(PolyfillConfig::new(h3_resolution))
         .collect::<Vec<_>>();
 
     if include_centroid {
