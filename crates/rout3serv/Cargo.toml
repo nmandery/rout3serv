@@ -30,7 +30,7 @@ mimalloc = { version = "0.1", default_features = false }
 num-traits = "0.2"
 object_store = { version = "0.7", features = ["aws"] }
 once_cell = "1"
-ordered-float = "3"
+ordered-float = "4"
 polars-core = { version = "0.33" }
 polars = { version = "0.33", features = ["ipc", "parquet", "performant", "serde", "serde-lazy"] }
 prost = "0.12"
