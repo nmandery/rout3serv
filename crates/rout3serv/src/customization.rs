@@ -86,7 +86,7 @@ impl PartialEq<Self> for CustomizedWeight {
 
 impl PartialOrd for CustomizedWeight {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.overall_weight().partial_cmp(&other.overall_weight())
+        Some(self.cmp(other))
     }
 }
 
@@ -111,7 +111,9 @@ impl Eq for CustomizedWeight {}
 
 impl Ord for CustomizedWeight {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+        self.overall_weight()
+            .partial_cmp(&other.overall_weight())
+            .unwrap_or(Ordering::Equal)
     }
 }
 

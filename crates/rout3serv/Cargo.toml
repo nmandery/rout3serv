@@ -15,7 +15,7 @@ bytes = "1"
 bytesize = "1"
 clap = "^4"
 env_logger = "0.10"
-flatgeobuf = { version = "^3", default_features = false }
+flatgeobuf = { version = "^4", default_features = false }
 futures = "0.3"
 geo = { workspace = true }
 geojson = { version = "0.24", features = ["geo-types"] }
@@ -46,7 +46,7 @@ tower-http = { version = "^0.4", features = ["trace"] }
 tracing = "0.1"
 uom = { version = "0.35", features = ["use_serde"] }
 uuid = { version = "1", features = ["v4"] }
-zstd = "^0.12"
+zstd = "^0.13"
 
 [dev-dependencies]
 float-cmp = "0.9"

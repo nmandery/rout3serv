@@ -104,14 +104,14 @@ impl Zero for StandardWeight {
 
 impl PartialEq for StandardWeight {
     fn eq(&self, other: &Self) -> bool {
-        self.partial_cmp(other).unwrap_or(Ordering::Equal) == Ordering::Equal
+        self.cmp(other) == Ordering::Equal
     }
 }
 
 impl Eq for StandardWeight {}
 
-impl PartialOrd for StandardWeight {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+impl Ord for StandardWeight {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.travel_duration
             .value
             .partial_cmp(&other.travel_duration.value)
@@ -122,12 +122,13 @@ impl PartialOrd for StandardWeight {
                     Some(ordering)
                 }
             })
+            .unwrap_or(Ordering::Equal)
     }
 }
 
-impl Ord for StandardWeight {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+impl PartialOrd for StandardWeight {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
