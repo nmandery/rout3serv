@@ -106,7 +106,7 @@ mod tests {
     use crate::container::HashMap;
     use crate::graph::{GetStats, H3EdgeGraph, PreparedH3EdgeGraph};
     use geo::Line;
-    use h3o::geom::ToCells;
+    use h3o::geom::{PolyfillConfig, ToCells};
     use h3o::Resolution;
 
     /// a simple graph consisting of a single line
@@ -117,7 +117,7 @@ mod tests {
             end: (20., 20.).into(),
         })
         .unwrap()
-        .to_cells(h3_resolution)
+        .to_cells(PolyfillConfig::new(h3_resolution))
         .collect();
 
         let mut g = H3EdgeGraph::new(h3_resolution);

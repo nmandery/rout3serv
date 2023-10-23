@@ -233,7 +233,7 @@ mod tests {
     use std::cmp::min;
 
     use geo::{Coord, LineString};
-    use h3o::geom::ToCells;
+    use h3o::geom::{PolyfillConfig, ToCells};
     use h3o::{LatLng, Resolution};
 
     use super::{downsample_graph, H3EdgeGraph, NodeType};
@@ -246,7 +246,7 @@ mod tests {
             Coord::from((24.2, 12.2)),
         ]))
         .unwrap()
-        .to_cells(full_h3_res)
+        .to_cells(PolyfillConfig::new(full_h3_res))
         .collect();
         assert!(cells.len() > 100);
 

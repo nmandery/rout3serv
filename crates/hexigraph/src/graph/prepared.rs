@@ -528,7 +528,7 @@ impl<W> BoundingRect<f64> for PreparedH3EdgeGraph<W> {
 mod tests {
     use super::*;
     use geo::LineString;
-    use h3o::geom::ToCells;
+    use h3o::geom::{PolyfillConfig, ToCells};
 
     fn build_line_prepared_graph() -> PreparedH3EdgeGraph<u32> {
         let full_h3_res = Resolution::Eight;
@@ -537,7 +537,7 @@ mod tests {
             Coord::from((24.2, 12.2)),
         ]))
         .unwrap()
-        .to_cells(full_h3_res)
+        .to_cells(PolyfillConfig::new(full_h3_res))
         .collect();
         assert!(cells.len() > 100);
 
