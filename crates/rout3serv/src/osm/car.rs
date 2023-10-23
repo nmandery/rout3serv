@@ -95,7 +95,7 @@ mod tests {
         let distance = Length::new::<meter>(Resolution::Six.edge_length_m() as f32);
 
         let travel_time = distance / speed;
-        assert!(approx_eq!(f32, travel_time.value, 387.5379f32));
+        assert!(approx_eq!(f32, travel_time.value, 446.94388f32));
         dbg!(travel_time);
     }
 }
