@@ -37,6 +37,13 @@ mod io;
 mod osm;
 mod weight;
 
+const SC_GRPC_SERVER: &str = "grpc";
+const SC_GRAPH: &str = "graph";
+const SC_GRAPH_STATS: &str = "stats";
+const SC_GRAPH_COVERED_AREA: &str = "covered-area";
+const SC_GRAPH_TO_FGB: &str = "to-fgb";
+const SC_GRAPH_FROM_OSM_PBF: &str = "from-osm-pbf";
+
 fn main() -> Result<()> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "info"),
@@ -46,15 +53,15 @@ fn main() -> Result<()> {
         .long_version(build_info::long_version())
         .about(env!("CARGO_PKG_DESCRIPTION"))
         .subcommand(
-            Command::new("graph")
+            Command::new(SC_GRAPH)
                 .about("Commands related to graph creation and export")
                 .subcommand(
-                    Command::new("stats")
+                    Command::new(SC_GRAPH_STATS)
                         .about("Load a graph and print some basic stats")
                         .arg(Arg::new("GRAPH").help("graph").required(true)),
                 )
                 .subcommand(
-                    Command::new("covered-area")
+                    Command::new(SC_GRAPH_COVERED_AREA)
                         .about("Extract the area covered by the graph as geojson")
                         .arg(Arg::new("GRAPH").help("graph").required(true))
                         .arg(
@@ -64,7 +71,7 @@ fn main() -> Result<()> {
                         ),
                 )
                 .subcommand(
-                    Command::new("to-fgb")
+                    Command::new(SC_GRAPH_TO_FGB)
                         .about("Export the input graph to a flatgeobuf dataset")
                         .arg(Arg::new("GRAPH").help("graph").required(true))
                         .arg(
@@ -74,7 +81,7 @@ fn main() -> Result<()> {
                         ),
                 )
                 .subcommand(
-                    Command::new("from-osm-pbf")
+                    Command::new(SC_GRAPH_FROM_OSM_PBF)
                         .about("Build a routing graph from an OSM PBF file")
                         .arg(
                             Arg::new("h3_resolution")
@@ -96,11 +103,13 @@ fn main() -> Result<()> {
                 ),
         )
         .subcommand(
-            Command::new("server").about("Start the GRPC server").arg(
-                Arg::new("CONFIG-FILE")
-                    .help("server configuration file")
-                    .required(true),
-            ),
+            Command::new(SC_GRPC_SERVER)
+                .about("Start the GRPC server")
+                .arg(
+                    Arg::new("CONFIG-FILE")
+                        .help("server configuration file")
+                        .required(true),
+                ),
         );
 
     dispatch_command(app.get_matches())
@@ -113,20 +122,20 @@ fn read_graph_from_filename(filename: &str) -> Result<PreparedH3EdgeGraph<Standa
 
 fn dispatch_command(matches: ArgMatches) -> Result<()> {
     match matches.subcommand() {
-        Some(("graph", graph_sc_matches)) => match graph_sc_matches.subcommand() {
-            Some(("stats", sc_matches)) => {
+        Some((SC_GRAPH, graph_sc_matches)) => match graph_sc_matches.subcommand() {
+            Some((SC_GRAPH_STATS, sc_matches)) => {
                 let graph_filename: &String = sc_matches.get_one("GRAPH").unwrap();
                 let prepared_graph = read_graph_from_filename(graph_filename)?;
                 println!("{}", serde_yaml::to_string(&prepared_graph.get_stats()?)?);
             }
-            Some(("to-fgb", sc_matches)) => subcommand_graph_to_fgb(sc_matches)?,
-            Some(("covered-area", sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
-            Some(("from-osm-pbf", sc_matches)) => subcommand_from_osm_pbf(sc_matches)?,
+            Some((SC_GRAPH_TO_FGB, sc_matches)) => subcommand_graph_to_fgb(sc_matches)?,
+            Some((SC_GRAPH_COVERED_AREA, sc_matches)) => subcommand_graph_covered_area(sc_matches)?,
+            Some((SC_GRAPH_FROM_OSM_PBF, sc_matches)) => subcommand_from_osm_pbf(sc_matches)?,
             _ => {
                 println!("unknown subcommand");
             }
         },
-        Some(("server", sc_matches)) => subcommand_server(sc_matches)?,
+        Some((SC_GRPC_SERVER, sc_matches)) => subcommand_grpc_server(sc_matches)?,
         _ => {
             println!("unknown subcommand");
         }
@@ -232,7 +241,7 @@ fn subcommand_graph_covered_area(sc_matches: &ArgMatches) -> Result<()> {
     Ok(())
 }
 
-fn subcommand_server(sc_matches: &ArgMatches) -> Result<()> {
+fn subcommand_grpc_server(sc_matches: &ArgMatches) -> Result<()> {
     let config_contents =
         std::fs::read_to_string(sc_matches.get_one::<String>("CONFIG-FILE").unwrap())?;
     let config: ServerConfig = serde_yaml::from_str(&config_contents)?;
